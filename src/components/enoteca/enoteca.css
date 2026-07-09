@@ -1,0 +1,386 @@
+/* ---- sezioni negozio (enoteca) ---- */
+.shop-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 20px 56px;
+  box-sizing: border-box;
+}
+
+.section-title {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 600;
+  color: #2e5e46;
+  text-align: center;
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* card generali (vini, birre): poche card, centrate */
+.cat-grid--center {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+  justify-content: center;
+}
+
+/* gruppi con `columns: 3`: file da 3 su schermi grandi */
+@media (min-width: 900px) {
+  .cat-grid--three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* card categoria: vetro + accento colore del vino */
+.cat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 22px 26px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
+}
+
+.cat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--accent, #2e5e46);
+}
+
+.cat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+}
+
+.cat-card:focus-visible {
+  outline: 2px solid #2e5e46;
+  outline-offset: 2px;
+}
+
+/* fallback emoji finché la card non ha un'immagine caricata */
+.cat-icon {
+  font-size: 64px;
+  line-height: 88px;
+}
+
+.cat-img {
+  height: 88px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+}
+
+.cat-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #2e5e46;
+}
+
+.cat-desc {
+  font-size: 14px;
+  color: #52605a;
+}
+
+.cat-arrow {
+  margin-top: 6px;
+  font-size: 18px;
+  color: var(--accent, #2e5e46);
+  transition: transform 0.18s ease;
+}
+
+.cat-card:hover .cat-arrow {
+  transform: translateX(4px);
+}
+
+/* ---- barra regioni (solo telefono): spunta da dietro la tab bar ---- */
+.filter-bar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* la tab bar si sfoca solo quando la barra regioni è ormai calata
+     sopra (ritardo che si sincronizza con l'animazione ~0.75s) */
+  .site-nav {
+    transition: filter 0.2s ease 0.55s, opacity 0.2s ease 0.55s;
+  }
+
+  body.region-bar-open .site-nav {
+    filter: blur(4px);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .filter-bar {
+    display: flex;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    /* esattamente sovrapposta alla tab bar originale, davanti a lei */
+    bottom: calc(28px + env(safe-area-inset-bottom));
+    z-index: 30; /* sopra .site-header (z 20), così copre la tab bar */
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 22px;
+    /* opaca: è lei il protagonista, copre la tab bar sfocata sotto */
+    background: #f4f7f3;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.28);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    animation: filter-bar-in 0.75s linear;
+  }
+
+  .filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* chiusura: stessa meccanica al contrario, rientra dietro la tab bar */
+  .filter-bar--closing {
+    animation: filter-bar-out 0.6s linear forwards;
+  }
+
+  /* i prodotti scorrono dietro le barre: aria in fondo alla lista */
+  .has-filter-bar .wine-list {
+    padding-bottom: 120px;
+  }
+}
+
+/* movimento meccanico a fasi: si sgancia da dietro la tab bar,
+   sale, poi si assesta con un piccolo scatto. Le pause (valori
+   ripetuti) danno l'aria robotica. */
+@keyframes filter-bar-in {
+  /* agganciata dietro, piatta sulla tab bar, ancora sfocata */
+  0% {
+    transform: translateY(26px);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    filter: blur(5px);
+  }
+  /* scatto di sgancio: scende un filo e si "stacca" (compare l'ombra) */
+  10% {
+    transform: translateY(30px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+    filter: blur(5px);
+  }
+  /* pausa meccanica */
+  22% {
+    transform: translateY(30px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    filter: blur(5px);
+  }
+  /* corsa di risalita a velocità costante, ancora fuori fuoco */
+  68% {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
+    filter: blur(4px);
+  }
+  /* pausa in cima */
+  80% {
+    transform: translateY(-4px);
+    filter: blur(3px);
+  }
+  /* scatto finale: si posiziona e va a fuoco */
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.28);
+    filter: blur(0);
+  }
+}
+
+/* chiusura: la stessa meccanica riprodotta al contrario */
+@keyframes filter-bar-out {
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.28);
+    filter: blur(0);
+  }
+  20% {
+    transform: translateY(-4px);
+    filter: blur(3px);
+  }
+  32% {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
+    filter: blur(4px);
+  }
+  78% {
+    transform: translateY(30px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    filter: blur(5px);
+  }
+  90% {
+    transform: translateY(30px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+    filter: blur(5px);
+  }
+  100% {
+    transform: translateY(26px);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    filter: blur(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-bar {
+    animation: none;
+  }
+}
+
+/* voci come quelle della tab bar: immagine sopra, nome sotto */
+.filter-btn {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 58px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2e5e46;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-btn.is-active {
+  background: #2e5e46;
+  color: #fff;
+}
+
+.filter-icon {
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.filter-img {
+  height: 22px;
+  width: auto;
+  max-width: 40px;
+  object-fit: contain;
+}
+
+.filter-label {
+  line-height: 1;
+}
+
+
+/* ---- lista prodotti: pagina ferma, scorrono solo i prodotti ----
+   (body.home-no-scroll viene aggiunto da Enoteca quando una lista è aperta;
+   la catena flex arriva da home.css) */
+body.home-no-scroll .shop-section {
+  flex: 1;
+  min-height: 0;
+}
+
+body.home-no-scroll .wine-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- lista prodotti della categoria ---- */
+.back-btn {
+  align-self: flex-start;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid #2e5e46;
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.back-btn:hover {
+  background: #2e5e46;
+  color: #fff;
+}
+
+.wine-empty {
+  margin: 24px 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 20px;
+  color: #52605a;
+}
+
+.wine-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.wine-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.wine-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+
+.wine-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #2e3d34;
+}
+
+.wine-meta {
+  font-size: 13.5px;
+  color: #52605a;
+}
+
+.wine-price {
+  flex: none;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2e5e46;
+  white-space: nowrap;
+}

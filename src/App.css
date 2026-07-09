@@ -1,0 +1,126 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 15px 20px 24px;
+}
+
+/* vetro sul header: su un pseudo-elemento, così il backdrop-filter
+   non "cattura" la tab bar fissa che sta dentro l'header su mobile */
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.site-logo {
+  display: block;
+  width: 180px;
+  height: auto;
+  cursor: pointer;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.nav-btn {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #2e5e46;
+  background: transparent;
+  border: 1px solid #2e5e46;
+  border-radius: 999px;
+  padding: 8px 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.nav-btn:hover {
+  background: #2e5e46;
+  color: #fff;
+}
+
+/* icone e etichette corte: solo sulla tab bar mobile */
+.nav-icon,
+.nav-label--short {
+  display: none;
+}
+
+.nav-btn.is-active {
+  background: #2e5e46;
+  color: #fff;
+}
+
+/* ---- sfondo animato ---- */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+/* ---- phone: tab bar fissa in basso ---- */
+@media (max-width: 640px) {
+  body {
+    padding-bottom: 96px; /* spazio per la tab bar */
+  }
+
+  .site-nav {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 10;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 4px;
+    border-radius: 22px;
+    padding: 8px 10px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    padding: 6px 4px;
+    border: none;
+    border-radius: 14px;
+  }
+
+  .nav-icon {
+    display: block;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .nav-label--full {
+    display: none;
+  }
+
+  .nav-label--short {
+    display: block;
+  }
+}

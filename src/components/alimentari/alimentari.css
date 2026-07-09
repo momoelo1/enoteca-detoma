@@ -1,0 +1,5 @@
+/* ---- pagina Alimentari ----
+   Le card e la lista prodotti usano gli stessi stili dell'enoteca
+   (.cat-card, .shop-section, .wine-list… in enoteca/enoteca.css),
+   così restano identiche. Qui vanno solo gli stili specifici
+   della pagina Alimentari. */
