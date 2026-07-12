@@ -1,4 +1,6 @@
 import vinoRosso from "../images/vini/vino-rosso.png";
+import montepulcianoCvetic from "../images/vini/montepulciano-d-abruzzo-marina-cvetic.jpg";
+import amaroneClassico from "../images/vini/amarone-della-valpolicella-classico.png";
 import vinoBianco from "../images/vini/vino-bianco.png";
 import vinoRosato from "../images/vini/vino-rosato.png";
 import spumantiImg from "../images/vini/spumanti.png";
@@ -16,6 +18,43 @@ import rhum from "../images/distillati/Rhum.png";
 import liquori from "../images/distillati/Liquori.png";
 import cognac from "../images/distillati/Cognac.png";
 import calvados from "../images/distillati/Calvados.png";
+import lombardia from "../images/regioni/lombardia.jpg";
+import piemonte from "../images/regioni/piemonte.jpg";
+import aosta from "../images/regioni/aosta.jpg";
+import sicilia from "../images/regioni/sicilia.jpg";
+import abruzzo from "../images/regioni/abruzzo.jpg";
+import campania from "../images/regioni/campania.jpg";
+import emilia from "../images/regioni/emilia-romagna.jpg";
+import friuli from "../images/regioni/friuli.jpg";
+import marche from "../images/regioni/marche.jpg";
+import sardegna from "../images/regioni/sardegna.jpg";
+import trentino from "../images/regioni/trentino.jpg";
+import molise from "../images/regioni/molise.jpg";
+import puglia from "../images/regioni/puglia.jpg";
+import toscana from "../images/regioni/toscana.jpg";
+import umbria from "../images/regioni/umbria.jpg";
+import veneto from "../images/regioni/veneto.jpg";
+
+
+
+export const REGION_FLAGS = {
+  Lombardia: lombardia,
+  Piemonte: piemonte,
+  "Valle d'Aosta": aosta,
+  Sicilia: sicilia,
+  Abruzzo: abruzzo,
+  Campania: campania,
+  "Emilia Romagna": emilia,
+  Friuli: friuli,
+  Marche: marche,
+  Sardegna: sardegna,
+  Trentino: trentino,
+  Molise: molise,
+  Puglia: puglia,
+  Toscana: toscana,
+  Umbria: umbria,
+  Veneto: veneto,
+};
 
 
 
@@ -29,8 +68,8 @@ export const SECTIONS = [
 
 export const VINI_ROSSI = [
   // Abruzzo
-  { name: "Montepulciano d'Abruzzo Marina Cvetic Masciarelli", regione: "Abruzzo" },
-  { name: "Montepulciano d'Abruzzo Villa Gemma Masciarelli", regione: "Abruzzo" },
+  { name: "Montepulciano d'Abruzzo Marina Cvetic Masciarelli", regione: "Abruzzo", colore: "Rosso", anno: "2012", img: montepulcianoCvetic, description: "Vino rosso strutturato, affinato in legno, con note di frutta scura matura, spezie e tannini morbidi ma decisi — ottimo con carni rosse e piatti abruzzesi robusti." },
+  { name: "Montepulciano d'Abruzzo Villa Gemma Masciarelli", regione: "Abruzzo", colore: "Rosso", anno: "2012", description: "Vino rosso elegante, con profumi di frutti rossi e note floreali, tannini setosi e finale persistente — ideale con arrosti e formaggi stagionati." },
   // Alto Adige
   { name: "Blauburgunder Mazzon Gottardi", regione: "Alto Adige" },
   { name: "Blauburgunder Falkestein", regione: "Alto Adige" },
@@ -264,7 +303,9 @@ export const VINI_ROSSI = [
   { name: "Rouge de Vigne Les Cretes", regione: "Valle d'Aosta" },
   // Veneto
   { name: "Amaraone Valpolicella Valpantena Bertani", regione: "Veneto" },
-  { name: "Amarone Cl. Serego Alighieri Masi", regione: "Veneto" },
+  // TEMP: immagine generica "amarone classico" messa sul primo Amarone per
+  // vedere la card con una foto vera — spostarla sul produttore giusto
+  { name: "Amarone Cl. Serego Alighieri Masi", regione: "Veneto", img: amaroneClassico },
   { name: "Amarone Cl. Valpolicella Allegrini", regione: "Veneto" },
   { name: "Amarone Cl. Valpolicella Costasera Masi", regione: "Veneto" },
   { name: "Amarone Classico Valpolicella Dal Forno", regione: "Veneto" },
@@ -429,6 +470,7 @@ export const BEER_CATEGORIES = [
   {
     id: "mont-blanc",
     label: "Brasserie du Mont-Blanc",
+    short: "Mont-Blanc",
     description: "Birre alpine francesi",
     img: brasserie,
     accent: "#5b7fa4",
@@ -445,6 +487,7 @@ export const BEER_CATEGORIES = [
   {
     id: "farnese",
     label: "Birrificio Farnese",
+    short: "Farnese",
     description: "Birrificio artigianale italiano",
     img: farnese,
     accent: "#6e4419",
@@ -457,6 +500,7 @@ export const WINE_CATEGORIES = [
   {
     id: "rossi",
     label: "Vini Rossi",
+    short: "Rossi", // link rapido sulla card "Vini" della pagina Enoteca
     description: "Scopri tutti i nostri vini rossi",
     img: vinoRosso,
     accent: "#7b2d3b",
@@ -466,6 +510,7 @@ export const WINE_CATEGORIES = [
   {
     id: "bianchi",
     label: "Vini Bianchi",
+    short: "Bianchi",
     description: "Freschezza e profumi dei nostri bianchi",
     img: vinoBianco,
     accent: "#d4a72c",
@@ -475,6 +520,7 @@ export const WINE_CATEGORIES = [
   {
     id: "rosati",
     label: "Vini Rosati",
+    short: "Rosati",
     description: "Le sfumature dei nostri rosati",
     img: vinoRosato,
     accent: "#d6798f",
@@ -502,6 +548,7 @@ export const WINE_CATEGORIES = [
   {
     id: "liquorosi",
     label: "Dolci, Passiti e Liquorosi",
+    short: "Dolci e Passiti",
     description: "Dolci, Passiti e Liquorosi",
     img: liquorosiImg,
     accent: "#8a5a2b",
@@ -535,6 +582,11 @@ export const ALIMENTARI_CATEGORIES = [
 ];
 
 // ---- macro-categorie del negozio: ogni card generale contiene le sue sub-card ----
+// numero WhatsApp del negozio per "Chiedi disponibilità": solo cifre col
+// prefisso internazionale, es. "393331234567".
+// TEMP: numero finto per vedere il pulsante — SOSTITUIRE con quello vero
+export const WHATSAPP_NUMBER = "390000000000";
+
 export const SHOP_GROUPS = [
   {
     id: "vini",
@@ -552,6 +604,7 @@ export const SHOP_GROUPS = [
     icon: "🍺",
     accent: "#c78a2b",
     columns: 3, // sub-card in file da 3 su schermi grandi
+    catNoun: "birrifici", // per la riga assortimento ("6 birrifici · …")
     categories: BEER_CATEGORIES,
   },
   {
@@ -560,6 +613,7 @@ export const SHOP_GROUPS = [
     description: "Grappe, whisky, rhum e acquaviti",
     icon: "🥃",
     accent: "#8a5a2b",
+    catNoun: "tipologie", // per la riga assortimento ("6 tipologie · …")
     categories: DISTILLATI_CATEGORIES,
   },
 ];

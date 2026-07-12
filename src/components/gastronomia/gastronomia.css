@@ -1,0 +1,5 @@
+/* ---- pagina Gastronomia / Alimentari ----
+   Tab, card prodotto e bottom sheet usano gli stessi stili dell'enoteca
+   (.group-tabs, .shop-section, .wine-list, .wine-card, .wine-sheet…
+   in enoteca/enoteca.css), così restano identici. Qui vanno solo gli
+   stili specifici di questa pagina. */

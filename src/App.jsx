@@ -4,7 +4,7 @@ import logo from "./images/enoteca-detoma-logo.png";
 import Grainient from "./components/background/Grainient";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
-import Alimentari from "./components/alimentari/Alimentari";
+import Gastronomia from "./components/gastronomia/Gastronomia";
 import { SECTIONS } from "./data/data";
 
 
@@ -63,7 +63,7 @@ function App() {
 
         {page === "enoteca" && <Enoteca />}
 
-        {page === "alimentari" && <Alimentari />}
+        {page === "alimentari" && <Gastronomia />}
       </main>
     </>
   );

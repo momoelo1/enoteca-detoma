@@ -20,6 +20,16 @@
   text-align: center;
 }
 
+/* sottotitolo della pagina: una riga di voce sotto il titolo */
+.section-sub {
+  margin: -16px 0 0; /* si avvicina al titolo nonostante il gap della sezione */
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 17px;
+  font-style: italic;
+  color: #52605a;
+  text-align: center;
+}
+
 .cat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -69,11 +79,43 @@
   right: 0;
   height: 4px;
   background: var(--accent, #2e5e46);
+  transition: height 0.35s ease, box-shadow 0.35s ease;
+  z-index: 1;
+}
+
+/* macchia di vino: passando sopra, il colore del vino sboccia dall'alto
+   e si diffonde morbido nel vetro, come una goccia nell'acqua;
+   la barra d'accento in cima si "inzuppa" e diventa più marcata */
+.cat-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 85% at 50% 0%,
+    var(--accent, #2e5e46) 0%,
+    transparent 58%
+  );
+  opacity: 0;
+  transform: scale(0.6);
+  transform-origin: top center;
+  transition: opacity 0.55s ease, transform 0.65s ease;
 }
 
 .cat-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+}
+
+.cat-card:hover::after {
+  opacity: 0.22;
+  transform: scale(1);
+}
+
+.cat-card:hover::before {
+  height: 6px;
+  box-shadow: 0 0 12px var(--accent, #2e5e46);
 }
 
 .cat-card:focus-visible {
@@ -117,9 +159,143 @@
   transform: translateX(4px);
 }
 
-/* ---- barra regioni (solo telefono): spunta da dietro la tab bar ---- */
+/* ---- pagina Enoteca: tab dei gruppi + griglia categorie ---- */
+
+/* griglia card compatte: 2 per riga su telefono, 3 su schermi grandi */
+.mini-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 720px) {
+  .mini-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.mini-cell {
+  min-width: 0;
+}
+
+.mini-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px 14px;
+  overflow: hidden;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mini-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent, #2e5e46);
+}
+
+.mini-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
+}
+
+.mini-card:focus-visible {
+  outline: 2px solid #2e5e46;
+  outline-offset: 2px;
+}
+
+.mini-img {
+  height: 72px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.15));
+}
+
+.mini-icon {
+  font-size: 46px;
+  line-height: 72px;
+}
+
+.mini-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #2e3d34;
+}
+
+/* tab dei gruppi (layout B) */
+.group-tabs {
+  display: flex;
+  gap: 26px;
+  justify-content: center;
+  width: 100%;
+  border-bottom: 1px solid rgba(46, 94, 70, 0.15);
+}
+
+.group-tab {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 4px 2px 10px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #52605a;
+  cursor: pointer;
+}
+
+.group-tab.is-active {
+  color: #2e5e46;
+  font-weight: 700;
+}
+
+.group-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent, #2e5e46);
+}
+
+/* ---- barra regioni ----
+   telefono: spunta da dietro la tab bar (animata, fissa in basso);
+   desktop: riga statica di bandiere sopra la lista */
 .filter-bar {
   display: none;
+}
+
+@media (min-width: 641px) {
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -153,7 +329,7 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    animation: filter-bar-in 0.75s linear;
+    animation: filter-bar-in 0.98s linear;
   }
 
   .filter-bar::-webkit-scrollbar {
@@ -162,7 +338,7 @@
 
   /* chiusura: stessa meccanica al contrario, rientra dietro la tab bar */
   .filter-bar--closing {
-    animation: filter-bar-out 0.6s linear forwards;
+    animation: filter-bar-out 0.98s linear forwards;
   }
 
   /* i prodotti scorrono dietro le barre: aria in fondo alla lista */
@@ -177,19 +353,19 @@
 @keyframes filter-bar-in {
   /* agganciata dietro, piatta sulla tab bar, ancora sfocata */
   0% {
-    transform: translateY(26px);
+    transform: translateY(6px);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     filter: blur(5px);
   }
   /* scatto di sgancio: scende un filo e si "stacca" (compare l'ombra) */
   10% {
-    transform: translateY(30px);
+    transform: translateY(10px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
     filter: blur(5px);
   }
   /* pausa meccanica */
   22% {
-    transform: translateY(30px);
+    transform: translateY(10px);
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
     filter: blur(5px);
   }
@@ -215,31 +391,31 @@
 /* chiusura: la stessa meccanica riprodotta al contrario */
 @keyframes filter-bar-out {
   0% {
-    transform: translateY(0);
+    transform: translateY(-15px);
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.28);
     filter: blur(0);
   }
   20% {
-    transform: translateY(-4px);
+    transform: translateY(-10px);
     filter: blur(3px);
   }
   32% {
-    transform: translateY(-4px);
+    transform: translateY(-7px);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
     filter: blur(4px);
   }
   78% {
-    transform: translateY(30px);
+    transform: translateY(4.5px);
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
     filter: blur(5px);
   }
   90% {
-    transform: translateY(30px);
+    transform: translateY(7.5px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
     filter: blur(5px);
   }
   100% {
-    transform: translateY(26px);
+    transform: translateY(10px);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     filter: blur(5px);
   }
@@ -282,10 +458,11 @@
 }
 
 .filter-img {
-  height: 22px;
+  height: 20px;
   width: auto;
-  max-width: 40px;
+  max-width: 30px;
   object-fit: contain;
+  border-radius: 3px;
 }
 
 .filter-label {
@@ -338,48 +515,330 @@ body.home-no-scroll .wine-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* minmax(0, 1fr): le colonne possono restringersi, le card stanno dentro */
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* schermi piccoli: 2 per riga */
   gap: 14px;
-  width: 100%;
-  max-width: 720px;
+  width: 100%; /* tutta la larghezza disponibile: niente sbordo */
+  overflow-x: hidden; /* solo scroll verticale, mai laterale */
 }
 
+/* schermi grandi: 3 per riga */
+@media (min-width: 900px) {
+  .wine-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* card essenziale: foto in alto, nome, sottotitolo, prezzo in fondo.
+   Tutta la card è un pulsante: al tocco si apre il bottom sheet coi dettagli */
 .wine-card {
+  min-width: 0; /* la card può stringersi: niente scroll laterale */
+  box-sizing: border-box;
+}
+
+.wine-card-btn {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 218px; /* card di pari altezza + spazio per la foto */
+  box-sizing: border-box;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.45);
+  gap: 8px;
+  padding: 18px 14px 16px;
+  overflow: hidden;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.wine-main {
+/* barra d'accento della categoria: i rossi sanno di rosso, i bianchi d'oro */
+.wine-card-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent, #2e5e46);
+}
+
+.wine-card-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+/* miniatura bottiglia sul fronte (solo se l'item ha un'immagine) */
+.wine-thumb {
+  align-self: center;
+  flex: none;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  text-align: left;
+  align-items: center;
+  justify-content: center;
+  height: 104px; /* area immagine fissa: bottiglie di altezza diversa restano allineate */
+}
+
+.wine-thumb-img {
+  height: 100%;
+  width: auto;
+  max-width: 84px;
+  object-fit: contain;
+}
+
+/* bottiglia stilizzata: segnaposto finché mancano le foto vere */
+.wine-thumb-svg {
+  height: 88px;
+  width: auto;
+  fill: var(--accent, #2e5e46);
+  opacity: 0.45;
 }
 
 .wine-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #2e3d34;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* max 3 righe: il nome è l'identità del vino, meglio non mozzarlo troppo */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wine-meta {
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: #6a756f;
+}
+
+.wine-price {
+  margin-top: auto; /* agganciato in fondo: allineato su tutte le card */
+  padding-top: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2e5e46;
+  white-space: nowrap;
+}
+
+/* ---- bottom sheet: dettagli prodotto ---- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40; /* sopra tab bar (10) e barra regioni (11) */
+  background: rgba(30, 40, 35, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: sheet-fade-in 0.25s ease;
+}
+
+.wine-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 82dvh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 14px 22px calc(24px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+  animation: sheet-up 0.32s cubic-bezier(0.25, 0.8, 0.35, 1);
+}
+
+/* maniglia: segnala il pattern "pannello dal basso" */
+.sheet-handle {
+  flex: none;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(46, 94, 70, 0.25);
+}
+
+.sheet-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #2e5e46;
+  background: rgba(46, 94, 70, 0.09);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.sheet-close:hover {
+  background: rgba(46, 94, 70, 0.18);
+}
+
+.sheet-img {
+  height: 160px;
+  width: auto;
+  max-width: 70%;
+  object-fit: contain;
+}
+
+/* bottiglia stilizzata: segnaposto finché mancano le foto vere */
+.sheet-svg {
+  height: 130px;
+  width: auto;
+  fill: var(--accent, #2e5e46);
+  opacity: 0.45;
+}
+
+.sheet-name {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
   font-weight: 700;
   color: #2e3d34;
 }
 
-.wine-meta {
+.sheet-meta {
+  margin: 0;
   font-size: 13.5px;
+  color: #6a756f;
+}
+
+.sheet-desc {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.45;
   color: #52605a;
 }
 
-.wine-price {
-  flex: none;
-  font-size: 17px;
+.sheet-annate {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sheet-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2e5e46;
+}
+
+/* "Chiedi disponibilità": apre WhatsApp con messaggio precompilato */
+.sheet-cta {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  background: #2e5e46;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(46, 94, 70, 0.35);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.sheet-cta:hover {
+  background: #24493a;
+  transform: translateY(-1px);
+}
+
+/* su desktop il pannello diventa una finestra centrata */
+@media (min-width: 641px) {
+  .sheet-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .wine-sheet {
+    border-radius: 22px;
+    padding-bottom: 26px;
+  }
+}
+
+@keyframes sheet-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-backdrop,
+  .wine-sheet {
+    animation: none;
+  }
+}
+
+/* elenco annata → prezzo (nel bottom sheet) */
+.wine-annate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wine-annate-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(46, 94, 70, 0.14);
+}
+
+.wine-annate-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.wine-annate-year {
+  font-weight: 600;
+  color: #2e3d34;
+}
+
+.wine-annate-price {
   font-weight: 700;
   color: #2e5e46;
   white-space: nowrap;
