@@ -12,10 +12,9 @@ function Gastronomia() {
 
   const activeCategory = ALIMENTARI_CATEGORIES.find((c) => c.id === tab);
 
-  // cambio reparto: si riparte dall'inizio e si chiude l'eventuale scheda
+  // cambio reparto: si riparte dall'inizio della pagina
   useEffect(() => {
     window.scrollTo(0, 0);
-    setSheetItem(null);
   }, [tab]);
 
   return (
@@ -30,7 +29,10 @@ function Gastronomia() {
             type="button"
             className={"group-tab" + (tab === c.id ? " is-active" : "")}
             style={{ "--accent": c.accent }}
-            onClick={() => setTab(c.id)}
+            onClick={() => {
+              setTab(c.id);
+              setSheetItem(null); // cambio reparto: chiude la scheda aperta
+            }}
           >
             {c.label}
           </button>

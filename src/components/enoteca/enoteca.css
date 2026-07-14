@@ -299,13 +299,15 @@
 }
 
 @media (max-width: 640px) {
-  /* la tab bar si sfoca solo quando la barra regioni è ormai calata
-     sopra (ritardo che si sincronizza con l'animazione ~0.75s) */
+  /* uscita/posa della barra: la tab bar torna a fuoco subito */
   .site-nav {
-    transition: filter 0.2s ease 0.55s, opacity 0.2s ease 0.55s;
+    transition: filter 0.15s ease, opacity 0.15s ease;
   }
 
+  /* entrata: la tab bar si sfoca solo quando la barra è ormai calata
+     sopra (ritardo sincronizzato con l'animazione da 0.62s) */
   body.region-bar-open .site-nav {
+    transition: filter 0.2s ease 0.35s, opacity 0.2s ease 0.35s;
     filter: blur(4px);
     opacity: 0.6;
     pointer-events: none;
@@ -329,21 +331,104 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    animation: filter-bar-in 0.98s linear;
+    animation: filter-bar-in 0.62s linear;
   }
 
   .filter-bar::-webkit-scrollbar {
     display: none;
   }
 
-  /* chiusura: stessa meccanica al contrario, rientra dietro la tab bar */
+  /* chiusura: stessa meccanica al contrario, rientra dietro la tab bar
+     (più rapida dell'entrata: chi torna indietro ha già deciso) */
   .filter-bar--closing {
-    animation: filter-bar-out 0.98s linear forwards;
+    animation: filter-bar-out 0.5s linear forwards;
   }
 
   /* i prodotti scorrono dietro le barre: aria in fondo alla lista */
   .has-filter-bar .wine-list {
     padding-bottom: 120px;
+  }
+
+  /* barra non piena: i bottoni si dividono lo spazio come un segmented
+     control (tap più grandi); quando sono tanti si torna allo scroll */
+  .filter-bar .filter-btn {
+    flex: 1 0 auto;
+  }
+
+  /* ---- posa della barra: scorrendo la lista in giù si posa dietro
+     la tab bar (che torna attiva), risalendo riappare ---- */
+
+  /* entrata rapida: la coreografia completa si vede una volta per visita */
+  .filter-bar--quick {
+    animation: filter-bar-quick-in 0.22s ease;
+  }
+
+  /* dopo una posa niente keyframe di entrata: comandano le transizioni
+     (altrimenti al ritorno della barra l'animazione ripartirebbe) */
+  .filter-bar--settled {
+    animation: none;
+    transition: transform 0.28s ease, opacity 0.22s ease;
+  }
+
+  /* barra posata: scende dietro la tab bar e svanisce */
+  .filter-bar--docked {
+    transform: translateY(140%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* chiusure rapide (dopo la prima visita) — definite dopo --settled
+     così vincono e l'uscita si anima comunque */
+  .filter-bar--closing-quick,
+  .filter-bar--settled.filter-bar--closing-quick {
+    animation: filter-bar-quick-out 0.18s ease forwards;
+  }
+
+  .filter-bar--settled.filter-bar--closing {
+    animation: filter-bar-out 0.5s linear forwards;
+  }
+
+  @keyframes filter-bar-quick-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  @keyframes filter-bar-quick-out {
+    to {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+
+  /* chip flottante per richiamare la barra posata senza scorrere */
+  .filter-chip {
+    display: flex;
+    position: fixed;
+    right: 14px;
+    bottom: calc(104px + env(safe-area-inset-bottom));
+    z-index: 25;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-family: inherit;
+    color: #2e5e46;
+    background: #f4f7f3;
+    border: 1px solid rgba(46, 94, 70, 0.3);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    animation: chip-in 0.22s ease;
+  }
+
+  @keyframes chip-in {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
   }
 }
 
@@ -467,6 +552,45 @@
 
 .filter-label {
   line-height: 1;
+}
+
+/* freccia di ritorno nella vista paesi: pillola compatta in stile back-btn */
+.filter-back {
+  flex: none;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid #2e5e46;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.filter-back:hover {
+  background: #2e5e46;
+  color: #fff;
+}
+
+/* divisorio verticale tra la freccia e i paesi */
+.filter-divider {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 6px;
+  background: rgba(46, 94, 70, 0.2);
+  border-radius: 999px;
+}
+
+/* posa della barra: elemento solo telefono, fuori resta nascosto */
+.filter-chip {
+  display: none;
 }
 
 
@@ -772,6 +896,26 @@ body.home-no-scroll .wine-list {
 .sheet-cta:hover {
   background: #24493a;
   transform: translateY(-1px);
+}
+
+/* su telefono il pannello si solleva un po' dal bordo inferiore:
+   card flottante con tutti gli angoli arrotondati */
+@media (max-width: 640px) {
+  .wine-sheet {
+    margin-bottom: 12px; /* fallback per browser senza env() */
+    margin-bottom: calc(12px + env(safe-area-inset-bottom));
+    border-radius: 22px;
+    padding-bottom: 22px; /* la safe-area ora la copre il margine */
+    overflow-y: hidden; /* niente scroll interno: tutto sta nella card */
+  }
+
+  /* la foto è l'elemento elastico: se lo spazio non basta si restringe
+     lei, così testi, annate e pulsante restano sempre interi */
+  .sheet-img,
+  .sheet-svg {
+    flex: 0 1 auto;
+    min-height: 80px;
+  }
 }
 
 /* su desktop il pannello diventa una finestra centrata */

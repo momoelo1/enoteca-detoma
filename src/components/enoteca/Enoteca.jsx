@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { SHOP_GROUPS, REGION_FLAGS, WHATSAPP_NUMBER } from "../../data/data";
+import { useEffect, useRef, useState } from "react";
+import {
+  SHOP_GROUPS,
+  REGION_FLAGS,
+  REGION_EMOJI,
+  REGION_GROUPS,
+  WHATSAPP_NUMBER,
+} from "../../data/data";
 import "./enoteca.css";
 
 // prezzo in formato italiano: "€ 32,00" (virgola, non punto)
@@ -65,10 +71,8 @@ function MiniCard({ c, onClick }) {
   );
 }
 
-// TEMP: segnaposto per vedere le card complete finché non arrivano i dati
-// reali — RIMUOVERE (descrizione, annate/prezzi, miniatura)
-const LOREM_TEMP =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+// TEMP: prezzi/annate finti solo per resa visiva finché non arrivano
+// quelli veri — RIMUOVERE (le descrizioni ormai sono tutte reali)
 const ANNATE_TEMP = [
   { anno: "2018", prezzo: 30 },
   { anno: "2019", prezzo: 32 },
@@ -113,7 +117,7 @@ export function WineCard({ w, accent, regionFilter, onOpen }) {
 // delivery) con foto grande, descrizione completa e tabella annate/prezzi.
 // Si chiude con ✕, tocco sullo sfondo o Esc.
 export function WineSheet({ w, category, onClose }) {
-  const desc = w.description || w.descrizione || LOREM_TEMP; // TEMP: || LOREM_TEMP
+  const desc = w.description || w.descrizione;
   const annate = w.annate || ANNATE_TEMP; // TEMP: || ANNATE_TEMP
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
   const coloreRidondante =
@@ -205,9 +209,17 @@ function Enoteca() {
   const [group, setGroup] = useState(null);
   const [category, setCategory] = useState(null);
   const [regionFilter, setRegionFilter] = useState(null); // barra regioni mobile
+  const [barView, setBarView] = useState("regioni"); // vista barra: regioni | mondo
   const [closing, setClosing] = useState(false); // animazione di rientro barra
+  const [quickBar, setQuickBar] = useState(false); // entrata rapida: coreografia già vista
+  const [docked, setDocked] = useState(false); // barra "posata" dietro la tab bar
+  const [wasDocked, setWasDocked] = useState(false); // dopo una posa niente keyframe di entrata
   const [sheetWine, setSheetWine] = useState(null); // prodotto aperto nel bottom sheet
   const [tabGroup, setTabGroup] = useState(SHOP_GROUPS[0].id); // tab attiva (Vini/Birre/Distillati)
+  const lastScrollY = useRef(0); // per la posa della barra allo scroll
+  // la coreografia completa della barra si vede UNA volta per visita:
+  // il ref si azzera da solo quando si esce dall'Enoteca (unmount)
+  const introPlayed = useRef(false);
 
   const activeGroup = SHOP_GROUPS.find((g) => g.id === group);
   const activeCategory = activeGroup?.categories.find(
@@ -217,6 +229,9 @@ function Enoteca() {
   const openCategory = (id) => {
     setCategory(id);
     setRegionFilter(null);
+    setBarView("regioni");
+    setDocked(false);
+    setWasDocked(false);
     setSheetWine(null);
   };
 
@@ -232,6 +247,12 @@ function Enoteca() {
       ].sort((a, b) => a.localeCompare(b, "it"))
     : [];
 
+  // prima vista: solo regioni italiane; i paesi esteri stanno tutti
+  // nel gruppo "Mondo", aperto nella stessa barra
+  const regioniItaliane = filterValues.filter((v) => !REGION_GROUPS[v]);
+  const paesiMondo = filterValues.filter((v) => REGION_GROUPS[v]);
+  const barValues = barView === "mondo" ? paesiMondo : regioniItaliane;
+
   const visibleItems =
     activeCategory && regionFilter
       ? activeCategory.items.filter(
@@ -245,18 +266,19 @@ function Enoteca() {
   }, [group, category]);
 
   // nella lista prodotti: pagina bloccata, scorrono solo i prodotti;
-  // se c'è la barra regioni, la tab bar sotto viene sfocata
+  // la tab bar sotto è sfocata solo quando la barra è su (non posata)
   const hasRegionBar = Boolean(activeCategory) && filterValues.length >= 2;
   useEffect(() => {
     if (!activeCategory) return;
     document.body.classList.add("home-no-scroll");
-    if (hasRegionBar && !closing) document.body.classList.add("region-bar-open");
+    if (hasRegionBar && !closing && !docked)
+      document.body.classList.add("region-bar-open");
     else document.body.classList.remove("region-bar-open");
     return () => {
       document.body.classList.remove("home-no-scroll");
       document.body.classList.remove("region-bar-open");
     };
-  }, [activeCategory, hasRegionBar, closing]);
+  }, [activeCategory, hasRegionBar, closing, docked]);
 
   // chiusura lista prodotti: si torna alla pagina Enoteca (nei nuovi
   // layout i livelli intermedi non esistono più)
@@ -268,15 +290,31 @@ function Enoteca() {
   // back: su telefono, se c'è la barra regioni, prima la fa rientrare
   // (poi esce). Su desktop la barra è una riga statica senza animazione
   // di chiusura: uscita diretta (aspettare onAnimationEnd bloccherebbe).
+  // Barra già posata: niente animazione da aspettare, uscita diretta.
   const handleBack = () => {
     const phoneBar = window.matchMedia("(max-width: 640px)").matches;
-    if (hasRegionBar && phoneBar) setClosing(true);
+    if (hasRegionBar && phoneBar && !docked) setClosing(true);
     else closeCategory();
   };
   const onBarClosed = () => {
     if (!closing) return;
     setClosing(false);
     closeCategory();
+  };
+
+  // posa della barra: scende dietro la tab bar, che torna attiva
+  const dockBar = () => {
+    setDocked(true);
+    setWasDocked(true);
+  };
+  // stile browser: scorrendo in giù la barra si posa, risalendo
+  // (o tornando in cima) riappare
+  const onListScroll = (e) => {
+    const y = e.currentTarget.scrollTop;
+    const delta = y - lastScrollY.current;
+    lastScrollY.current = y;
+    if (y < 40 || delta < -8) setDocked(false);
+    else if (delta > 8) dockBar();
   };
 
   if (activeCategory) {
@@ -292,20 +330,57 @@ function Enoteca() {
         <h2 className="section-title">{activeCategory.label}</h2>
         {filterValues.length >= 2 && (
           <nav
-            className={"filter-bar" + (closing ? " filter-bar--closing" : "")}
+            className={
+              "filter-bar" +
+              (quickBar ? " filter-bar--quick" : "") +
+              (docked || wasDocked ? " filter-bar--settled" : "") +
+              (docked ? " filter-bar--docked" : "") +
+              (closing
+                ? quickBar
+                  ? " filter-bar--closing-quick"
+                  : " filter-bar--closing"
+                : "")
+            }
             aria-label="Filtra per regione"
             onAnimationEnd={onBarClosed}
           >
-            <button
-              className={"filter-btn" + (!regionFilter ? " is-active" : "")}
-              onClick={() => setRegionFilter(null)}
-            >
-              <span className="filter-icon" aria-hidden="true">
-                🇮🇹
-              </span>
-              <span className="filter-label">Tutti</span>
-            </button>
-            {filterValues.map((v) => (
+            {barView === "regioni" ? (
+              <button
+                className={"filter-btn" + (!regionFilter ? " is-active" : "")}
+                onClick={() => setRegionFilter(null)}
+              >
+                <span className="filter-icon" aria-hidden="true">
+                  🇮🇹
+                </span>
+                <span className="filter-label">Tutti</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  className="filter-back"
+                  onClick={() => setBarView("regioni")}
+                  aria-label="Torna alle regioni"
+                >
+                  ←
+                </button>
+                <span className="filter-divider" aria-hidden="true" />
+              </>
+            )}
+            {barView === "regioni" && paesiMondo.length > 0 && (
+              <button
+                className={
+                  "filter-btn" +
+                  (REGION_GROUPS[regionFilter] ? " is-active" : "")
+                }
+                onClick={() => setBarView("mondo")}
+              >
+                <span className="filter-icon" aria-hidden="true">
+                  🌍
+                </span>
+                <span className="filter-label">Mondo</span>
+              </button>
+            )}
+            {barValues.map((v) => (
               <button
                 key={v}
                 className={
@@ -322,7 +397,7 @@ function Enoteca() {
                   />
                 ) : (
                   <span className="filter-icon" aria-hidden="true">
-                    🏔️
+                    {REGION_EMOJI[v] || "🏔️"}
                   </span>
                 )}
                 <span className="filter-label">{v}</span>
@@ -330,12 +405,27 @@ function Enoteca() {
             ))}
           </nav>
         )}
+        {hasRegionBar && docked && (
+          <button
+            type="button"
+            className="filter-chip"
+            onClick={() => setDocked(false)}
+            aria-label="Mostra i filtri"
+          >
+            <span aria-hidden="true">▴</span>
+            <span>{regionFilter || "Regioni"}</span>
+          </button>
+        )}
         {activeCategory.items.length === 0 ? (
           <p className="wine-empty">
             Il catalogo è in arrivo — torna a trovarci presto.
           </p>
         ) : (
-          <ul className="wine-list" key={regionFilter || "tutti"}>
+          <ul
+            className="wine-list"
+            key={regionFilter || "tutti"}
+            onScroll={onListScroll}
+          >
             {visibleItems.map((w, i) => (
               <WineCard
                 key={w.name + i}
@@ -365,8 +455,18 @@ function Enoteca() {
   );
   const totalRounded = Math.floor(totalItems / 10) * 10;
 
-  // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti
+  // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti.
+  // La coreografia si consuma solo se la categoria mostrerà la barra.
   const openDirect = (gId, cId) => {
+    const g = SHOP_GROUPS.find((x) => x.id === gId);
+    const c = g?.categories.find((x) => x.id === cId);
+    const values = c?.filterBy
+      ? new Set(c.items.map((i) => i[c.filterBy]).filter(Boolean))
+      : new Set();
+    if (values.size >= 2) {
+      setQuickBar(introPlayed.current);
+      introPlayed.current = true;
+    }
     setGroup(gId);
     openCategory(cId);
   };
