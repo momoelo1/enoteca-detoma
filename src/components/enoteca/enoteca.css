@@ -526,6 +526,11 @@
   color: #fff;
 }
 
+.filter-btn.not-active {
+  background: #f0f0f0;
+  color: #2e5e46;
+}
+
 .filter-icon {
   font-size: 18px;
   line-height: 22px;

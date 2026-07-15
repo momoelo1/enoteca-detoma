@@ -324,10 +324,7 @@ function Enoteca() {
           {hasRegionBar && (
             <button
               type="button"
-              className={
-                "filter-toggle" +
-                (filtersOn || regionFilter ? " is-active" : "")
-              }
+              className={"filter-toggle" + (filtersOn ? " is-active" : "")}
               onClick={toggleFilters}
               aria-expanded={filtersOn}
               aria-label="Filtra per regione"
@@ -339,7 +336,7 @@ function Enoteca() {
               >
                 <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" />
               </svg>
-              <span>{regionFilter || "Regioni"}</span>
+              <span>Regioni</span>
             </button>
           )}
         </div>
