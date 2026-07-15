@@ -18,54 +18,8 @@ import rhum from "../images/distillati/Rhum.png";
 import liquori from "../images/distillati/Liquori.png";
 import cognac from "../images/distillati/Cognac.png";
 import calvados from "../images/distillati/Calvados.png";
-import lombardia from "../images/regioni/lombardia.jpg";
-import piemonte from "../images/regioni/piemonte.jpg";
-import aosta from "../images/regioni/aosta.jpg";
-import sicilia from "../images/regioni/sicilia.jpg";
-import abruzzo from "../images/regioni/abruzzo.jpg";
-import campania from "../images/regioni/campania.jpg";
-import emilia from "../images/regioni/emilia-romagna.jpg";
-import friuli from "../images/regioni/friuli.jpg";
-import marche from "../images/regioni/marche.jpg";
-import sardegna from "../images/regioni/sardegna.jpg";
-import trentino from "../images/regioni/trentino.jpg";
-import molise from "../images/regioni/molise.jpg";
-import puglia from "../images/regioni/puglia.jpg";
-import toscana from "../images/regioni/toscana.jpg";
-import umbria from "../images/regioni/umbria.jpg";
-import veneto from "../images/regioni/veneto.jpg";
 
 export const WHATSAPP_NUMBER = "393342306019";
-
-
-export const REGION_FLAGS = {
-  Lombardia: lombardia,
-  Piemonte: piemonte,
-  "Valle d'Aosta": aosta,
-  Sicilia: sicilia,
-  Abruzzo: abruzzo,
-  Campania: campania,
-  "Emilia Romagna": emilia,
-  Friuli: friuli,
-  Marche: marche,
-  Sardegna: sardegna,
-  Trentino: trentino,
-  Molise: molise,
-  Puglia: puglia,
-  Toscana: toscana,
-  Umbria: umbria,
-  Veneto: veneto,
-};
-
-// paesi esteri senza stemma regionale: bandierina emoji nel filtro
-export const REGION_EMOJI = {
-  Francia: "🇫🇷",
-  Austria: "🇦🇹",
-  Canada: "🇨🇦",
-  Portogallo: "🇵🇹",
-  Spagna: "🇪🇸",
-  Ungheria: "🇭🇺",
-};
 
 // paesi esteri: nella barra filtri stanno tutti dietro il bottone
 // "Mondo", che apre i paesi nella stessa barra

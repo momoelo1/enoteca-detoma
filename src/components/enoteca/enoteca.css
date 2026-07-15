@@ -20,6 +20,69 @@
   text-align: center;
 }
 
+/* riga del titolo nella lista prodotti: titolo + bottone filtri.
+   Desktop: titolo centrato, bottone appoggiato a destra */
+.section-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* bottone "Regioni": apre/chiude la barra dei filtri; quando un filtro
+   è attivo mostra la regione scelta e resta pieno */
+.filter-toggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid #2e5e46;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.filter-toggle:hover,
+.filter-toggle.is-active {
+  background: #2e5e46;
+  color: #fff;
+}
+
+.filter-toggle-icon {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+/* telefono: titolo a sinistra, bottone filtri a destra */
+@media (max-width: 640px) {
+  .section-head {
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .section-head .section-title {
+    text-align: left;
+  }
+
+  .filter-toggle {
+    position: static;
+    transform: none;
+    flex: none;
+  }
+}
+
 /* sottotitolo della pagina: una riga di voce sotto il titolo */
 .section-sub {
   margin: -16px 0 0; /* si avvicina al titolo nonostante il gap della sezione */
@@ -355,81 +418,6 @@
     flex: 1 0 auto;
   }
 
-  /* ---- posa della barra: scorrendo la lista in giù si posa dietro
-     la tab bar (che torna attiva), risalendo riappare ---- */
-
-  /* entrata rapida: la coreografia completa si vede una volta per visita */
-  .filter-bar--quick {
-    animation: filter-bar-quick-in 0.22s ease;
-  }
-
-  /* dopo una posa niente keyframe di entrata: comandano le transizioni
-     (altrimenti al ritorno della barra l'animazione ripartirebbe) */
-  .filter-bar--settled {
-    animation: none;
-    transition: transform 0.28s ease, opacity 0.22s ease;
-  }
-
-  /* barra posata: scende dietro la tab bar e svanisce */
-  .filter-bar--docked {
-    transform: translateY(140%);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  /* chiusure rapide (dopo la prima visita) — definite dopo --settled
-     così vincono e l'uscita si anima comunque */
-  .filter-bar--closing-quick,
-  .filter-bar--settled.filter-bar--closing-quick {
-    animation: filter-bar-quick-out 0.18s ease forwards;
-  }
-
-  .filter-bar--settled.filter-bar--closing {
-    animation: filter-bar-out 0.5s linear forwards;
-  }
-
-  @keyframes filter-bar-quick-in {
-    from {
-      transform: translateY(24px);
-      opacity: 0;
-    }
-  }
-
-  @keyframes filter-bar-quick-out {
-    to {
-      transform: translateY(24px);
-      opacity: 0;
-    }
-  }
-
-  /* chip flottante per richiamare la barra posata senza scorrere */
-  .filter-chip {
-    display: flex;
-    position: fixed;
-    right: 14px;
-    bottom: calc(104px + env(safe-area-inset-bottom));
-    z-index: 25;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    font-size: 12.5px;
-    font-weight: 700;
-    font-family: inherit;
-    color: #2e5e46;
-    background: #f4f7f3;
-    border: 1px solid rgba(46, 94, 70, 0.3);
-    border-radius: 999px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    cursor: pointer;
-    animation: chip-in 0.22s ease;
-  }
-
-  @keyframes chip-in {
-    from {
-      transform: translateY(10px);
-      opacity: 0;
-    }
-  }
 }
 
 /* movimento meccanico a fasi: si sgancia da dietro la tab bar,
@@ -512,17 +500,18 @@
   }
 }
 
-/* voci come quelle della tab bar: immagine sopra, nome sotto */
+/* voci solo testo (stemmi rimossi): forma da tab bar, riempimento
+   verde quando attive */
 .filter-btn {
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 3px;
   min-width: 58px;
-  padding: 5px 10px;
-  font-size: 11px;
+  padding: 9px 12px;
+  font-size: 12px;
   font-weight: 600;
   color: #2e5e46;
   background: transparent;
@@ -540,14 +529,6 @@
 .filter-icon {
   font-size: 18px;
   line-height: 22px;
-}
-
-.filter-img {
-  height: 20px;
-  width: auto;
-  max-width: 30px;
-  object-fit: contain;
-  border-radius: 3px;
 }
 
 .filter-label {
@@ -588,10 +569,6 @@
   border-radius: 999px;
 }
 
-/* posa della barra: elemento solo telefono, fuori resta nascosto */
-.filter-chip {
-  display: none;
-}
 
 
 /* ---- lista prodotti: pagina ferma, scorrono solo i prodotti ----
