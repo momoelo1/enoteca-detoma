@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.vite
+
+# credenziali locali: mai in git (il template è .env.example)
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*

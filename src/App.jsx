@@ -1,18 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import logo from "./images/enoteca-detoma-logo.png";
 import Grainient from "./components/background/Grainient";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
+import Login from "./components/login/Login";
 import { SECTIONS } from "./data/data";
 
 
 function App() {
   const [page, setPage] = useState("home");
+  const tapCountRef = useRef(0); // tocchi ravvicinati sul logo
+  const lastTapRef = useRef(0);
 
   const openPage = (id) => {
     setPage(id);
+  };
+
+
+  const handleLogoClick = () => {
+    const now = Date.now();
+    tapCountRef.current =
+      now - lastTapRef.current < 600 ? tapCountRef.current + 1 : 1;
+    lastTapRef.current = now;
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0;
+      openPage("login");
+    } else {
+      openPage("home");
+    }
   };
 
   useEffect(() => {
@@ -26,8 +43,8 @@ function App() {
           color1="#f6f1e7"
           color2="#bcd9c3"
           color3="#5d8a6f"
-          timeSpeed={0.5}
-          grainAmount={0.06}
+          timeSpeed={0.9}
+          grainAmount={0.09}
           contrast={1.15}
           saturation={0.95}
         />
@@ -38,7 +55,7 @@ function App() {
           src={logo}
           alt="Enoteca de Toma"
           className="site-logo"
-          onClick={() => openPage("home")}
+          onClick={handleLogoClick}
         />
 
         <nav className="site-nav">
@@ -64,6 +81,8 @@ function App() {
         {page === "enoteca" && <Enoteca />}
 
         {page === "alimentari" && <Gastronomia />}
+
+        {page === "login" && <Login onBack={() => openPage("home")} />}
       </main>
     </>
   );

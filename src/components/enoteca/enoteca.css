@@ -20,8 +20,8 @@
   text-align: center;
 }
 
-/* riga del titolo nella lista prodotti: titolo + bottone filtri.
-   Desktop: titolo centrato, bottone appoggiato a destra */
+/* riga del titolo nella lista prodotti: titolo + bottoni filtri.
+   Desktop: titolo centrato, bottoni (Cerca | Regioni) appoggiati a destra */
 .section-head {
   position: relative;
   display: flex;
@@ -30,13 +30,21 @@
   width: 100%;
 }
 
-/* bottone "Regioni": apre/chiude la barra dei filtri; quando un filtro
-   è attivo mostra la regione scelta e resta pieno */
-.filter-toggle {
+/* gruppo dei due bottoni gemelli a destra del titolo */
+.section-actions {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* bottoni "Cerca" / "Regioni": aprono/chiudono la barra; verdi solo
+   mentre la loro barra è aperta, altrimenti vetro (mostrano il valore
+   attivo — regione scelta o testo cercato) */
+.filter-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -53,33 +61,140 @@
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 
-.filter-toggle:hover,
 .filter-toggle.is-active {
   background: #2e5e46;
   color: #fff;
 }
 
+/* :hover solo su dispositivi che lo supportano davvero: sul telefono
+   il tocco lo "incolla" attivo anche a barra chiusa (niente mouse
+   che si allontana a cancellarlo) */
+@media (hover: hover) {
+  .filter-toggle:hover {
+    background: #2e5e46;
+    color: #fff;
+  }
+}
+
 .filter-toggle-icon {
   width: 13px;
   height: 13px;
+  flex: none;
   fill: currentColor;
 }
 
-/* telefono: titolo a sinistra, bottone filtri a destra */
+/* etichetta del bottone: non deve allargare troppo la riga */
+.filter-toggle-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 8rem;
+}
+
+/* ---- campo di ricerca in-place (compare sotto il titolo) ----
+   pillola di vetro nel flusso normale: niente barra fissa, niente
+   scontro con la tastiera; entra con un piccolo effetto di comparsa */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(46, 94, 70, 0.35);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform-origin: top center;
+  animation: search-reveal 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* comparsa: scende e schiarisce, con un lievissimo allargamento */
+@keyframes search-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scaleX(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-field {
+    animation: none;
+  }
+}
+
+.search-field-icon {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  fill: #2e5e46;
+  opacity: 0.7;
+}
+
+.search-field-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  /* 16px: evita lo zoom automatico al focus su iOS */
+  font-size: 16px;
+  color: #2e3d34;
+  outline: none;
+}
+
+.search-field-input::placeholder {
+  color: #8a978f;
+}
+
+.search-field-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #2e5e46;
+  background: rgba(46, 94, 70, 0.09);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.search-field-close:hover {
+  background: rgba(46, 94, 70, 0.18);
+}
+
+/* telefono: titolo a sinistra (accorcia se serve), bottoni a destra */
 @media (max-width: 640px) {
   .section-head {
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
   }
 
   .section-head .section-title {
     text-align: left;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .filter-toggle {
+  .section-actions {
     position: static;
     transform: none;
     flex: none;
+  }
+
+  .filter-toggle {
+    padding: 7px 12px;
+  }
+
+  .filter-toggle-text {
+    max-width: 5.5rem;
   }
 }
 
