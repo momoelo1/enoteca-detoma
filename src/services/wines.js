@@ -1,5 +1,9 @@
-// CRUD vini verso il backend. Le mutazioni viaggiano con il cookie
-// httpOnly del login (`credentials: "include"`); la lettura è pubblica.
+// CRUD vini verso il backend. Le mutazioni viaggiano con il token JWT
+// come header Authorization (vedi services/auth.js) — il cookie httpOnly
+// da solo non basta perché tra GitHub Pages e Render è cross-site e
+// alcuni browser lo scartano.
+import { authHeaders } from "./auth";
+
 const API_URL =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:3001`;
@@ -20,7 +24,7 @@ export const getWines = async (category) => {
 export const createWine = async (wine) => {
   const res = await fetch(`${API_URL}/api/wines`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     credentials: "include",
     body: JSON.stringify(wine),
   });
@@ -30,7 +34,7 @@ export const createWine = async (wine) => {
 export const updateWine = async (id, wine) => {
   const res = await fetch(`${API_URL}/api/wines/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     credentials: "include",
     body: JSON.stringify(wine),
   });
@@ -41,6 +45,7 @@ export const deleteWine = async (id) => {
   const res = await fetch(`${API_URL}/api/wines/${id}`, {
     method: "DELETE",
     credentials: "include",
+    headers: authHeaders(),
   });
   return parse(res);
 };
