@@ -281,6 +281,26 @@
   box-shadow: 0 0 0 3px rgba(46, 94, 70, 0.12);
 }
 
+/* campi che compaiono/scompaiono a runtime (Regione, Paese "Altro",
+   righe annata): stessa firma di movimento del dialogo (admin-modal-in),
+   solo più breve — un cenno, non una scena */
+.wine-admin-field--enter {
+  animation: admin-field-in 0.18s ease;
+}
+
+@keyframes admin-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wine-admin-field--enter {
+    animation: none;
+  }
+}
+
 .wine-admin-error {
   margin: 0;
   font-size: 0.85rem;

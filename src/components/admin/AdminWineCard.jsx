@@ -197,6 +197,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
               <option value="" disabled>
                 Seleziona un Paese
               </option>
+              <option value="Italia">Italia</option>
               {FOREIGN_COUNTRIES.map((country) => (
                 <option key={country} value={country}>
                   {country}
@@ -206,13 +207,13 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           </div>
         )}
         {!isChampagne && countrySelection === "Italia" && (
-          <div className="wine-admin-field">
+          <div className="wine-admin-field wine-admin-field--enter">
             <label>Regione</label>
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
           </div>
         )}
         {!isChampagne && countrySelection === "Altro" && (
-          <div className="wine-admin-field">
+          <div className="wine-admin-field wine-admin-field--enter">
             <label>Nome del paese</label>
             <input
               type="text"
@@ -228,7 +229,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
           <div className="admin-annate-list">
             {form.annate.map((row, i) => (
-              <div className="admin-annata-row" key={i}>
+              <div className="admin-annata-row wine-admin-field--enter" key={i}>
                 {!isChampagne && (
                   <div className="wine-admin-field">
                     <input
