@@ -53,9 +53,6 @@ const deriveCountrySelection = (wine) => {
 function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const isNew = !wine;
   const isChampagne = categoryId === "champagne";
-  // dolci e passiti (liquorosi): niente annata da indicare, come lo
-  // champagne, ma regione/paese restano (a differenza dello champagne)
-  const hideAnnata = isChampagne || categoryId === "liquorosi";
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => toForm(wine));
   const [countrySelection, setCountrySelection] = useState(() => deriveCountrySelection(wine));
@@ -222,7 +219,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         )}
 
         <div className="wine-admin-field">
-          <label>{hideAnnata ? "Prezzi" : "Annate e prezzi"}</label>
+          <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
           <div className="admin-annate-list">
             {form.annate.map((row, i) => (
               <div
@@ -232,7 +229,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                 }
                 key={i}
               >
-                {!hideAnnata && (
+                {!isChampagne && (
                   <div className="wine-admin-field">
                     <input
                       type="text"
@@ -263,7 +260,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
             ))}
           </div>
           <button type="button" className="admin-annata-add" onClick={addAnnata}>
-            {hideAnnata ? "+ Aggiungi prezzo" : "+ Aggiungi annata"}
+            {isChampagne ? "+ Aggiungi prezzo" : "+ Aggiungi annata"}
           </button>
         </div>
 
