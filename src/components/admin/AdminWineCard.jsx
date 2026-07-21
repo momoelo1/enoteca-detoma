@@ -193,13 +193,12 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <div className="wine-admin-field">
             <label>Paese</label>
             <select value={countrySelection} onChange={handleCountrySelect}>
-              <option value="Italia">Italia</option>
+              <label value="Italia">Paese</label>
               {FOREIGN_COUNTRIES.map((country) => (
                 <option key={country} value={country}>
                   {country}
                 </option>
               ))}
-              <option value="Altro">Altro (estero)</option>
             </select>
           </div>
         )}
