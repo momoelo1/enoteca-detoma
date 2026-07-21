@@ -17,6 +17,7 @@ const toAnnate = (wine) => {
 const toForm = (wine) => ({
   name: wine?.name || "",
   regione: wine?.regione || "",
+  paese: wine?.paese || "",
   img: wine?.img || "",
   description: wine?.description || "",
   annate: toAnnate(wine),
@@ -25,6 +26,7 @@ const toForm = (wine) => ({
 const EMPTY_FORM = {
   name: "",
   regione: "",
+  paese: "",
   img: "",
   description: "",
   annate: [{ anno: "", prezzo: "" }],
@@ -107,6 +109,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       Object.entries({
         name: form.name,
         regione: form.regione,
+        paese: form.paese,
         img: form.img,
         description: form.description,
       }).filter(([, v]) => v !== ""),
@@ -161,6 +164,17 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <div className="wine-admin-field">
             <label>Regione</label>
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
+          </div>
+        )}
+        {!isChampagne && (
+          <div className="wine-admin-field">
+            <label>Paese (opzionale)</label>
+            <input
+              type="text"
+              placeholder="es. Francia, Germania — lascia vuoto se italiano"
+              value={form.paese}
+              onChange={handleChange("paese")}
+            />
           </div>
         )}
 
@@ -248,7 +262,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   }
 
   // vista compatta: nome (mai compresso), meta, prezzo, azioni in fondo
-  const meta = wine.regione || "";
+  const meta = [wine.regione, wine.paese].filter(Boolean).join(" · ");
   const annate = wine.annate?.length
     ? wine.annate
     : wine.prezzo != null || wine.anno
