@@ -38,37 +38,35 @@ const EMPTY_FORM = {
   annate: [{ anno: "", prezzo: "" }],
 };
 
-// Card autonoma: da sola sa mostrarsi, entrare in modifica, salvare
-// (create o update a seconda che `wine` esista) ed eliminarsi. Ogni
-// card è indipendente dalle altre — non c'è un form condiviso.
-// La modifica avviene in un dialogo sopra la griglia, non trasformando
-// la card sul posto: la griglia non si muove mai sotto le dita.
-// lo champagne non ha un'annata da mostrare al cliente (niente vendemmia
-// in etichetta come per gli altri vini): niente regione, niente anno —
-// solo il prezzo, che può comunque avere più righe (es. formati diversi).
+// stato del selettore Paese, separato dal form: un vino nuovo parte
+// senza scelta (niente Regione finché non si sceglie esplicitamente),
+// mentre un vino già esistente la deduce dai dati che ha già —
+// altrimenti ogni apertura in modifica costringerebbe a riscegliere.
+const deriveCountrySelection = (wine) => {
+  if (!wine) return "";
+  if (wine.paese) return FOREIGN_COUNTRIES.includes(wine.paese) ? wine.paese : "Altro";
+  if (wine.regione) return "Italia";
+  return "";
+};
+
+
 function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const isNew = !wine;
   const isChampagne = categoryId === "champagne";
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => toForm(wine));
+  const [countrySelection, setCountrySelection] = useState(() => deriveCountrySelection(wine));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  // "" = Italia (la regione ha senso solo per i vini italiani); un
-  // paese estero riconosciuto mostra solo se stesso, senza regione
-  const countrySelection = !form.paese
-    ? "Italia"
-    : FOREIGN_COUNTRIES.includes(form.paese)
-      ? form.paese
-      : "Altro";
-
   const handleCountrySelect = (e) => {
     const value = e.target.value;
+    setCountrySelection(value);
     if (value === "Italia") {
-      setForm((f) => ({ ...f, paese: "", regione: f.regione }));
+      setForm((f) => ({ ...f, paese: "" }));
     } else if (value === "Altro") {
       setForm((f) => ({
         ...f,
@@ -104,12 +102,14 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
   const startEdit = () => {
     setForm(toForm(wine));
+    setCountrySelection(deriveCountrySelection(wine));
     setError("");
     setEditing(true);
   };
 
   const cancelEdit = () => {
     setForm(toForm(wine));
+    setCountrySelection(deriveCountrySelection(wine));
     setError("");
     setEditing(false);
   };
@@ -150,6 +150,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         const created = await createWine({ ...payload, category: categoryId });
         onCreated(created);
         setForm(EMPTY_FORM);
+        setCountrySelection("");
         setEditing(false);
       } else {
         const updated = await updateWine(wine.id, payload);
@@ -192,8 +193,10 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         {!isChampagne && (
           <div className="wine-admin-field">
             <label>Paese</label>
-            <select value={countrySelection} onChange={handleCountrySelect}>
-              <label value="Italia">Paese</label>
+            <select value={countrySelection} onChange={handleCountrySelect} required>
+              <option value="" disabled>
+                Seleziona un Paese
+              </option>
               {FOREIGN_COUNTRIES.map((country) => (
                 <option key={country} value={country}>
                   {country}
