@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine } from "../../services/wines";
+import { REGION_GROUPS } from "../../data/data";
+
+// stessi paesi esteri già riconosciuti dalla barra filtri pubblica
+// (REGION_GROUPS li smista sotto "Mondo"): riusarli qui evita di
+// scrivere un paese che poi il sito non sa raggruppare correttamente.
+const FOREIGN_COUNTRIES = Object.keys(REGION_GROUPS);
 
 // annate = righe ripetibili anno+prezzo (un vino può avere più annate,
 // ognuna con il proprio prezzo). Se il vino non ha ancora un array
@@ -50,6 +56,29 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  // "" = Italia (la regione ha senso solo per i vini italiani); un
+  // paese estero riconosciuto mostra solo se stesso, senza regione
+  const countrySelection = !form.paese
+    ? "Italia"
+    : FOREIGN_COUNTRIES.includes(form.paese)
+      ? form.paese
+      : "Altro";
+
+  const handleCountrySelect = (e) => {
+    const value = e.target.value;
+    if (value === "Italia") {
+      setForm((f) => ({ ...f, paese: "", regione: f.regione }));
+    } else if (value === "Altro") {
+      setForm((f) => ({
+        ...f,
+        paese: FOREIGN_COUNTRIES.includes(f.paese) ? "" : f.paese,
+        regione: "",
+      }));
+    } else {
+      setForm((f) => ({ ...f, paese: value, regione: "" }));
+    }
+  };
 
   const updateAnnata = (index, field, value) => {
     setForm((f) => ({
@@ -162,18 +191,33 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         </div>
         {!isChampagne && (
           <div className="wine-admin-field">
+            <label>Paese</label>
+            <select value={countrySelection} onChange={handleCountrySelect}>
+              <option value="Italia">Italia</option>
+              {FOREIGN_COUNTRIES.map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
+              <option value="Altro">Altro (estero)</option>
+            </select>
+          </div>
+        )}
+        {!isChampagne && countrySelection === "Italia" && (
+          <div className="wine-admin-field">
             <label>Regione</label>
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
           </div>
         )}
-        {!isChampagne && (
+        {!isChampagne && countrySelection === "Altro" && (
           <div className="wine-admin-field">
-            <label>Paese (opzionale)</label>
+            <label>Nome del paese</label>
             <input
               type="text"
-              placeholder="es. Francia, Germania — lascia vuoto se italiano"
+              placeholder="es. Belgio, Grecia..."
               value={form.paese}
               onChange={handleChange("paese")}
+              autoFocus
             />
           </div>
         )}
