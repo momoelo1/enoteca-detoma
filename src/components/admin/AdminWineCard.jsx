@@ -44,7 +44,7 @@ const EMPTY_FORM = {
 // altrimenti ogni apertura in modifica costringerebbe a riscegliere.
 const deriveCountrySelection = (wine) => {
   if (!wine) return "";
-  if (wine.paese) return FOREIGN_COUNTRIES.includes(wine.paese) ? wine.paese : "Altro";
+  if (wine.paese && FOREIGN_COUNTRIES.includes(wine.paese)) return wine.paese;
   if (wine.regione) return "Italia";
   return "";
 };
@@ -58,6 +58,9 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const [countrySelection, setCountrySelection] = useState(() => deriveCountrySelection(wine));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // riga annata in uscita: si anima prima di sparire davvero dall'array,
+  // invece di scomparire di scatto
+  const [removingIndex, setRemovingIndex] = useState(null);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -67,12 +70,6 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     setCountrySelection(value);
     if (value === "Italia") {
       setForm((f) => ({ ...f, paese: "" }));
-    } else if (value === "Altro") {
-      setForm((f) => ({
-        ...f,
-        paese: FOREIGN_COUNTRIES.includes(f.paese) ? "" : f.paese,
-        regione: "",
-      }));
     } else {
       setForm((f) => ({ ...f, paese: value, regione: "" }));
     }
@@ -86,8 +83,14 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   };
   const addAnnata = () =>
     setForm((f) => ({ ...f, annate: [...f.annate, { anno: "", prezzo: "" }] }));
-  const removeAnnata = (index) =>
-    setForm((f) => ({ ...f, annate: f.annate.filter((_, i) => i !== index) }));
+  const removeAnnata = (index) => {
+    if (removingIndex !== null) return;
+    setRemovingIndex(index);
+    setTimeout(() => {
+      setForm((f) => ({ ...f, annate: f.annate.filter((_, i) => i !== index) }));
+      setRemovingIndex(null);
+    }, 200);
+  };
 
   // legge il file scelto e lo tiene come data URL: nessun upload separato
   // da gestire, ma i documenti diventano più pesanti — va bene per ora,
@@ -103,6 +106,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const startEdit = () => {
     setForm(toForm(wine));
     setCountrySelection(deriveCountrySelection(wine));
+    setRemovingIndex(null);
     setError("");
     setEditing(true);
   };
@@ -110,6 +114,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const cancelEdit = () => {
     setForm(toForm(wine));
     setCountrySelection(deriveCountrySelection(wine));
+    setRemovingIndex(null);
     setError("");
     setEditing(false);
   };
@@ -212,24 +217,18 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
           </div>
         )}
-        {!isChampagne && countrySelection === "Altro" && (
-          <div className="wine-admin-field wine-admin-field--enter">
-            <label>Nome del paese</label>
-            <input
-              type="text"
-              placeholder="es. Belgio, Grecia..."
-              value={form.paese}
-              onChange={handleChange("paese")}
-              autoFocus
-            />
-          </div>
-        )}
 
         <div className="wine-admin-field">
           <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
           <div className="admin-annate-list">
             {form.annate.map((row, i) => (
-              <div className="admin-annata-row wine-admin-field--enter" key={i}>
+              <div
+                className={
+                  "admin-annata-row wine-admin-field--enter" +
+                  (removingIndex === i ? " admin-annata-row--removing" : "")
+                }
+                key={i}
+              >
                 {!isChampagne && (
                   <div className="wine-admin-field">
                     <input

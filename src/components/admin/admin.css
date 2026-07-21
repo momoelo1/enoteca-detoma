@@ -281,22 +281,70 @@
   box-shadow: 0 0 0 3px rgba(46, 94, 70, 0.12);
 }
 
-/* campi che compaiono/scompaiono a runtime (Regione, Paese "Altro",
-   righe annata): stessa firma di movimento del dialogo (admin-modal-in),
-   solo più breve — un cenno, non una scena */
+/* campi che compaiono a runtime (Regione, righe annata): stessa firma
+   di movimento del dialogo (admin-modal-in), ben visibile — non un
+   accenno impercettibile */
 .wine-admin-field--enter {
-  animation: admin-field-in 0.18s ease;
+  animation: admin-field-in 0.32s cubic-bezier(0.25, 0.8, 0.35, 1) both;
 }
 
 @keyframes admin-field-in {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-14px) scale(0.94);
   }
 }
 
+/* riga annata in uscita: si vede sparire, non scompare di scatto */
+.admin-annata-row--removing {
+  animation: admin-annata-out 0.2s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes admin-annata-out {
+  to {
+    opacity: 0;
+    transform: translateX(18px) scale(0.92);
+  }
+}
+
+/* i figli diretti del dialogo entrano in cascata quando si apre —
+   stessa curva del dialogo stesso, ritardo crescente per riga */
+.admin-modal > *:not(.wine-admin-field--enter) {
+  animation: admin-field-in 0.4s cubic-bezier(0.25, 0.8, 0.35, 1) both;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(1) {
+  animation-delay: 0.02s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(2) {
+  animation-delay: 0.06s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(3) {
+  animation-delay: 0.1s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(4) {
+  animation-delay: 0.14s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(5) {
+  animation-delay: 0.18s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(6) {
+  animation-delay: 0.22s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(7) {
+  animation-delay: 0.26s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(8) {
+  animation-delay: 0.3s;
+}
+.admin-modal > *:not(.wine-admin-field--enter):nth-child(n + 9) {
+  animation-delay: 0.34s;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wine-admin-field--enter {
+  .wine-admin-field--enter,
+  .admin-annata-row--removing,
+  .admin-modal > *:not(.wine-admin-field--enter) {
     animation: none;
   }
 }
