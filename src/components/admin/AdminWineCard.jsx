@@ -35,8 +35,12 @@ const EMPTY_FORM = {
 // card è indipendente dalle altre — non c'è un form condiviso.
 // La modifica avviene in un dialogo sopra la griglia, non trasformando
 // la card sul posto: la griglia non si muove mai sotto le dita.
+// lo champagne non ha un'annata da mostrare al cliente (niente vendemmia
+// in etichetta come per gli altri vini): niente regione, niente anno —
+// solo il prezzo, che può comunque avere più righe (es. formati diversi).
 function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const isNew = !wine;
+  const isChampagne = categoryId === "champagne";
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => toForm(wine));
   const [saving, setSaving] = useState(false);
@@ -153,24 +157,28 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <label>Nome</label>
           <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
         </div>
-        <div className="wine-admin-field">
-          <label>Regione</label>
-          <input type="text" value={form.regione} onChange={handleChange("regione")} />
-        </div>
+        {!isChampagne && (
+          <div className="wine-admin-field">
+            <label>Regione</label>
+            <input type="text" value={form.regione} onChange={handleChange("regione")} />
+          </div>
+        )}
 
         <div className="wine-admin-field">
-          <label>Annate e prezzi</label>
+          <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
           <div className="admin-annate-list">
             {form.annate.map((row, i) => (
               <div className="admin-annata-row" key={i}>
-                <div className="wine-admin-field">
-                  <input
-                    type="text"
-                    placeholder="Anno"
-                    value={row.anno}
-                    onChange={(e) => updateAnnata(i, "anno", e.target.value)}
-                  />
-                </div>
+                {!isChampagne && (
+                  <div className="wine-admin-field">
+                    <input
+                      type="text"
+                      placeholder="Anno"
+                      value={row.anno}
+                      onChange={(e) => updateAnnata(i, "anno", e.target.value)}
+                    />
+                  </div>
+                )}
                 <div className="wine-admin-field">
                   <input
                     type="number"
@@ -184,7 +192,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                   type="button"
                   className="admin-annata-remove"
                   onClick={() => removeAnnata(i)}
-                  aria-label="Rimuovi annata"
+                  aria-label="Rimuovi riga"
                 >
                   ✕
                 </button>
@@ -192,7 +200,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
             ))}
           </div>
           <button type="button" className="admin-annata-add" onClick={addAnnata}>
-            + Aggiungi annata
+            {isChampagne ? "+ Aggiungi prezzo" : "+ Aggiungi annata"}
           </button>
         </div>
 
