@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine } from "../../services/wines";
-import { REGION_GROUPS } from "../../data/data";
+import { COUNTRY_GROUPS } from "../../data/data";
 
 // stessi paesi esteri già riconosciuti dalla barra filtri pubblica
-// (REGION_GROUPS li smista sotto "Mondo"): riusarli qui evita di
+// (COUNTRY_GROUPS li smista sotto "Mondo"): riusarli qui evita di
 // scrivere un paese che poi il sito non sa raggruppare correttamente.
-const FOREIGN_COUNTRIES = Object.keys(REGION_GROUPS);
+const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
 
 // annate = righe ripetibili anno+prezzo (un vino può avere più annate,
 // ognuna con il proprio prezzo). Se il vino non ha ancora un array

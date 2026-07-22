@@ -21,13 +21,18 @@ export const WHATSAPP_NUMBER = "393342306019";
 
 // paesi esteri: nella barra filtri stanno tutti dietro il bottone
 // "Mondo", che apre i paesi nella stessa barra
-export const REGION_GROUPS = {
+export const COUNTRY_GROUPS = {
   Francia: "mondo",
   Austria: "mondo",
   Portogallo: "mondo",
   Spagna: "mondo",
   Ungheria: "mondo",
   Canada: "mondo",
+  Germania: "mondo",
+  Croazia: "mondo",
+  Argentina: "mondo",
+  Sudafrica: "mondo",
+  Slovenia: "mondo",
 };
 
 

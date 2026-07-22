@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { SHOP_GROUPS, REGION_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
+import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
 import { getWines } from "../../services/wines";
 import "./enoteca.css";
 
@@ -281,8 +281,8 @@ function Enoteca() {
     : [];
 
 
-  const regioniItaliane = filterValues.filter((v) => !REGION_GROUPS[v]);
-  const paesiMondo = filterValues.filter((v) => REGION_GROUPS[v]);
+  const regioniItaliane = filterValues.filter((v) => !COUNTRY_GROUPS[v]);
+  const paesiMondo = filterValues.filter((v) => COUNTRY_GROUPS[v]);
   const barValues = barView === "mondo" ? paesiMondo : regioniItaliane;
 
   // regione e ricerca si sommano: la ricerca affina dentro la regione.
@@ -497,7 +497,7 @@ function Enoteca() {
                   <button
                     className={
                       "filter-btn" +
-                      (REGION_GROUPS[regionFilter] ? " is-active" : "")
+                      (COUNTRY_GROUPS[regionFilter] ? " is-active" : "")
                     }
                     onClick={() => setBarView("mondo")}
                   >
