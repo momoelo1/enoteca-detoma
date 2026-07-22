@@ -79,18 +79,10 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) => g.categories).filter(
   (c) => c.remote
 );
 
-// TEMP: prezzi/annate finti solo per resa visiva finché non arrivano
-// quelli veri — RIMUOVERE (le descrizioni ormai sono tutte reali)
-const ANNATE_TEMP = [
-  { anno: "2018", prezzo: 30 },
-  { anno: "2019", prezzo: 32 },
-  { anno: "2020", prezzo: 34 },
-];
-
 // Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo, prezzo.
 // Tutto il resto vive nel bottom sheet: si apre toccando la card.
 export function WineCard({ w, accent, regionFilter, onOpen }) {
-  const annate = w.annate || ANNATE_TEMP; // TEMP: || ANNATE_TEMP
+  const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
   const regione = w.regione !== regionFilter ? w.regione : null;
@@ -126,7 +118,7 @@ export function WineCard({ w, accent, regionFilter, onOpen }) {
 // Si chiude con ✕, tocco sullo sfondo o Esc.
 export function WineSheet({ w, category, onClose }) {
   const desc = w.description || w.descrizione;
-  const annate = w.annate || ANNATE_TEMP; // TEMP: || ANNATE_TEMP
+  const annate = w.annate;
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
   const coloreRidondante =
     w.colore &&
