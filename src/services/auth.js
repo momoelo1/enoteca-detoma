@@ -8,7 +8,7 @@ const API_URL =
   `${window.location.protocol}//${window.location.hostname}:3001`;
 
 // il cookie httpOnly basta in locale (stesso dominio), ma tra GitHub
-// Pages e Render è un cookie cross-site: Safari (ITP) e altri browser
+// Pages e il backend è un cookie cross-site: Safari (ITP) e altri browser
 // possono scartarlo anche con SameSite=None. Per questo il login
 // restituisce anche il token in chiaro, che teniamo qui e mandiamo
 // come header Authorization su ogni richiesta autenticata.

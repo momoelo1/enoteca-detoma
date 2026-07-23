@@ -1,6 +1,6 @@
 // aggiornamento dell'unico account admin (username/email/password).
 // Autenticato via header Authorization (vedi services/auth.js) — il
-// cookie httpOnly da solo non basta cross-site tra GitHub Pages e Render.
+// cookie httpOnly da solo non basta cross-site tra GitHub Pages e il backend.
 import { authHeaders } from "./auth";
 
 const API_URL =

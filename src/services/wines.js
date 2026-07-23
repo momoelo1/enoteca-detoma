@@ -1,6 +1,6 @@
 // CRUD vini verso il backend. Le mutazioni viaggiano con il token JWT
 // come header Authorization (vedi services/auth.js) — il cookie httpOnly
-// da solo non basta perché tra GitHub Pages e Render è cross-site e
+// da solo non basta perché tra GitHub Pages e il backend è cross-site e
 // alcuni browser lo scartano.
 import { authHeaders } from "./auth";
 
