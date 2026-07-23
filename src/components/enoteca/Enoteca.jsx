@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
 import { getWines } from "../../services/wines";
+import { getBeers } from "../../services/beers";
 import "./enoteca.css";
 
 // prezzo in formato italiano: "€ 32,00" (virgola, non punto)
@@ -73,10 +74,20 @@ function MiniCard({ c, onClick }) {
   );
 }
 
-// categorie "remote: true" (es. rossi): calcolate una volta sola, non
-// cambiano mai a runtime (dipendono solo da SHOP_GROUPS, statico)
-const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) => g.categories).filter(
-  (c) => c.remote
+// una fetch per gruppo (vini → getWines, birre → getBeers): ogni gruppo
+// "remote" ha il suo endpoint, non tutti i prodotti sono vini
+const REMOTE_FETCHERS = {
+  vini: getWines,
+  birre: getBeers,
+};
+
+// categorie "remote: true" (es. rossi, tutte le birre): calcolate una
+// volta sola, non cambiano mai a runtime (dipendono solo da SHOP_GROUPS,
+// statico). Ogni voce porta con sé il fetcher del proprio gruppo.
+const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
+  (g.categories || [])
+    .filter((c) => c.remote)
+    .map((c) => ({ ...c, fetcher: REMOTE_FETCHERS[g.id] }))
 );
 
 // Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo, prezzo.
@@ -231,7 +242,7 @@ function Enoteca() {
   useEffect(() => {
     if (REMOTE_CATEGORIES.length === 0) return;
     Promise.all(
-      REMOTE_CATEGORIES.map((c) => getWines(c.id).then((items) => [c.id, items]))
+      REMOTE_CATEGORIES.map((c) => c.fetcher(c.id).then((items) => [c.id, items]))
     )
       .then((entries) => setRemoteByCategory(Object.fromEntries(entries)))
       .catch(() => {})
