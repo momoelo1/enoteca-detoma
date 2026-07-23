@@ -5,11 +5,12 @@ import spumantiImg from "../images/vini/spumanti.png";
 import champagneImg from "../images/vini/champagne.png";
 import liquorosiImg from "../images/vini/liquorosi.png";
 import birrai32Img from "../images/birre/32viadeibirrai.png";
-import laButtiga from "../images/birre/laButtiga.png";
-import baladin from "../images/birre/baladin.png";
 import brasserie from "../images/birre/brasserieMontBlanc.png";
-import theBrave from "../images/birre/theBrave.png";
-import farnese from "../images/birre/farnese.png";
+import ribadi from "../images/birre/ribadi-logo.png";
+import gjulia from "../images/birre/gjulia.png"
+import forte from "../images/birre/forte.png"
+import calabrau from "../images/birre/calabrau.png";
+import salento from "../images/birre/salento.png";
 import grappa from "../images/distillati/Grappa.png";
 import whisky from "../images/distillati/whisky.png";
 import rhum from "../images/distillati/Rhum.png";
@@ -58,24 +59,26 @@ export const BIRRE_32 = [
   { name: "NEBRA", stile: "birra ambrata", gradazione: "8,00%" },
 ];
 
-export const BIRRE_LA_BUTTIGA = [
-  { name: "ALWAYS", stile: "blanche", colore: "giallo opalescente", gradazione: "4,20%" },
-  { name: "POLKA", stile: "blonde ale", colore: "giallo carico", gradazione: "5,50%" },
-  { name: "BORGATA", stile: "bitter ale", colore: "ambrato", gradazione: "4,20%" },
-  { name: "SOPHIA", stile: "stout", colore: "scuro ebano", gradazione: "4,50%" },
-  { name: "SOGNO", stile: "american pale ale", colore: "dorato", gradazione: "5,00%" },
-  { name: "RYE", stile: "american ipa", colore: "dorato", gradazione: "6,20%" },
-  { name: "PSYCHO", stile: "double ipa", colore: "rubino", gradazione: "7,10%" },
+export const BIRRE_RIBALDI = [
+  { name: "Bianca", stile: "birra bianca", gradazione: "6,00%", prezzo: 10.5 },
+  { name: "Sicilian Pils", stile: "birra bionda", gradazione: "5,00%", prezzo: 10.5 },
+  { name: "India Pale Ale", stile: "birra bionda", gradazione: "6,50%", prezzo: 10.5 },
+  { name: "Sicilian Pale Ale", stile: "birra ambrata", gradazione: "6,00%", prezzo: 10.5 },
+  { name: "Special Ale", stile: "birra rossa", gradazione: "7,00%", prezzo: 10.5 },
+  { name: "Tripel", stile: "birra bionda", gradazione: "9,00%", prezzo: 10.5 },
 ];
 
-export const BIRRE_BALADIN = [
-  { name: "ISAAC", stile: "birra bianca", gradazione: "5,00%" },
-  { name: "WAYAN", stile: "birra saison", gradazione: "5,80%" },
-  { name: "NORA", stile: "birra egizia", gradazione: "6,80%" },
-  { name: "SUPER", stile: "birra ambrata", gradazione: "8,00%" },
-  { name: "LEON", stile: "birra scura", gradazione: "9,00%" },
-  { name: "NAZIONALE", stile: "birra italiana", gradazione: "6,50%" },
-  { name: "ROCK'N'ROLL", stile: "birra apa", gradazione: "7,50%" },
+export const BIRRE_GJULIA = [
+  { name: "Est", stile: "birra weizen", gradazione: "6,00%", prezzo: 10.5 },
+  { name: "Nord", stile: "birra bionda", gradazione: "5,50%", prezzo: 10.5},
+  { name: "Ovest", stile: "birra ambrata", gradazione: "7,00%", prezzo: 10.5},
+  { name: "Sud", stile: "birra bionda", gradazione: "8,00%", prezzo: 10.5 },
+  { name: "Hellas Joy", stile: "birra bionda Helles", gradazione: "5,20%", prezzo: 9.5},
+  { name: "Nostrana", stile: "birra chiara Bio", gradazione: "5,00%", prezzo: 12.0 },
+  { name: "Ipa", stile: "birra chiara Pale Ale", gradazione: "5,80%", prezzo: 11.9 },
+  { name: "Ribò", stile: "birra chiara Grape Ale", gradazione: "6,50%", prezzo: 12.5 },
+  { name: "Grecale", stile: "birra bionda Grape Ale", gradazione: "10,00%", prezzo: 13.5 },
+  { name: "Kristall Cuvée", stile: "birra chiara Grape Ale", gradazione: "6,50%", prezzo: 12.5 },
 ];
 
 export const BIRRE_MONT_BLANC = [
@@ -84,19 +87,24 @@ export const BIRRE_MONT_BLANC = [
   { name: "LA ROUSSE", stile: "rossa", gradazione: "6,50%" },
 ];
 
-export const BIRRE_THE_BRAVE = [
-  { name: "COLOMBINA", colore: "giallo paglierino", gradazione: "4,30%" },
-  { name: "ARLECCHINO", colore: "ambrato chiaro", gradazione: "7,00%" },
-  { name: "CAPITAN FRACASSA", colore: "giallo carico", gradazione: "8,40%" },
-  { name: "SCARAMUCCIA", colore: "giallo paglierino", gradazione: "6,00%" },
-  { name: "DOTTOR BALANZONE", colore: "ambrato scuro", gradazione: "7,00%" },
+export const BIRRE_DEL_FORTE = [
+  { name: "Cento Volte Forte", colore: "Chiara Blanche", gradazione: "4,00%", prezzo: 11 },
+  { name: "Gassa D'Amante", colore: "Chiara Golden Ale (senza glutine)", gradazione: "4,50%", prezzo: 10.5 },
+  { name: "La Mancina", colore: "Dorata Belgian Strong Ale", gradazione: "7,50%", prezzo: 11 },
+  { name: "2 Cilindri", colore: "Nera Porter", gradazione: "5,00%", prezzo: 11.5 },
+  { name: "Meridiano 0", colore: "Ambrata Extra Special Bitter (senza glutine)", gradazione: "5,00%", prezzo: 11.5 },
 ];
 
-export const BIRRE_FARNESE = [
-  { name: "BIANCASPINA", stile: "blanche", colore: "chiaro opalescente", gradazione: "4,40%" },
-  { name: "PASHA'", stile: "indian pale ale", colore: "dorato intenso", gradazione: "6,30%" },
-  { name: "DEA", stile: "imperial pils", colore: "giallo paglierino", gradazione: "6,50%" },
-  { name: "GREEN DEW", stile: "saison", colore: "dorato intenso", gradazione: "6,60%" },
+export const BIRRE_CALABRAU = [
+  { name: "Birra del Monaco", stile: "dorata weizen", gradazione: "5,00%", prezzo: 8.5 },
+  { name: "MountLion", stile: "bionda dorata helles", gradazione: "5,00%", prezzo: 8.5 },
+  { name: "MountLion cl.33", stile: "ambrata doppie Ipa", gradazione: "7,00%", prezzo: 4.9 },
+];
+
+export const BIRRE_SALENTO = [
+  { name: "Beggia", stile: "Belgian Ale Ambrata", gradazione: "7,00%", prezzo: 9 },
+  { name: "Taranta", stile: "Belgian Ale Ambrata Speziata", gradazione: "6,00%", prezzo: 9 },
+  { name: "Pizzica", stile: "Belgian Ale Dorata", gradazione: "5,00%", prezzo: 9 },
 ];
 
 // ---- distillati: un array per tipologia ----
@@ -170,20 +178,20 @@ export const BEER_CATEGORIES = [
     items: BIRRE_32,
   },
   {
-    id: "la-buttiga",
-    label: "La Buttiga",
+    id: "ribaldi",
+    label: "Ribaldi",
     description: "Birrificio artigianale piacentino",
-    img: laButtiga,
+    img: ribadi,
     accent: "#a8712c",
-    items: BIRRE_LA_BUTTIGA,
+    items: BIRRE_RIBALDI,
   },
   {
-    id: "baladin",
-    label: "Baladin",
+    id: "gjulia",
+    label: "Gjulia",
     description: "Birre artigianali piemontesi",
-    img: baladin,
+    img: gjulia,
     accent: "#8f5a1e",
-    items: BIRRE_BALADIN,
+    items: BIRRE_GJULIA,
   },
   {
     id: "mont-blanc",
@@ -195,21 +203,28 @@ export const BEER_CATEGORIES = [
     items: BIRRE_MONT_BLANC,
   },
   {
-    id: "the-brave",
-    label: "The Brave",
+    id: "forte",
+    label: "Forte",
     description: "Birre artigianali italiane",
-    img: theBrave,
+    img: forte,
     accent: "#d19a3d",
-    items: BIRRE_THE_BRAVE,
+    items: BIRRE_DEL_FORTE,
   },
   {
-    id: "farnese",
-    label: "Birrificio Farnese",
-    short: "Farnese",
+    id: "calabrau",
+    label: "Calabrau",
     description: "Birrificio artigianale italiano",
-    img: farnese,
+    img: calabrau,
     accent: "#6e4419",
-    items: BIRRE_FARNESE,
+    items: BIRRE_CALABRAU,
+  },
+  {
+    id: "salento",
+    label: "Salento",
+    description: "Birrificio artigianale italiano",
+    img: salento,
+    accent: "#6e4419",
+    items: BIRRE_SALENTO,
   },
 ];
 
