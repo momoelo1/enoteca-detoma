@@ -68,6 +68,11 @@
   color: #2e3d34;
 }
 
+.admin-topbar-link--active {
+  color: #2e5e46;
+  font-weight: 700;
+}
+
 .admin-logout-btn {
   padding: 9px 18px;
   background: rgba(179, 38, 30, 0.08);

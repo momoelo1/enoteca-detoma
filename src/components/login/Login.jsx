@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isBackendConfigured, login, getSession, logout } from "../../services/auth";
 import WineManager from "../admin/WineManager";
+import BeerManager from "../admin/BeerManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
 
@@ -28,7 +29,7 @@ function Login({ onBack }) {
   const [cardReady, setCardReady] = useState(false);
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
-  const [adminView, setAdminView] = useState("wines"); // "wines" | "account"
+  const [adminView, setAdminView] = useState("wines"); // "wines" | "beers" | "account"
 
   // niente scroll di sfondo SOLO per il modulo di accesso (corto); una
   // volta dentro, il pannello vini può crescere e la pagina scorre normale
@@ -89,12 +90,30 @@ function Login({ onBack }) {
           <div className="admin-topbar-actions">
             <button
               type="button"
-              className="admin-topbar-link"
-              onClick={() =>
-                setAdminView(adminView === "account" ? "wines" : "account")
+              className={
+                "admin-topbar-link" + (adminView === "wines" ? " admin-topbar-link--active" : "")
               }
+              onClick={() => setAdminView("wines")}
             >
-              {adminView === "account" ? "← Gestione vini" : "Account"}
+              Vini
+            </button>
+            <button
+              type="button"
+              className={
+                "admin-topbar-link" + (adminView === "beers" ? " admin-topbar-link--active" : "")
+              }
+              onClick={() => setAdminView("beers")}
+            >
+              Birre
+            </button>
+            <button
+              type="button"
+              className={
+                "admin-topbar-link" + (adminView === "account" ? " admin-topbar-link--active" : "")
+              }
+              onClick={() => setAdminView("account")}
+            >
+              Account
             </button>
             <button type="button" className="admin-topbar-link" onClick={onBack}>
               ← Torna al sito
@@ -106,6 +125,8 @@ function Login({ onBack }) {
         </header>
         {adminView === "account" ? (
           <UserSettings session={session} onUpdated={setSession} />
+        ) : adminView === "beers" ? (
+          <BeerManager />
         ) : (
           <WineManager />
         )}
