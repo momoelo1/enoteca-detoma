@@ -1,32 +1,33 @@
 import { useEffect, useState } from "react";
 import { createBeer, updateBeer, deleteBeer } from "../../services/beers";
+import { BEER_CATEGORIES } from "../../data/data";
+
+// stessi birrifici già in uso sul sito pubblico — riusati qui per il
+// selettore Produttore, nessuna lista duplicata
+const PRODUCER_OPTIONS = BEER_CATEGORIES.map((c) => ({
+  id: c.id,
+  label: c.short || c.label,
+}));
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
-const toForm = (beer) => ({
+const toForm = (beer, producerId) => ({
   name: beer?.name || "",
+  producer: beer?.producer || producerId,
   stile: beer?.stile || "",
   colore: beer?.colore || "",
   gradazione: beer?.gradazione || "",
-  formato: beer?.formato || "",
+  formato: beer?.formato ?? "",
   prezzo: beer?.prezzo ?? "",
   img: beer?.img || "",
 });
 
-const EMPTY_FORM = {
-  name: "",
-  stile: "",
-  colore: "",
-  gradazione: "",
-  formato: "",
-  prezzo: "",
-  img: "",
-};
+const emptyForm = (producerId) => toForm(null, producerId);
 
 function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const isNew = !beer;
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(beer));
+  const [form, setForm] = useState(() => toForm(beer, producerId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,13 +45,13 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   };
 
   const startEdit = () => {
-    setForm(toForm(beer));
+    setForm(toForm(beer, producerId));
     setError("");
     setEditing(true);
   };
 
   const cancelEdit = () => {
-    setForm(toForm(beer));
+    setForm(toForm(beer, producerId));
     setError("");
     setEditing(false);
   };
@@ -73,20 +74,21 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     const payload = Object.fromEntries(
       Object.entries({
         name: form.name,
+        producer: form.producer,
         stile: form.stile,
         colore: form.colore,
         gradazione: form.gradazione,
-        formato: form.formato,
         img: form.img,
       }).filter(([, v]) => v !== ""),
     );
+    if (form.formato !== "") payload.formato = Number(form.formato);
     if (form.prezzo !== "") payload.prezzo = Number(form.prezzo);
 
     try {
       if (isNew) {
-        const created = await createBeer({ ...payload, producer: producerId });
+        const created = await createBeer(payload);
         onCreated(created);
-        setForm(EMPTY_FORM);
+        setForm(emptyForm(producerId));
         setEditing(false);
       } else {
         const updated = await updateBeer(beer.id, payload);
@@ -127,6 +129,16 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
           <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
         </div>
         <div className="wine-admin-field">
+          <label>Produttore</label>
+          <select value={form.producer} onChange={handleChange("producer")} required>
+            {PRODUCER_OPTIONS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="wine-admin-field">
           <label>Stile</label>
           <input type="text" value={form.stile} onChange={handleChange("stile")} />
         </div>
@@ -143,9 +155,12 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
           />
         </div>
         <div className="wine-admin-field">
-          <label>Formato</label>
+          <label>Formato (cl)</label>
           <input
-            type="text"
+            type="number"
+            step="1"
+            min="0"
+            placeholder="33"
             value={form.formato}
             onChange={handleChange("formato")}
           />
@@ -197,7 +212,12 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     );
   }
 
-  const meta = [beer.stile, beer.colore, beer.gradazione, beer.formato]
+  const meta = [
+    beer.stile,
+    beer.colore,
+    beer.gradazione,
+    beer.formato != null ? `${beer.formato} cl` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 

@@ -53,8 +53,14 @@ function BeerManager() {
   const category = BEER_CATEGORY_OPTIONS.find((c) => c.id === producerId);
 
   const handleCreated = (beer) => setBeers((bs) => [beer, ...bs]);
+  // se il produttore cambia rispetto alla scheda aperta, la birra non
+  // appartiene più alla lista corrente: va rimossa, non aggiornata in posto
   const handleUpdated = (beer) =>
-    setBeers((bs) => bs.map((b) => (b.id === beer.id ? beer : b)));
+    setBeers((bs) =>
+      beer.producer !== producerId
+        ? bs.filter((b) => b.id !== beer.id)
+        : bs.map((b) => (b.id === beer.id ? beer : b)),
+    );
   const handleDeleted = (id) => setBeers((bs) => bs.filter((b) => b.id !== id));
 
   return (
