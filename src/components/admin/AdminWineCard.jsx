@@ -191,12 +191,12 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           {isNew ? "Aggiungi vino" : `Modifica "${wine.name}"`}
         </h3>
 
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Nome</label>
           <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
         </div>
         {!isChampagne && (
-          <div className="wine-admin-field">
+          <div className="admin-field">
             <label>Paese</label>
             <select value={countrySelection} onChange={handleCountrySelect} required>
               <option value="" disabled>
@@ -212,25 +212,25 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           </div>
         )}
         {!isChampagne && countrySelection === "Italia" && (
-          <div className="wine-admin-field wine-admin-field--enter">
+          <div className="admin-field admin-field--enter">
             <label>Regione</label>
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
           </div>
         )}
 
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
           <div className="admin-annate-list">
             {form.annate.map((row, i) => (
               <div
                 className={
-                  "admin-annata-row wine-admin-field--enter" +
+                  "admin-annata-row admin-field--enter" +
                   (removingIndex === i ? " admin-annata-row--removing" : "")
                 }
                 key={i}
               >
                 {!isChampagne && (
-                  <div className="wine-admin-field">
+                  <div className="admin-field">
                     <input
                       type="text"
                       placeholder="Anno"
@@ -239,7 +239,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                     />
                   </div>
                 )}
-                <div className="wine-admin-field">
+                <div className="admin-field">
                   <input
                     type="number"
                     step="0.01"
@@ -264,23 +264,23 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           </button>
         </div>
 
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Immagine</label>
           <input type="file" accept="image/*" onChange={handleImageFile} />
           {form.img && <img src={form.img} alt="" className="admin-image-preview" />}
         </div>
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Descrizione</label>
           <textarea rows={3} value={form.description} onChange={handleChange("description")} />
         </div>
 
-        {error && <p className="wine-admin-error">{error}</p>}
+        {error && <p className="admin-error">{error}</p>}
 
-        <div className="wine-admin-actions">
+        <div className="admin-actions">
           <button type="submit" className="admin-save-btn" disabled={saving}>
             {saving ? "Salvo…" : isNew ? "Aggiungi" : "Salva"}
           </button>
-          <button type="button" className="wine-admin-cancel" onClick={cancelEdit}>
+          <button type="button" className="admin-cancel" onClick={cancelEdit}>
             Annulla
           </button>
         </div>
@@ -291,13 +291,13 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   // tessera "+ Aggiungi vino": tocco solo per aprire il dialogo vuoto
   if (isNew) {
     return (
-      <li className="admin-wine-cell">
+      <li className="admin-product-cell">
         <button
           type="button"
-          className="admin-wine-card admin-wine-card--add"
+          className="admin-product-card admin-product-card--add"
           onClick={startEdit}
         >
-          <span className="admin-wine-add-icon" aria-hidden="true">
+          <span className="admin-product-add-icon" aria-hidden="true">
             +
           </span>
           <span>Aggiungi vino</span>
@@ -317,21 +317,21 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const primary = annate[0];
 
   return (
-    <li className="admin-wine-cell">
-      <div className="admin-wine-card">
-        <span className="admin-wine-name">{wine.name}</span>
-        {meta && <span className="admin-wine-meta">{meta}</span>}
+    <li className="admin-product-cell">
+      <div className="admin-product-card">
+        <span className="admin-product-name">{wine.name}</span>
+        {meta && <span className="admin-product-meta">{meta}</span>}
         {primary?.prezzo != null && (
-          <span className="admin-wine-price">
-            {primary.anno && <span className="admin-wine-price-year">{primary.anno} · </span>}
+          <span className="admin-product-price">
+            {primary.anno && <span className="admin-product-price-year">{primary.anno} · </span>}
             € {primary.prezzo}
             {annate.length > 1 && (
-              <span className="admin-wine-price-extra">+{annate.length - 1} annate</span>
+              <span className="admin-product-price-extra">+{annate.length - 1} annate</span>
             )}
           </span>
         )}
-        {error && <p className="wine-admin-error">{error}</p>}
-        <div className="admin-wine-icon-actions">
+        {error && <p className="admin-error">{error}</p>}
+        <div className="admin-product-icon-actions">
           <button
             type="button"
             className="admin-icon-btn"

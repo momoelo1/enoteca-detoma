@@ -90,34 +90,70 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
     .map((c) => ({ ...c, fetcher: REMOTE_FETCHERS[g.id] }))
 );
 
-// Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo, prezzo.
+// Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo,
+// badge di specifiche (gradazione/formato quando presenti), prezzo.
 // Tutto il resto vive nel bottom sheet: si apre toccando la card.
-export function WineCard({ w, accent, regionFilter, onOpen }) {
+export function ProductCard({ w, accent, regionFilter, onOpen }) {
   const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
   const regione = w.regione !== regionFilter ? w.regione : null;
   const sub = regione || w.stile || w.colore || w.tipo;
+  const formatoLabel = w.formato != null ? `${w.formato}cl` : null;
+
+  // il sottotitolo può essere lungo quanto vuole (stile birra, regione...):
+  // stessa dimensione testo su ogni card, mai a capo, mai tagliato — se non
+  // ci sta su una riga scorre avanti e indietro (marquee) invece di rimpicciolire
+  const metaRef = useRef(null);
+  const [metaScroll, setMetaScroll] = useState(false);
+  useLayoutEffect(() => {
+    const el = metaRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth - el.parentElement.clientWidth;
+    if (overflow > 0) {
+      el.style.setProperty("--marquee-shift", `-${overflow + 6}px`);
+      setMetaScroll(true);
+    } else {
+      setMetaScroll(false);
+    }
+  }, [sub]);
 
   return (
-    <li className="wine-card">
+    <li className="product-card">
       <button
         type="button"
-        className="wine-card-btn"
+        className="product-card-btn"
         style={{ "--accent": accent }}
         onClick={() => onOpen(w)}
       >
-        <div className="wine-thumb">
+        <div className="product-thumb">
           {w.img ? (
-            <img src={w.img} alt="" className="wine-thumb-img" loading="lazy" />
+            <img src={w.img} alt="" className="product-thumb-img" loading="lazy" />
           ) : (
-            <BottleIcon className="wine-thumb-svg" />
+            <BottleIcon className="product-thumb-svg" />
           )}
         </div>
-        <span className="wine-name">{w.name}</span>
-        {sub && <span className="wine-meta">{sub}</span>}
+        <span className="product-name">{w.name}</span>
+        {sub && (
+          <span
+            className={"product-meta-wrap" + (metaScroll ? " product-meta-wrap--scroll" : "")}
+          >
+            <span
+              className={"product-meta" + (metaScroll ? " product-meta--scroll" : "")}
+              ref={metaRef}
+            >
+              {sub}
+            </span>
+          </span>
+        )}
+        {(w.gradazione || formatoLabel) && (
+          <span className="product-spec-row">
+            {w.gradazione && <span className="product-spec-badge">{w.gradazione}</span>}
+            {formatoLabel && <span className="product-spec-badge">{formatoLabel}</span>}
+          </span>
+        )}
         {prezzo != null && (
-          <span className="wine-price">{formatPrezzo(prezzo)}</span>
+          <span className="product-price">{formatPrezzo(prezzo)}</span>
         )}
       </button>
     </li>
@@ -127,7 +163,7 @@ export function WineCard({ w, accent, regionFilter, onOpen }) {
 // Bottom sheet: pannello che sale dal basso (pattern familiare tipo social /
 // delivery) con foto grande, descrizione completa e tabella annate/prezzi.
 // Si chiude con ✕, tocco sullo sfondo o Esc.
-export function WineSheet({ w, category, onClose }) {
+export function ProductSheet({ w, category, onClose }) {
   const desc = w.description || w.descrizione;
   const annate = w.annate;
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
@@ -161,7 +197,7 @@ export function WineSheet({ w, category, onClose }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
-        className="wine-sheet"
+        className="product-sheet"
         style={{ "--accent": category?.accent }}
         role="dialog"
         aria-modal="true"
@@ -178,22 +214,24 @@ export function WineSheet({ w, category, onClose }) {
         >
           ✕
         </button>
-        {w.img ? (
-          <img src={w.img} alt="" className="sheet-img" />
-        ) : (
-          <BottleIcon className="sheet-svg" />
-        )}
+        <div className="sheet-thumb">
+          {w.img ? (
+            <img src={w.img} alt="" className="sheet-img" />
+          ) : (
+            <BottleIcon className="sheet-svg" />
+          )}
+        </div>
         <h3 className="sheet-name">{w.name}</h3>
         {meta && <p className="sheet-meta">{meta}</p>}
         {desc && <p className="sheet-desc">{desc}</p>}
         {annate?.length > 0 && (
           <div className="sheet-annate">
             <span className="sheet-label">Annate e prezzi</span>
-            <ul className="wine-annate-list">
+            <ul className="product-annate-list">
               {annate.map((a) => (
-                <li key={a.anno} className="wine-annate-row">
-                  <span className="wine-annate-year">{a.anno}</span>
-                  <span className="wine-annate-price">
+                <li key={a.anno} className="product-annate-row">
+                  <span className="product-annate-year">{a.anno}</span>
+                  <span className="product-annate-price">
                     {formatPrezzo(a.prezzo)}
                   </span>
                 </li>
@@ -548,19 +586,19 @@ function Enoteca() {
           </nav>
         )}
         {activeCategory.remote && remoteLoading ? (
-          <p className="wine-empty">Caricamento…</p>
+          <p className="product-empty">Caricamento…</p>
         ) : sourceItems.length === 0 ? (
-          <p className="wine-empty">
+          <p className="product-empty">
             Il catalogo è in arrivo — torna a trovarci presto.
           </p>
         ) : visibleItems.length === 0 ? (
-          <p className="wine-empty">
+          <p className="product-empty">
             Nessun risultato. Prova a cambiare ricerca o regione.
           </p>
         ) : (
-          <ul className="wine-list" key={regionFilter || "tutti"} ref={listRef}>
+          <ul className="product-list" key={regionFilter || "tutti"} ref={listRef}>
             {visibleItems.map((w, i) => (
-              <WineCard
+              <ProductCard
                 key={w.name + i}
                 w={w}
                 accent={activeCategory.accent}
@@ -571,7 +609,7 @@ function Enoteca() {
           </ul>
         )}
         {sheetWine && (
-          <WineSheet
+          <ProductSheet
             w={sheetWine}
             category={activeCategory}
             onClose={() => setSheetWine(null)}
@@ -646,7 +684,7 @@ function Enoteca() {
           ))}
         </ul>
       ) : (
-        <p className="wine-empty">
+        <p className="product-empty">
           I consigli della casa arrivano presto — torna a trovarci.
         </p>
       )}

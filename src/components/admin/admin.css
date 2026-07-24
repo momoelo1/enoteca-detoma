@@ -234,13 +234,13 @@
 /* ==========================================================================
    Campi di modifica (condivisi tra le card in edit mode)
    ========================================================================== */
-.wine-admin-row {
+.admin-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.9rem;
 }
 
-.wine-admin-field {
+.admin-field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -248,7 +248,7 @@
   min-width: 110px;
 }
 
-.wine-admin-field label {
+.admin-field label {
   font-size: 0.72rem;
   font-weight: 700;
   color: #52605a;
@@ -256,9 +256,9 @@
   letter-spacing: 1.2px;
 }
 
-.wine-admin-field input,
-.wine-admin-field select,
-.wine-admin-field textarea {
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
   width: 100%;
   padding: 0 0.85rem;
   height: 42px;
@@ -273,15 +273,15 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.wine-admin-field textarea {
+.admin-field textarea {
   height: auto;
   padding: 0.6rem 0.85rem;
   resize: vertical;
 }
 
-.wine-admin-field input:focus,
-.wine-admin-field select:focus,
-.wine-admin-field textarea:focus {
+.admin-field input:focus,
+.admin-field select:focus,
+.admin-field textarea:focus {
   border-color: #2e5e46;
   box-shadow: 0 0 0 3px rgba(46, 94, 70, 0.12);
 }
@@ -289,7 +289,7 @@
 /* campi che compaiono a runtime (Regione, righe annata): stessa firma
    di movimento del dialogo (admin-modal-in), ben visibile — non un
    accenno impercettibile */
-.wine-admin-field--enter {
+.admin-field--enter {
   animation: admin-field-in 0.32s cubic-bezier(0.25, 0.8, 0.35, 1) both;
 }
 
@@ -315,59 +315,59 @@
 
 /* i figli diretti del dialogo entrano in cascata quando si apre —
    stessa curva del dialogo stesso, ritardo crescente per riga */
-.admin-modal > *:not(.wine-admin-field--enter) {
+.admin-modal > *:not(.admin-field--enter) {
   animation: admin-field-in 0.4s cubic-bezier(0.25, 0.8, 0.35, 1) both;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(1) {
+.admin-modal > *:not(.admin-field--enter):nth-child(1) {
   animation-delay: 0.02s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(2) {
+.admin-modal > *:not(.admin-field--enter):nth-child(2) {
   animation-delay: 0.06s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(3) {
+.admin-modal > *:not(.admin-field--enter):nth-child(3) {
   animation-delay: 0.1s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(4) {
+.admin-modal > *:not(.admin-field--enter):nth-child(4) {
   animation-delay: 0.14s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(5) {
+.admin-modal > *:not(.admin-field--enter):nth-child(5) {
   animation-delay: 0.18s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(6) {
+.admin-modal > *:not(.admin-field--enter):nth-child(6) {
   animation-delay: 0.22s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(7) {
+.admin-modal > *:not(.admin-field--enter):nth-child(7) {
   animation-delay: 0.26s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(8) {
+.admin-modal > *:not(.admin-field--enter):nth-child(8) {
   animation-delay: 0.3s;
 }
-.admin-modal > *:not(.wine-admin-field--enter):nth-child(n + 9) {
+.admin-modal > *:not(.admin-field--enter):nth-child(n + 9) {
   animation-delay: 0.34s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wine-admin-field--enter,
+  .admin-field--enter,
   .admin-annata-row--removing,
-  .admin-modal > *:not(.wine-admin-field--enter) {
+  .admin-modal > *:not(.admin-field--enter) {
     animation: none;
   }
 }
 
-.wine-admin-error {
+.admin-error {
   margin: 0;
   font-size: 0.85rem;
   color: #b3261e;
 }
 
-.wine-admin-success {
+.admin-success {
   margin: 0;
   font-size: 0.85rem;
   font-weight: 600;
   color: #2e5e46;
 }
 
-.wine-admin-actions {
+.admin-actions {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -398,7 +398,7 @@
   transform: none;
 }
 
-.wine-admin-cancel {
+.admin-cancel {
   background: none;
   border: none;
   color: #6a756f;
@@ -409,7 +409,7 @@
   transition: color 0.15s ease;
 }
 
-.wine-admin-cancel:hover {
+.admin-cancel:hover {
   color: #2e3d34;
 }
 
@@ -427,7 +427,7 @@
   gap: 8px;
 }
 
-.admin-annata-row .wine-admin-field {
+.admin-annata-row .admin-field {
   min-width: 0;
 }
 
@@ -483,7 +483,7 @@
 /* ==========================================================================
    Griglia di card vino — ogni card è indipendente dalle altre
    ========================================================================== */
-.admin-wine-grid {
+.admin-product-grid {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -493,28 +493,28 @@
 }
 
 @media (min-width: 560px) {
-  .admin-wine-grid {
+  .admin-product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 860px) {
-  .admin-wine-grid {
+  .admin-product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1100px) {
-  .admin-wine-grid {
+  .admin-product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-.admin-wine-cell {
+.admin-product-cell {
   min-width: 0;
 }
 
-.admin-wine-card {
+.admin-product-card {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
@@ -532,14 +532,14 @@
 }
 
 @media (hover: hover) {
-  .admin-wine-card:hover {
+  .admin-product-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
     border-color: rgba(46, 94, 70, 0.25);
   }
 }
 
-.admin-wine-name {
+.admin-product-name {
   display: block;
   width: 100%;
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -552,24 +552,24 @@
   overflow-wrap: break-word;
 }
 
-.admin-wine-meta {
+.admin-product-meta {
   font-size: 12.5px;
   color: #6a756f;
 }
 
-.admin-wine-price {
+.admin-product-price {
   padding-top: 2px;
   font-size: 15px;
   font-weight: 700;
   color: #2e5e46;
 }
 
-.admin-wine-price-year {
+.admin-product-price-year {
   font-weight: 600;
   color: #52605a;
 }
 
-.admin-wine-price-extra {
+.admin-product-price-extra {
   margin-left: 4px;
   font-size: 12px;
   font-weight: 600;
@@ -577,7 +577,7 @@
 }
 
 /* ---- azioni a icona (matita / cestino): sempre in fondo alla card ---- */
-.admin-wine-icon-actions {
+.admin-product-icon-actions {
   flex: none;
   margin-top: auto;
   padding-top: 10px;
@@ -624,7 +624,7 @@
 }
 
 /* ---- tessera "aggiungi vino" ---- */
-.admin-wine-card--add {
+.admin-product-card--add {
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -640,7 +640,7 @@
 }
 
 @media (hover: hover) {
-  .admin-wine-card--add:hover {
+  .admin-product-card--add:hover {
     background: rgba(46, 94, 70, 0.06);
     border-color: rgba(46, 94, 70, 0.55);
     transform: translateY(-2px);
@@ -648,7 +648,7 @@
   }
 }
 
-.admin-wine-add-icon {
+.admin-product-add-icon {
   font-size: 26px;
   line-height: 1;
   font-weight: 400;

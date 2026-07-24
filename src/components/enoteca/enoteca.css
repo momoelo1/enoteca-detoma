@@ -523,7 +523,7 @@
   }
 
   /* i prodotti scorrono dietro le barre: aria in fondo alla lista */
-  .has-filter-bar .wine-list {
+  .has-filter-bar .product-list {
     padding-bottom: 120px;
   }
 
@@ -699,7 +699,7 @@ body.home-no-scroll .shop-section {
   min-height: 0;
 }
 
-body.home-no-scroll .wine-list {
+body.home-no-scroll .product-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -725,14 +725,14 @@ body.home-no-scroll .wine-list {
   color: #fff;
 }
 
-.wine-empty {
+.product-empty {
   margin: 24px 0;
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 20px;
   color: #52605a;
 }
 
-.wine-list {
+.product-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -746,27 +746,38 @@ body.home-no-scroll .wine-list {
 
 /* schermi grandi: 3 per riga */
 @media (min-width: 900px) {
-  .wine-list {
+  .product-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* schermi grandi: più spazio in card, il sottotitolo può respirare di più */
+  .product-meta {
+    font-size: 14.5px;
   }
 }
 
 /* card essenziale: foto in alto, nome, sottotitolo, prezzo in fondo.
    Tutta la card è un pulsante: al tocco si apre il bottom sheet coi dettagli */
-.wine-card {
+.product-card {
   min-width: 0; /* la card può stringersi: niente scroll laterale */
   box-sizing: border-box;
 }
 
-.wine-card-btn {
+.product-card-btn {
   position: relative;
   width: 100%;
-  height: 100%;
-  min-height: 218px; /* card di pari altezza + spazio per la foto */
+  /* altezza fissa (non un minimo): tutte le card uguali ovunque, non solo
+     dentro la stessa riga della grid — dimensionata per il contenuto più
+     pieno possibile (nome su 3 righe + meta + badge + prezzo) così niente
+     viene tagliato dall'overflow:hidden qui sotto */
+  height: 280px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* spazio distribuito EVENLY tra foto/nome/meta/badge/prezzo, non tutto
+     ammassato in cima con un solo salto prima del prezzo */
+  justify-content: space-evenly;
   gap: 8px;
   padding: 18px 14px 16px;
   overflow: hidden;
@@ -784,7 +795,7 @@ body.home-no-scroll .wine-list {
 }
 
 /* barra d'accento della categoria: i rossi sanno di rosso, i bianchi d'oro */
-.wine-card-btn::before {
+.product-card-btn::before {
   content: "";
   position: absolute;
   top: 0;
@@ -794,37 +805,85 @@ body.home-no-scroll .wine-list {
   background: var(--accent, #2e5e46);
 }
 
-.wine-card-btn:hover {
+.product-card-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
 }
 
 /* miniatura bottiglia sul fronte (solo se l'item ha un'immagine) */
-.wine-thumb {
+.product-thumb {
   align-self: center;
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 104px; /* area immagine fissa: bottiglie di altezza diversa restano allineate */
+  height: 90px; /* area immagine fissa: bottiglie di altezza diversa restano allineate */
+  overflow: hidden; /* ritaglia lo zoom della foto sotto, invece di farla debordare */
 }
 
-.wine-thumb-img {
+.product-thumb-img {
   height: 100%;
   width: auto;
-  max-width: 84px;
+  max-width: 75px;
   object-fit: contain;
+  transform: scale(1.5); /* zoom leggero: la bottiglia riempie meglio il riquadro */
 }
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
-.wine-thumb-svg {
-  height: 88px;
+.product-thumb-svg {
+  height: 76px;
   width: auto;
   fill: var(--accent, #2e5e46);
   opacity: 0.45;
 }
 
-.wine-name {
+/* telefono: colonne più strette fanno andare i nomi a capo più spesso,
+   la card diventava troppo lunga — riquadro foto più basso qui */
+@media (max-width: 640px) {
+  .product-thumb {
+    height: 108px;
+  }
+
+  .product-thumb-img {
+    max-width: 88px;
+  }
+
+  .product-thumb-svg {
+    height: 92px;
+  }
+
+  .product-card-btn {
+    height: 260px;
+  }
+
+  /* telefono: sottotitolo più compatto (lo scale via JS parte da qui) */
+  .product-meta {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
+
+/* riga di badge per specifiche numeriche (gradazione/formato) sotto
+   la riga di testo descrittiva (stile/regione/colore) */
+.product-spec-row {
+  flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.product-spec-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(46, 94, 70, 0.1);
+  color: #2e5e46;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.product-name {
+  flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 17px;
   font-weight: 700;
@@ -839,14 +898,61 @@ body.home-no-scroll .wine-list {
   overflow: hidden;
 }
 
-.wine-meta {
+/* larghezza stabile su cui misurare lo spazio disponibile — lo scale sotto
+   si applica al testo, non a questo, quindi resta un riferimento affidabile */
+.product-meta-wrap {
+  flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+
+/* testo che scorre: deve partire allineato a sinistra (si vede l'inizio),
+   non centrato (mostrerebbe il centro del testo prima ancora di scorrere) */
+.product-meta-wrap--scroll {
+  justify-content: flex-start;
+}
+
+.product-meta {
+  display: inline-block;
+  white-space: nowrap; /* mai a capo: se non ci sta, scorre invece (vedi sotto) */
   font-size: 12.5px;
   line-height: 1.3;
   color: #6a756f;
 }
 
-.wine-price {
-  margin-top: auto; /* agganciato in fondo: allineato su tutte le card */
+/* testo troppo lungo per stare su una riga: scorre avanti e indietro invece
+   di andare a capo o tagliarsi — pausa ai due estremi per poterlo leggere */
+.product-meta--scroll {
+  animation: product-meta-marquee 7s ease-in-out infinite;
+}
+
+@keyframes product-meta-marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  45%,
+  55% {
+    transform: translateX(var(--marquee-shift, 0));
+  }
+  88%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-meta--scroll {
+    animation: none;
+  }
+}
+
+.product-price {
+  flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
+  /* niente più margin-top:auto: lo spazio libero ora lo distribuisce
+     justify-content:space-evenly sulla card, non un salto secco qui */
   padding-top: 6px;
   font-size: 16px;
   font-weight: 700;
@@ -868,7 +974,7 @@ body.home-no-scroll .wine-list {
   animation: sheet-fade-in 0.25s ease;
 }
 
-.wine-sheet {
+.product-sheet {
   position: relative;
   width: 100%;
   max-width: 560px;
@@ -919,11 +1025,21 @@ body.home-no-scroll .wine-list {
   background: rgba(46, 94, 70, 0.18);
 }
 
-.sheet-img {
+.sheet-thumb {
+  align-self: stretch; /* così max-width:70% sull'img resta relativo alla larghezza del pannello, come prima */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 160px;
+  overflow: hidden; /* ritaglia lo zoom della foto sotto, invece di farla debordare */
+}
+
+.sheet-img {
+  height: 100%;
   width: auto;
   max-width: 70%;
   object-fit: contain;
+  transform: scale(1.18); /* stesso zoom della card */
 }
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
@@ -998,7 +1114,7 @@ body.home-no-scroll .wine-list {
 /* su telefono il pannello si solleva un po' dal bordo inferiore:
    card flottante con tutti gli angoli arrotondati */
 @media (max-width: 640px) {
-  .wine-sheet {
+  .product-sheet {
     margin-bottom: 12px; /* fallback per browser senza env() */
     margin-bottom: calc(12px + env(safe-area-inset-bottom));
     border-radius: 22px;
@@ -1008,11 +1124,12 @@ body.home-no-scroll .wine-list {
 
   /* la foto è l'elemento elastico: se lo spazio non basta si restringe
      lei, così testi, annate e pulsante restano sempre interi */
-  .sheet-img,
-  .sheet-svg {
+  .sheet-thumb {
     flex: 0 1 auto;
     min-height: 80px;
   }
+
+
 }
 
 /* su desktop il pannello diventa una finestra centrata */
@@ -1022,7 +1139,7 @@ body.home-no-scroll .wine-list {
     padding: 24px;
   }
 
-  .wine-sheet {
+  .product-sheet {
     border-radius: 22px;
     padding-bottom: 26px;
   }
@@ -1042,13 +1159,13 @@ body.home-no-scroll .wine-list {
 
 @media (prefers-reduced-motion: reduce) {
   .sheet-backdrop,
-  .wine-sheet {
+  .product-sheet {
     animation: none;
   }
 }
 
 /* elenco annata → prezzo (nel bottom sheet) */
-.wine-annate-list {
+.product-annate-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1058,7 +1175,7 @@ body.home-no-scroll .wine-list {
   gap: 7px;
 }
 
-.wine-annate-row {
+.product-annate-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -1069,17 +1186,17 @@ body.home-no-scroll .wine-list {
   border-bottom: 1px solid rgba(46, 94, 70, 0.14);
 }
 
-.wine-annate-row:last-child {
+.product-annate-row:last-child {
   padding-bottom: 0;
   border-bottom: none;
 }
 
-.wine-annate-year {
+.product-annate-year {
   font-weight: 600;
   color: #2e3d34;
 }
 
-.wine-annate-price {
+.product-annate-price {
   font-weight: 700;
   color: #2e5e46;
   white-space: nowrap;

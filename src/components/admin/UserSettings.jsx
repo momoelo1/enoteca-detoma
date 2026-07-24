@@ -45,7 +45,7 @@ function UserSettings({ session, onUpdated }) {
   return (
     <div className="admin-account">
       <form className="admin-account-form" onSubmit={handleSubmit}>
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Username</label>
           <input
             type="text"
@@ -56,7 +56,7 @@ function UserSettings({ session, onUpdated }) {
           />
         </div>
 
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Email</label>
           <input
             type="email"
@@ -67,7 +67,7 @@ function UserSettings({ session, onUpdated }) {
           />
         </div>
 
-        <div className="wine-admin-field">
+        <div className="admin-field">
           <label>Nuova password</label>
           <div className="password-wrapper">
             <input
@@ -92,10 +92,10 @@ function UserSettings({ session, onUpdated }) {
           </p>
         </div>
 
-        {error && <p className="wine-admin-error">{error}</p>}
-        {success && <p className="wine-admin-success">{success}</p>}
+        {error && <p className="admin-error">{error}</p>}
+        {success && <p className="admin-success">{success}</p>}
 
-        <div className="wine-admin-actions">
+        <div className="admin-actions">
           <button type="submit" className="admin-save-btn" disabled={saving}>
             {saving ? "Salvo…" : "Salva modifiche"}
           </button>

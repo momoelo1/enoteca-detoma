@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ALIMENTARI_CATEGORIES } from "../../data/data";
-import { WineCard, WineSheet } from "../enoteca/Enoteca";
+import { ProductCard, ProductSheet } from "../enoteca/Enoteca";
 import "./gastronomia.css";
 
 // Stessa impostazione della pagina Enoteca: tab dei reparti in alto
@@ -40,13 +40,13 @@ function Gastronomia() {
       </nav>
 
       {activeCategory.items.length === 0 ? (
-        <p className="wine-empty">
+        <p className="product-empty">
           Il catalogo è in arrivo — torna a trovarci presto.
         </p>
       ) : (
-        <ul className="wine-list">
+        <ul className="product-list">
           {activeCategory.items.map((p, i) => (
-            <WineCard
+            <ProductCard
               key={p.name + i}
               w={p}
               accent={activeCategory.accent}
@@ -57,7 +57,7 @@ function Gastronomia() {
       )}
 
       {sheetItem && (
-        <WineSheet
+        <ProductSheet
           w={sheetItem}
           category={activeCategory}
           onClose={() => setSheetItem(null)}

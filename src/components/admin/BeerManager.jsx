@@ -75,12 +75,12 @@ function BeerManager() {
           )}
         </div>
 
-        {error && <p className="wine-admin-error">{error}</p>}
+        {error && <p className="admin-error">{error}</p>}
 
         {loading ? (
           <p className="admin-loading">Caricamento…</p>
         ) : (
-          <ul className="admin-wine-grid">
+          <ul className="admin-product-grid">
             <AdminBeerCard producerId={producerId} onCreated={handleCreated} />
             {beers.map((b) => (
               <AdminBeerCard
