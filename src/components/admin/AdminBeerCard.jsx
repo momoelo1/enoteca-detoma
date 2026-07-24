@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { createBeer, updateBeer, deleteBeer } from "../../services/beers";
-import { BEER_CATEGORIES } from "../../data/data";
-
-// stessi birrifici già in uso sul sito pubblico — riusati qui per il
-// selettore Produttore, nessuna lista duplicata
-const PRODUCER_OPTIONS = BEER_CATEGORIES.map((c) => ({
-  id: c.id,
-  label: c.short || c.label,
-}));
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
-const toForm = (beer, producerId) => ({
+const toForm = (beer) => ({
   name: beer?.name || "",
-  producer: beer?.producer || producerId,
   stile: beer?.stile || "",
   colore: beer?.colore || "",
   gradazione: beer?.gradazione || "",
@@ -22,12 +13,20 @@ const toForm = (beer, producerId) => ({
   img: beer?.img || "",
 });
 
-const emptyForm = (producerId) => toForm(null, producerId);
+const EMPTY_FORM = {
+  name: "",
+  stile: "",
+  colore: "",
+  gradazione: "",
+  formato: "",
+  prezzo: "",
+  img: "",
+};
 
 function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const isNew = !beer;
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(beer, producerId));
+  const [form, setForm] = useState(() => toForm(beer));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,13 +44,13 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   };
 
   const startEdit = () => {
-    setForm(toForm(beer, producerId));
+    setForm(toForm(beer));
     setError("");
     setEditing(true);
   };
 
   const cancelEdit = () => {
-    setForm(toForm(beer, producerId));
+    setForm(toForm(beer));
     setError("");
     setEditing(false);
   };
@@ -74,7 +73,6 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     const payload = Object.fromEntries(
       Object.entries({
         name: form.name,
-        producer: form.producer,
         stile: form.stile,
         colore: form.colore,
         gradazione: form.gradazione,
@@ -86,9 +84,9 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
 
     try {
       if (isNew) {
-        const created = await createBeer(payload);
+        const created = await createBeer({ ...payload, producer: producerId });
         onCreated(created);
-        setForm(emptyForm(producerId));
+        setForm(EMPTY_FORM);
         setEditing(false);
       } else {
         const updated = await updateBeer(beer.id, payload);
@@ -127,16 +125,6 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
         <div className="wine-admin-field">
           <label>Nome</label>
           <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
-        </div>
-        <div className="wine-admin-field">
-          <label>Produttore</label>
-          <select value={form.producer} onChange={handleChange("producer")} required>
-            {PRODUCER_OPTIONS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
         </div>
         <div className="wine-admin-field">
           <label>Stile</label>
