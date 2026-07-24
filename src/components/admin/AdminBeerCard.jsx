@@ -6,7 +6,6 @@ import { createBeer, updateBeer, deleteBeer } from "../../services/beers";
 const toForm = (beer) => ({
   name: beer?.name || "",
   stile: beer?.stile || "",
-  colore: beer?.colore || "",
   gradazione: beer?.gradazione || "",
   formato: beer?.formato ?? "",
   prezzo: beer?.prezzo ?? "",
@@ -16,7 +15,6 @@ const toForm = (beer) => ({
 const EMPTY_FORM = {
   name: "",
   stile: "",
-  colore: "",
   gradazione: "",
   formato: "",
   prezzo: "",
@@ -74,7 +72,6 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
       Object.entries({
         name: form.name,
         stile: form.stile,
-        colore: form.colore,
         gradazione: form.gradazione,
         img: form.img,
       }).filter(([, v]) => v !== ""),
@@ -129,10 +126,6 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
         <div className="wine-admin-field">
           <label>Stile</label>
           <input type="text" value={form.stile} onChange={handleChange("stile")} />
-        </div>
-        <div className="wine-admin-field">
-          <label>Colore</label>
-          <input type="text" value={form.colore} onChange={handleChange("colore")} />
         </div>
         <div className="wine-admin-field">
           <label>Gradazione</label>
@@ -200,12 +193,7 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     );
   }
 
-  const meta = [
-    beer.stile,
-    beer.colore,
-    beer.gradazione,
-    beer.formato != null ? `${beer.formato} cl` : null,
-  ]
+  const meta = [beer.stile, beer.gradazione, beer.formato != null ? `${beer.formato} cl` : null]
     .filter(Boolean)
     .join(" · ");
 
