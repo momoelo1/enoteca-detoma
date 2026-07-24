@@ -29,11 +29,25 @@ function BeerManager() {
     setError("");
   }
 
+  // guardia contro risposte in ordine sbagliato: se si cambia produttore
+  // prima che la fetch precedente risponda (probabile su Vercel, dove i
+  // tempi di risposta variano per i cold start), quella vecchia risposta
+  // non deve sovrascrivere i dati del produttore corrente già arrivati
   useEffect(() => {
+    let cancelled = false;
     getBeers(producerId)
-      .then(setBeers)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setBeers(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [producerId]);
 
   const category = BEER_CATEGORY_OPTIONS.find((c) => c.id === producerId);

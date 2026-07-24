@@ -29,11 +29,25 @@ function WineManager() {
     setError("");
   }
 
+  // guardia contro risposte in ordine sbagliato: se si cambia categoria
+  // prima che la fetch precedente risponda (probabile su Vercel, dove i
+  // tempi di risposta variano per i cold start), quella vecchia risposta
+  // non deve sovrascrivere i dati della categoria corrente già arrivati
   useEffect(() => {
+    let cancelled = false;
     getWines(categoryId)
-      .then(setWines)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setWines(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [categoryId]);
 
   const category = WINE_CATEGORY_OPTIONS.find((c) => c.id === categoryId);
