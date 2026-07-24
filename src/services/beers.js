@@ -13,8 +13,8 @@ async function parse(res) {
   return data;
 }
 
-export const getBeers = async (category) => {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+export const getBeers = async (producer) => {
+  const query = producer ? `?producer=${encodeURIComponent(producer)}` : "";
   const res = await fetch(`${API_URL}/api/beers${query}`);
   return parse(res);
 };

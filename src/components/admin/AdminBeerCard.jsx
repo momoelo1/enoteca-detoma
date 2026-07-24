@@ -8,6 +8,7 @@ const toForm = (beer) => ({
   stile: beer?.stile || "",
   colore: beer?.colore || "",
   gradazione: beer?.gradazione || "",
+  formato: beer?.formato || "",
   prezzo: beer?.prezzo ?? "",
   img: beer?.img || "",
 });
@@ -17,11 +18,12 @@ const EMPTY_FORM = {
   stile: "",
   colore: "",
   gradazione: "",
+  formato: "",
   prezzo: "",
   img: "",
 };
 
-function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
+function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const isNew = !beer;
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => toForm(beer));
@@ -74,6 +76,7 @@ function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
         stile: form.stile,
         colore: form.colore,
         gradazione: form.gradazione,
+        formato: form.formato,
         img: form.img,
       }).filter(([, v]) => v !== ""),
     );
@@ -81,7 +84,7 @@ function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
 
     try {
       if (isNew) {
-        const created = await createBeer({ ...payload, category: categoryId });
+        const created = await createBeer({ ...payload, producer: producerId });
         onCreated(created);
         setForm(EMPTY_FORM);
         setEditing(false);
@@ -135,9 +138,16 @@ function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
           <label>Gradazione</label>
           <input
             type="text"
-            placeholder="5,80%"
             value={form.gradazione}
             onChange={handleChange("gradazione")}
+          />
+        </div>
+        <div className="wine-admin-field">
+          <label>Formato</label>
+          <input
+            type="text"
+            value={form.formato}
+            onChange={handleChange("formato")}
           />
         </div>
         <div className="wine-admin-field">
@@ -145,7 +155,6 @@ function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
           <input
             type="number"
             step="0.01"
-            placeholder="Prezzo €"
             value={form.prezzo}
             onChange={handleChange("prezzo")}
           />
@@ -188,7 +197,9 @@ function AdminBeerCard({ beer, categoryId, onCreated, onUpdated, onDeleted }) {
     );
   }
 
-  const meta = [beer.stile, beer.colore, beer.gradazione].filter(Boolean).join(" · ");
+  const meta = [beer.stile, beer.colore, beer.gradazione, beer.formato]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <li className="admin-wine-cell">

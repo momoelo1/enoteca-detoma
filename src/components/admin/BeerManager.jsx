@@ -14,7 +14,7 @@ const BEER_CATEGORY_OPTIONS = BEER_CATEGORIES.map((c) => ({
 }));
 
 function BeerManager() {
-  const [categoryId, setCategoryId] = useState(BEER_CATEGORY_OPTIONS[0].id);
+  const [producerId, setProducerId] = useState(BEER_CATEGORY_OPTIONS[0].id);
   const [beers, setBeers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,21 +22,21 @@ function BeerManager() {
   // reset "durante il render" quando cambia categoria (stesso pattern di
   // WineManager, evita un giro di effect in più)
   const [loadedFor, setLoadedFor] = useState(null);
-  if (categoryId !== loadedFor) {
-    setLoadedFor(categoryId);
+  if (producerId !== loadedFor) {
+    setLoadedFor(producerId);
     setBeers([]);
     setLoading(true);
     setError("");
   }
 
   useEffect(() => {
-    getBeers(categoryId)
+    getBeers(producerId)
       .then(setBeers)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [categoryId]);
+  }, [producerId]);
 
-  const category = BEER_CATEGORY_OPTIONS.find((c) => c.id === categoryId);
+  const category = BEER_CATEGORY_OPTIONS.find((c) => c.id === producerId);
 
   const handleCreated = (beer) => setBeers((bs) => [beer, ...bs]);
   const handleUpdated = (beer) =>
@@ -47,8 +47,8 @@ function BeerManager() {
     <div className="admin-layout">
       <CategoryPicker
         categories={BEER_CATEGORY_OPTIONS}
-        activeId={categoryId}
-        onSelect={setCategoryId}
+        activeId={producerId}
+        onSelect={setProducerId}
       />
 
       <div className="admin-content">
@@ -67,7 +67,7 @@ function BeerManager() {
           <p className="admin-loading">Caricamento…</p>
         ) : (
           <ul className="admin-wine-grid">
-            <AdminBeerCard categoryId={categoryId} onCreated={handleCreated} />
+            <AdminBeerCard producerId={producerId} onCreated={handleCreated} />
             {beers.map((b) => (
               <AdminBeerCard
                 key={b.id}
