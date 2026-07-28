@@ -105,7 +105,8 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }
   const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
-  const regione = w.regione !== regionFilter ? w.regione : null;
+  // (trim: nel database alcune regioni hanno uno spazio finale spurio)
+  const regione = w.regione?.trim() !== regionFilter ? w.regione : null;
   const sub = regione || w.stile || w.colore || w.tipo;
   const formatoLabel = w.formato != null ? `${w.formato}cl` : null;
 
@@ -393,11 +394,14 @@ function Enoteca() {
     ? remoteByCategory[activeCategory.id] ?? []
     : activeCategory?.items ?? [];
 
+  // lo spazio finale (es. "Piemonte ") che a volte sporca il dato nel
+  // database creerebbe un secondo filtro identico a vista ma diverso in
+  // realtà: tolto qui, alla fonte, prima di costruire il Set
   const filterValues = activeCategory?.filterBy
     ? [
         ...new Set(
           sourceItems
-            .map((i) => i[activeCategory.filterBy])
+            .map((i) => i[activeCategory.filterBy]?.trim())
             .filter(Boolean)
         ),
       ].sort((a, b) => a.localeCompare(b, "it"))
@@ -413,7 +417,9 @@ function Enoteca() {
   const query = normalize(searchText.trim());
   const visibleItems = sourceItems
     .filter((i) =>
-      regionFilter ? i[activeCategory.filterBy] === regionFilter : true
+      regionFilter
+        ? i[activeCategory.filterBy]?.trim() === regionFilter
+        : true
     )
     .filter((i) => {
       if (!query) return true;
