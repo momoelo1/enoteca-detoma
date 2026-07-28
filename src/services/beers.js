@@ -47,3 +47,13 @@ export const deleteBeer = async (id) => {
   });
   return parse(res);
 };
+
+// rimuove solo la foto (Cloudinary + riferimento), non la birra
+export const deleteBeerImage = async (id) => {
+  const res = await fetch(`${API_URL}/api/beers/${id}/image`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: authHeaders(),
+  });
+  return parse(res);
+};

@@ -49,3 +49,13 @@ export const deleteWine = async (id) => {
   });
   return parse(res);
 };
+
+// rimuove solo la foto (Cloudinary + riferimento), non il vino
+export const deleteWineImage = async (id) => {
+  const res = await fetch(`${API_URL}/api/wines/${id}/image`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: authHeaders(),
+  });
+  return parse(res);
+};

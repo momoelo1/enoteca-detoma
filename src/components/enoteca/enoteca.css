@@ -20,8 +20,6 @@
   text-align: center;
 }
 
-/* riga del titolo nella lista prodotti: titolo + bottoni filtri.
-   Desktop: titolo centrato, bottoni (Cerca | Regioni) appoggiati a destra */
 .section-head {
   position: relative;
   display: flex;
@@ -30,7 +28,6 @@
   width: 100%;
 }
 
-/* gruppo dei due bottoni gemelli a destra del titolo */
 .section-actions {
   position: absolute;
   right: 0;
@@ -41,9 +38,7 @@
   gap: 8px;
 }
 
-/* bottoni "Cerca" / "Regioni": aprono/chiudono la barra; verdi solo
-   mentre la loro barra è aperta, altrimenti vetro (mostrano il valore
-   attivo — regione scelta o testo cercato) */
+
 .filter-toggle {
   display: flex;
   align-items: center;
@@ -66,9 +61,7 @@
   color: #fff;
 }
 
-/* :hover solo su dispositivi che lo supportano davvero: sul telefono
-   il tocco lo "incolla" attivo anche a barra chiusa (niente mouse
-   che si allontana a cancellarlo) */
+
 @media (hover: hover) {
   .filter-toggle:hover {
     background: #2e5e46;
@@ -91,9 +84,6 @@
   max-width: 8rem;
 }
 
-/* ---- campo di ricerca in-place (compare sotto il titolo) ----
-   pillola di vetro nel flusso normale: niente barra fissa, niente
-   scontro con la tastiera; entra con un piccolo effetto di comparsa */
 .search-field {
   display: flex;
   align-items: center;
@@ -704,6 +694,9 @@ body.home-no-scroll .product-list {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* la riga che sta a cavallo del bordo visibile va tagliata a metà:
+     lo scroll si ferma sempre sull'inizio di una riga, mai in mezzo */
+  scroll-snap-type: y mandatory;
 }
 
 /* ---- lista prodotti della categoria ---- */
@@ -761,6 +754,7 @@ body.home-no-scroll .product-list {
 .product-card {
   min-width: 0; /* la card può stringersi: niente scroll laterale */
   box-sizing: border-box;
+  scroll-snap-align: start;
 }
 
 .product-card-btn {
@@ -829,12 +823,31 @@ body.home-no-scroll .product-list {
   transform: scale(1.5); /* zoom leggero: la bottiglia riempie meglio il riquadro */
 }
 
+/* vini: zoom più marcato delle altre tipologie */
+.product-thumb-img--vini {
+  transform: scale(0.95);
+}
+
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
 .product-thumb-svg {
   height: 76px;
   width: auto;
   fill: var(--accent, #2e5e46);
   opacity: 0.45;
+}
+
+/* schermi grandi: la foto della bottiglia (vini) prende più spazio, sia in
+   altezza che in larghezza, di quella condivisa con gli altri tipi — DEVE
+   stare dopo le regole base .product-thumb/.product-thumb-img qui sopra,
+   altrimenti quelle vincono la cascata anche dentro la media query */
+@media (min-width: 900px) {
+  .product-thumb--vini {
+    height: 120px;
+  }
+
+  .product-thumb-img--vini {
+    max-width: 100px;
+  }
 }
 
 /* telefono: colonne più strette fanno andare i nomi a capo più spesso,
@@ -847,6 +860,7 @@ body.home-no-scroll .product-list {
   .product-thumb-img {
     max-width: 88px;
   }
+
 
   .product-thumb-svg {
     height: 92px;
@@ -882,8 +896,18 @@ body.home-no-scroll .product-list {
   font-weight: 700;
 }
 
-.product-name {
+/* spazio fisso di due righe per il nome: se il testo ci sta, resta
+   fermo; se ne servono di più deriva in verticale (vedi
+   .product-name--scroll) invece di troncarsi con "…" */
+.product-name-wrap {
   flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
+  width: 100%;
+  height: 42px; /* due righe a 17px/1.25 di line-height */
+  overflow: hidden;
+}
+
+.product-name {
+  display: block;
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 17px;
   font-weight: 700;
@@ -891,11 +915,32 @@ body.home-no-scroll .product-list {
   color: #2e3d34;
   overflow-wrap: break-word;
   word-break: break-word;
-  /* max 3 righe: il nome è l'identità del vino, meglio non mozzarlo troppo */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+
+/* nome troppo lungo anche su due righe: deriva su e giù senza mai
+   fermarsi del tutto — niente pausa netta agli estremi, solo un
+   ondeggiare continuo che rallenta ai bordi per via dell'ease-in-out.
+   Lentissimo (24s) e sfalsato card per card (--marquee-delay, dall'indice
+   via JS): su una griglia intera il movimento è quasi impercettibile */
+.product-name--scroll {
+  animation: product-name-marquee 24s ease-in-out infinite;
+  animation-delay: var(--marquee-delay, 0s);
+}
+
+@keyframes product-name-marquee {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(var(--marquee-shift-y, 0));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-name--scroll {
+    animation: none;
+  }
 }
 
 /* larghezza stabile su cui misurare lo spazio disponibile — lo scale sotto
@@ -1026,6 +1071,7 @@ body.home-no-scroll .product-list {
 }
 
 .sheet-thumb {
+  position: relative;
   align-self: stretch; /* così max-width:70% sull'img resta relativo alla larghezza del pannello, come prima */
   display: flex;
   align-items: center;
@@ -1034,7 +1080,24 @@ body.home-no-scroll .product-list {
   overflow: hidden; /* ritaglia lo zoom della foto sotto, invece di farla debordare */
 }
 
+/* alone morbido del colore di categoria dietro la bottiglia: lega
+   l'accento (oggi visibile solo nei bordi) anche all'immagine */
+.sheet-thumb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--accent, #2e5e46) 20%, transparent) 0%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
 .sheet-img {
+  position: relative;
+  z-index: 1;
   height: 100%;
   width: auto;
   max-width: 70%;
@@ -1044,6 +1107,8 @@ body.home-no-scroll .product-list {
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
 .sheet-svg {
+  position: relative;
+  z-index: 1;
   height: 130px;
   width: auto;
   fill: var(--accent, #2e5e46);
@@ -1058,18 +1123,81 @@ body.home-no-scroll .product-list {
   color: #2e3d34;
 }
 
-.sheet-meta {
+/* ---- chip dei dettagli (denominazione, uvaggio, stile, regione…) ----
+   una pillola per voce invece di un'unica riga grigia separata da
+   puntini: si legge a colpo d'occhio, e ogni chip prende il colore
+   della categoria (--accent, impostato più in alto sul pannello) */
+.sheet-meta-chips {
+  list-style: none;
   margin: 0;
-  font-size: 13.5px;
-  color: #6a756f;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sheet-meta-chip {
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent, #2e5e46);
+  background: color-mix(in srgb, var(--accent, #2e5e46) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #2e5e46) 28%, transparent);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---- descrizione: blocco a sé, separato dall'intestazione da
+   un'etichetta piccola e un trattino d'accento, non più una riga di
+   testo grigio che si confonde con il resto ---- */
+.sheet-desc-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  margin-top: 6px;
+}
+
+.sheet-desc-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #2e5e46);
+}
+
+.sheet-divider {
+  width: 30px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent, #2e5e46);
+  opacity: 0.5;
 }
 
 .sheet-desc {
-  margin: 0;
+  align-self: stretch;
+  max-width: 46ch;
+  margin: 0 auto;
   font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 16.5px;
+  line-height: 1.2;
   color: #52605a;
+  text-align: left;
+  /* rispetta gli "a capo" scritti in admin (paragrafi separati),
+     invece di schiacciare tutto su un'unica riga centrata */
+  white-space: pre-line;
+}
+
+/* prima riga leggermente più caratterizzata: un accenno "da etichetta",
+   non un semplice paragrafo app-generico */
+.sheet-desc::first-line {
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+  color: #2e3d34;
 }
 
 .sheet-annate {
@@ -1090,7 +1218,10 @@ body.home-no-scroll .product-list {
 
 /* "Chiedi disponibilità": apre WhatsApp con messaggio precompilato */
 .sheet-cta {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
   width: 100%;
   box-sizing: border-box;
   margin-top: 6px;
@@ -1104,6 +1235,13 @@ body.home-no-scroll .product-list {
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(46, 94, 70, 0.35);
   transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.sheet-cta-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .sheet-cta:hover {
@@ -1122,14 +1260,18 @@ body.home-no-scroll .product-list {
     overflow-y: hidden; /* niente scroll interno: tutto sta nella card */
   }
 
-  /* la foto è l'elemento elastico: se lo spazio non basta si restringe
-     lei, così testi, annate e pulsante restano sempre interi */
-  .sheet-thumb {
-    flex: 0 1 auto;
-    min-height: 80px;
+  /* eccezione: con tante annate il pannello trabocca comunque — lì
+     lo scroll interno serve davvero, meglio di tagliare la lista */
+  .product-sheet.product-sheet--scrollable {
+    overflow-y: auto;
   }
 
-
+  /* altezza fissa anche qui: niente più "si restringe lei" — era
+     questo a tagliare la bottiglia in alto quando lo spazio scarseggiava */
+  .sheet-thumb {
+    flex: none;
+    height: 130px;
+  }
 }
 
 /* su desktop il pannello diventa una finestra centrata */
@@ -1194,10 +1336,35 @@ body.home-no-scroll .product-list {
 .product-annate-year {
   font-weight: 600;
   color: #2e3d34;
+  font-variant-numeric: tabular-nums;
 }
 
 .product-annate-price {
   font-weight: 700;
   color: #2e5e46;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* annata "corrente" (la prima, quella mostrata di default sulla card):
+   spicca sulle altre — prezzo più grande e nel colore di categoria,
+   badge "Disponibile" accanto all'anno */
+.product-annate-row--current {
+  padding-bottom: 9px;
+}
+
+.product-annate-row--current .product-annate-year {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.product-annate-row--current .product-annate-price {
+  font-size: 19px;
+  color: var(--accent, #2e5e46);
+}
+
+/* annate successive alla prima: leggermente attenuate, così l'occhio
+   va prima al prezzo "vivo" */
+.product-annate-row:not(.product-annate-row--current) {
+  opacity: 0.72;
 }

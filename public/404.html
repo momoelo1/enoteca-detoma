@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>enoteca-detoma</title>
+    <script type="text/javascript">
+      // GitHub Pages non fa rewrite lato server: su un refresh o un link
+      // diretto a /enoteca-detoma/enoteca serve invece questa pagina 404.
+      // Trucco standard (https://github.com/rafgraph/spa-github-pages):
+      // si codifica il percorso reale in query string e si torna a
+      // index.html, che lo decodifica prima di montare React Router.
+      var pathSegmentsToKeep = 1; // "/enoteca-detoma"
+
+      var l = window.location;
+      l.replace(
+        l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+        l.pathname.split("/").slice(0, 1 + pathSegmentsToKeep).join("/") + "/?/" +
+        l.pathname.slice(1).split("/").slice(pathSegmentsToKeep).join("/").replace(/&/g, "~and~") +
+        (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+        l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

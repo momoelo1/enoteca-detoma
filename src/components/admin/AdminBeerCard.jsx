@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createBeer, updateBeer, deleteBeer } from "../../services/beers";
+import { createBeer, updateBeer, deleteBeer, deleteBeerImage } from "../../services/beers";
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
@@ -108,6 +108,26 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     }
   };
 
+  // rimuove la foto: se è già caricata su Cloudinary (birra salvata) la
+  // cancella davvero anche lato storage, non solo il riferimento; se è
+  // solo un'anteprima locale non ancora salvata basta svuotare il form
+  const handleDeleteImage = async () => {
+    const isUnsavedPreview = form.img.startsWith("data:");
+    if (isNew || isUnsavedPreview || !beer?.img) {
+      setForm((f) => ({ ...f, img: "" }));
+      return;
+    }
+    if (!window.confirm("Eliminare l'immagine in modo permanente?")) return;
+    setError("");
+    try {
+      const updated = await deleteBeerImage(beer.id);
+      onUpdated(updated);
+      setForm((f) => ({ ...f, img: "" }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const editModal = editing && (
     <div className="admin-modal-backdrop" onClick={cancelEdit}>
       <form
@@ -158,7 +178,20 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
         <div className="admin-field">
           <label>Immagine</label>
           <input type="file" accept="image/*" onChange={handleImageFile} />
-          {form.img && <img src={form.img} alt="" className="admin-image-preview" />}
+          {form.img && (
+            <div className="admin-image-preview-wrap">
+              <img src={form.img} alt="" className="admin-image-preview" />
+              <button
+                type="button"
+                className="admin-image-remove"
+                onClick={handleDeleteImage}
+                aria-label="Rimuovi immagine"
+                title="Rimuovi immagine"
+              >
+                🗑
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <p className="admin-error">{error}</p>}

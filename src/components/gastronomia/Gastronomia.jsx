@@ -51,6 +51,7 @@ function Gastronomia() {
               w={p}
               accent={activeCategory.accent}
               onOpen={setSheetItem}
+              type="alimentari"
             />
           ))}
         </ul>
@@ -61,6 +62,7 @@ function Gastronomia() {
           w={sheetItem}
           category={activeCategory}
           onClose={() => setSheetItem(null)}
+          type="alimentari"
         />
       )}
     </section>

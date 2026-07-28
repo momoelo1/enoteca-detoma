@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { BEER_CATEGORIES } from "../../data/data";
 import { getBeers } from "../../services/beers";
+import { normalize } from "../../utils/normalize";
 import CategoryPicker from "./CategoryPicker";
+import AdminFilterBar from "./AdminFilterBar";
 import AdminBeerCard from "./AdminBeerCard";
 import "./admin.css";
 
@@ -18,6 +20,7 @@ function BeerManager() {
   const [beers, setBeers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchText, setSearchText] = useState("");
 
   // reset "durante il render" quando cambia categoria (stesso pattern di
   // WineManager, evita un giro di effect in più)
@@ -27,6 +30,7 @@ function BeerManager() {
     setBeers([]);
     setLoading(true);
     setError("");
+    setSearchText("");
   }
 
   // guardia contro risposte in ordine sbagliato: se si cambia produttore
@@ -57,6 +61,13 @@ function BeerManager() {
     setBeers((bs) => bs.map((b) => (b.id === beer.id ? beer : b)));
   const handleDeleted = (id) => setBeers((bs) => bs.filter((b) => b.id !== id));
 
+  const query = normalize(searchText.trim());
+  const visibleBeers = beers.filter((b) => {
+    if (!query) return true;
+    const hay = normalize([b.name, b.stile].filter(Boolean).join(" "));
+    return hay.includes(query);
+  });
+
   return (
     <div className="admin-layout">
       <CategoryPicker
@@ -70,8 +81,17 @@ function BeerManager() {
           <h2 className="admin-content-title">{category?.label}</h2>
           {!loading && (
             <span className="admin-content-count">
-              {beers.length} {beers.length === 1 ? "birra" : "birre"}
+              {visibleBeers.length} {visibleBeers.length === 1 ? "birra" : "birre"}
             </span>
+          )}
+          {!loading && beers.length > 0 && (
+            <AdminFilterBar
+              query={searchText}
+              onQueryChange={setSearchText}
+              searchPlaceholder="Cerca per nome o stile…"
+              canSearch={beers.length >= 6}
+              filterValues={null}
+            />
           )}
         </div>
 
@@ -80,17 +100,22 @@ function BeerManager() {
         {loading ? (
           <p className="admin-loading">Caricamento…</p>
         ) : (
-          <ul className="admin-product-grid">
-            <AdminBeerCard producerId={producerId} onCreated={handleCreated} />
-            {beers.map((b) => (
-              <AdminBeerCard
-                key={b.id}
-                beer={b}
-                onUpdated={handleUpdated}
-                onDeleted={handleDeleted}
-              />
-            ))}
-          </ul>
+          <>
+            <ul className="admin-product-grid">
+              <AdminBeerCard producerId={producerId} onCreated={handleCreated} />
+              {visibleBeers.map((b) => (
+                <AdminBeerCard
+                  key={b.id}
+                  beer={b}
+                  onUpdated={handleUpdated}
+                  onDeleted={handleDeleted}
+                />
+              ))}
+            </ul>
+            {visibleBeers.length === 0 && beers.length > 0 && (
+              <p className="admin-loading">Nessun risultato. Prova a cambiare ricerca.</p>
+            )}
+          </>
         )}
       </div>
     </div>

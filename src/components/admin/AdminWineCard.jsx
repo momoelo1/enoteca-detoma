@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
-import { createWine, updateWine, deleteWine } from "../../services/wines";
+import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
 
-// stessi paesi esteri già riconosciuti dalla barra filtri pubblica
-// (COUNTRY_GROUPS li smista sotto "Mondo"): riusarli qui evita di
-// scrivere un paese che poi il sito non sa raggruppare correttamente.
+
 const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
 
-// annate = righe ripetibili anno+prezzo (un vino può avere più annate,
-// ognuna con il proprio prezzo). Se il vino non ha ancora un array
-// `annate` ma ha i vecchi campi singoli anno/prezzo, si parte da lì.
+
 const toAnnate = (wine) => {
   if (wine?.annate?.length) {
     return wine.annate.map((a) => ({ anno: a.anno || "", prezzo: a.prezzo ?? "" }));
@@ -58,8 +54,6 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const [countrySelection, setCountrySelection] = useState(() => deriveCountrySelection(wine));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  // riga annata in uscita: si anima prima di sparire davvero dall'array,
-  // invece di scomparire di scatto
   const [removingIndex, setRemovingIndex] = useState(null);
 
   const handleChange = (field) => (e) =>
@@ -180,6 +174,26 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     }
   };
 
+  // rimuove la foto: se è già caricata su Cloudinary (vino salvato) la
+  // cancella davvero anche lato storage, non solo il riferimento; se è
+  // solo un'anteprima locale non ancora salvata basta svuotare il form
+  const handleDeleteImage = async () => {
+    const isUnsavedPreview = form.img.startsWith("data:");
+    if (isNew || isUnsavedPreview || !wine?.img) {
+      setForm((f) => ({ ...f, img: "" }));
+      return;
+    }
+    if (!window.confirm("Eliminare l'immagine in modo permanente?")) return;
+    setError("");
+    try {
+      const updated = await deleteWineImage(wine.id);
+      onUpdated(updated);
+      setForm((f) => ({ ...f, img: "" }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const editModal = editing && (
     <div className="admin-modal-backdrop" onClick={cancelEdit}>
       <form
@@ -267,7 +281,20 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         <div className="admin-field">
           <label>Immagine</label>
           <input type="file" accept="image/*" onChange={handleImageFile} />
-          {form.img && <img src={form.img} alt="" className="admin-image-preview" />}
+          {form.img && (
+            <div className="admin-image-preview-wrap">
+              <img src={form.img} alt="" className="admin-image-preview" />
+              <button
+                type="button"
+                className="admin-image-remove"
+                onClick={handleDeleteImage}
+                aria-label="Rimuovi immagine"
+                title="Rimuovi immagine"
+              >
+                🗑
+              </button>
+            </div>
+          )}
         </div>
         <div className="admin-field">
           <label>Descrizione</label>

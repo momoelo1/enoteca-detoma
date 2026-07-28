@@ -43,6 +43,8 @@
 }
 
 .nav-btn {
+  display: inline-flex;
+  align-items: center;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -53,6 +55,7 @@
   padding: 8px 18px;
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 
@@ -96,6 +99,61 @@
     gap: 4px;
     border-radius: 22px;
     padding: 8px 10px;
+  }
+
+  /* dentro una categoria (vini/rossi ecc.) la tab bar non serve più:
+     chi sta guardando i vini non sta per saltare ad Alimentari — scivola
+     via sotto al bordo invece di sparire di scatto, la lista prodotti
+     riprende lo spazio riservato qui sotto.
+     Animazione esplicita (non solo transition-on-class-toggle): il cambio
+     di rotta che apre/chiude la categoria porta con sé un grosso swap del
+     DOM nello stesso istante, e in quel caso una transition può restare
+     "ingoiata" dal reflow — una @keyframes riparte sempre, garantita. */
+  .site-nav {
+    animation: site-nav-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  body.category-open .site-nav {
+    animation: site-nav-out 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+    pointer-events: none;
+  }
+
+  @keyframes site-nav-in {
+    from {
+      transform: translateY(140%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes site-nav-out {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(140%);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-nav,
+    body.category-open .site-nav {
+      animation: none;
+    }
+
+    body.category-open .site-nav {
+      transform: translateY(140%);
+      opacity: 0;
+    }
+  }
+
+  body.category-open {
+    padding-bottom: 0;
   }
 
   .nav-btn {

@@ -223,6 +223,58 @@
   color: #8a978f;
 }
 
+/* ---- ricerca / filtro regione: bottoni identici a quelli della pagina
+   Enoteca pubblica (classi .filter-toggle/.search-field/.filter-bar/
+   .filter-btn, da enoteca.css), riposizionati per il layout admin ---- */
+.admin-content-header {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.admin-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.admin-content-header .search-field {
+  order: 3;
+  width: 100%;
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+
+/* su telefono .filter-bar pubblica diventa un foglio agganciato in
+   fondo allo schermo (pensato per stare sopra la tab bar del sito): nel
+   pannello admin resta invece una riga di pillole nel flusso normale */
+.admin-content-header .filter-bar.admin-filter-bar {
+  order: 4;
+  width: 100%;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .filter-bar.admin-filter-bar {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
+    padding: 4px 0 8px;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    animation: none;
+  }
+
+  .filter-bar.admin-filter-bar .filter-btn {
+    flex: none;
+  }
+}
+
 .admin-loading {
   margin: 40px 0;
   text-align: center;
@@ -470,14 +522,42 @@
 }
 
 /* ---- immagine: file input + anteprima ---- */
-.admin-image-preview {
+.admin-image-preview-wrap {
+  position: relative;
+  display: inline-block;
   margin-top: 8px;
+}
+
+.admin-image-preview {
   height: 90px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid rgba(46, 94, 70, 0.2);
+}
+
+.admin-image-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #b3261e;
+  background: #fff;
+  border: 1px solid rgba(179, 38, 30, 0.35);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.admin-image-remove:hover {
+  background: rgba(179, 38, 30, 0.08);
 }
 
 /* ==========================================================================

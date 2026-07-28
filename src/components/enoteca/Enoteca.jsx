@@ -1,8 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
 import { getWines } from "../../services/wines";
 import { getBeers } from "../../services/beers";
 import "./enoteca.css";
+
+// id nell'URL: le schede remote (vini/birre) hanno un id Mongo vero,
+// quelle statiche (non ancora popolate) no — fallback sul nome
+const productSlug = (item) => item.id ?? encodeURIComponent(item.name);
 
 // prezzo in formato italiano: "€ 32,00" (virgola, non punto)
 const formatPrezzo = (n) =>
@@ -93,7 +98,10 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
 // Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo,
 // badge di specifiche (gradazione/formato quando presenti), prezzo.
 // Tutto il resto vive nel bottom sheet: si apre toccando la card.
-export function ProductCard({ w, accent, regionFilter, onOpen }) {
+// `type` (es. "vini"/"birre"/"distillati"/"alimentari", da SHOP_GROUPS.id):
+// aggiunge una classe modificatore per-tipo su card e immagine, così si può
+// dare uno stile diverso a un tipo di prodotto senza toccare quelle condivise
+export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }) {
   const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
@@ -118,22 +126,57 @@ export function ProductCard({ w, accent, regionFilter, onOpen }) {
     }
   }, [sub]);
 
+  // nome su uno spazio fisso di due righe, mai tagliato: se ne servono
+  // di più deriva in verticale invece di troncarsi — lentissimo (24s) e
+  // sfalsato card per card (animation-delay diverso per ognuna), così su
+  // una griglia intera non si vede un "coro" sincronizzato
+  const nameRef = useRef(null);
+  const [nameScroll, setNameScroll] = useState(false);
+  useLayoutEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    const overflow = el.scrollHeight - el.parentElement.clientHeight;
+    if (overflow > 0) {
+      el.style.setProperty("--marquee-shift-y", `-${overflow + 4}px`);
+      el.style.setProperty("--marquee-delay", `-${(index % 7) * 3.2}s`);
+      setNameScroll(true);
+    } else {
+      setNameScroll(false);
+    }
+  }, [w.name, index]);
+
+  const typeSuffix = type ? ` product-card--${type}` : "";
+
   return (
-    <li className="product-card">
+    <li className={"product-card" + typeSuffix}>
       <button
         type="button"
-        className="product-card-btn"
+        className={"product-card-btn" + (type ? ` product-card-btn--${type}` : "")}
         style={{ "--accent": accent }}
         onClick={() => onOpen(w)}
       >
-        <div className="product-thumb">
+        <div className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}>
           {w.img ? (
-            <img src={w.img} alt="" className="product-thumb-img" loading="lazy" />
+            <img
+              src={w.img}
+              alt=""
+              className={"product-thumb-img" + (type ? ` product-thumb-img--${type}` : "")}
+              loading="lazy"
+            />
           ) : (
-            <BottleIcon className="product-thumb-svg" />
+            <BottleIcon
+              className={"product-thumb-svg" + (type ? ` product-thumb-svg--${type}` : "")}
+            />
           )}
         </div>
-        <span className="product-name">{w.name}</span>
+        <span className="product-name-wrap">
+          <span
+            className={"product-name" + (nameScroll ? " product-name--scroll" : "")}
+            ref={nameRef}
+          >
+            {w.name}
+          </span>
+        </span>
         {sub && (
           <span
             className={"product-meta-wrap" + (metaScroll ? " product-meta-wrap--scroll" : "")}
@@ -163,14 +206,16 @@ export function ProductCard({ w, accent, regionFilter, onOpen }) {
 // Bottom sheet: pannello che sale dal basso (pattern familiare tipo social /
 // delivery) con foto grande, descrizione completa e tabella annate/prezzi.
 // Si chiude con ✕, tocco sullo sfondo o Esc.
-export function ProductSheet({ w, category, onClose }) {
+export function ProductSheet({ w, category, onClose, type }) {
   const desc = w.description || w.descrizione;
   const annate = w.annate;
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
   const coloreRidondante =
     w.colore &&
     category?.label?.toLowerCase().includes(w.colore.slice(0, 4).toLowerCase());
-  const meta = [
+  // ogni voce diventa una chip a sé (si legge a colpo d'occhio, invece
+  // di un'unica riga grigia separata da puntini)
+  const metaItems = [
     w.denominazione,
     w.uvaggio,
     w.stile,
@@ -179,9 +224,11 @@ export function ProductSheet({ w, category, onClose }) {
     w.gradazione,
     w.regione,
     w.provenienza,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
+  // scroll interno solo quando le annate sono tante (unica cosa che fa
+  // davvero traboccare il pannello): altrimenti niente scroll, ci pensa
+  // il line-height più stretto della descrizione a far stare tutto
+  const hasManyAnnate = annate?.length > 1;
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     `Buongiorno, vorrei informazioni su: ${w.name}`
   )}`;
@@ -197,7 +244,11 @@ export function ProductSheet({ w, category, onClose }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
-        className="product-sheet"
+        className={
+          "product-sheet" +
+          (type ? ` product-sheet--${type}` : "") +
+          (hasManyAnnate ? " product-sheet--scrollable" : "")
+        }
         style={{ "--accent": category?.accent }}
         role="dialog"
         aria-modal="true"
@@ -214,22 +265,46 @@ export function ProductSheet({ w, category, onClose }) {
         >
           ✕
         </button>
-        <div className="sheet-thumb">
+        <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
           {w.img ? (
-            <img src={w.img} alt="" className="sheet-img" />
+            <img
+              src={w.img}
+              alt=""
+              className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
+            />
           ) : (
-            <BottleIcon className="sheet-svg" />
+            <BottleIcon className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")} />
           )}
         </div>
         <h3 className="sheet-name">{w.name}</h3>
-        {meta && <p className="sheet-meta">{meta}</p>}
-        {desc && <p className="sheet-desc">{desc}</p>}
+        {metaItems.length > 0 && (
+          <ul className="sheet-meta-chips">
+            {metaItems.map((m, i) => (
+              <li key={i} className="sheet-meta-chip">
+                {m}
+              </li>
+            ))}
+          </ul>
+        )}
+        {desc && (
+          <div className="sheet-desc-block">
+            <span className="sheet-desc-label">Note di degustazione</span>
+            <span className="sheet-divider" aria-hidden="true" />
+            <p className="sheet-desc">{desc}</p>
+          </div>
+        )}
         {annate?.length > 0 && (
           <div className="sheet-annate">
             <span className="sheet-label">Annate e prezzi</span>
             <ul className="product-annate-list">
-              {annate.map((a) => (
-                <li key={a.anno} className="product-annate-row">
+              {annate.map((a, i) => (
+                <li
+                  key={a.anno}
+                  className={
+                    "product-annate-row" +
+                    (i === 0 ? " product-annate-row--current" : "")
+                  }
+                >
                   <span className="product-annate-year">{a.anno}</span>
                   <span className="product-annate-price">
                     {formatPrezzo(a.prezzo)}
@@ -246,7 +321,10 @@ export function ProductSheet({ w, category, onClose }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            💬 Chiedi disponibilità
+            <svg className="sheet-cta-icon" viewBox="0 0 448 512" aria-hidden="true">
+              <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" />
+            </svg>
+            Chiedi disponibilità
           </a>
         )}
       </div>
@@ -255,8 +333,11 @@ export function ProductSheet({ w, category, onClose }) {
 }
 
 function Enoteca() {
-  const [group, setGroup] = useState(null);
-  const [category, setCategory] = useState(null);
+  const navigate = useNavigate();
+  // gruppo/categoria/prodotto vivono nell'URL, non in uno state locale:
+  // un refresh (o un link diretto) rilegge semplicemente gli stessi
+  // parametri e riapre esattamente nello stesso punto, scheda inclusa
+  const { groupId, categoryId, productId } = useParams();
   const [regionFilter, setRegionFilter] = useState(null); // regione/paese selezionato
   const [barView, setBarView] = useState("regioni"); // vista barra: regioni | mondo
   const [barMode, setBarMode] = useState(null); // barra regioni aperta: null | "regioni"
@@ -264,7 +345,6 @@ function Enoteca() {
   const [searchText, setSearchText] = useState(""); // testo del filtro di ricerca
   const [hiding, setHiding] = useState(false); // spegnimento: rientra, poi si smonta
   const [closing, setClosing] = useState(false); // animazione di rientro barra (uscita pagina)
-  const [sheetWine, setSheetWine] = useState(null); // prodotto aperto nel bottom sheet
   const [tabGroup, setTabGroup] = useState(SHOP_GROUPS[0].id); // tab attiva (Vini/Birre/Distillati)
   const searchRef = useRef(null); // input di ricerca, per il focus all'apertura
   const listRef = useRef(null); // lista prodotti, per riportarla in cima sui filtri
@@ -287,24 +367,26 @@ function Enoteca() {
       .finally(() => setRemoteLoading(false));
   }, []);
 
-  const activeGroup = SHOP_GROUPS.find((g) => g.id === group);
+  const activeGroup = SHOP_GROUPS.find((g) => g.id === groupId);
   const activeCategory = activeGroup?.categories.find(
-    (c) => c.id === category
+    (c) => c.id === categoryId
   );
 
-  const openCategory = (id) => {
-    setCategory(id);
+  // ogni volta che cambia la categoria (anche al primo caricamento di un
+  // link diretto) i filtri ripartono puliti: reset "durante il render"
+  // (pattern consigliato da React per azzerare stato al cambio di prop,
+  // stesso usato in WineManager/BeerManager) invece di un giro di effect
+  const [resetFor, setResetFor] = useState(categoryId);
+  if (categoryId !== resetFor) {
+    setResetFor(categoryId);
     setRegionFilter(null);
     setBarView("regioni");
     setBarMode(null);
     setSearchOpen(false);
     setSearchText("");
     setHiding(false);
-    setSheetWine(null);
-  };
+  }
 
-
-  
   // fonte dei prodotti: dall'API se la categoria è "remote", altrimenti
   // il vecchio array statico — il resto della pagina non nota differenza
   const sourceItems = activeCategory?.remote
@@ -343,10 +425,21 @@ function Enoteca() {
       return hay.includes(query);
     });
 
+  // prodotto aperto nel bottom sheet: derivato dall'URL, cercato tra
+  // TUTTI gli articoli della categoria (non solo quelli filtrati) così un
+  // link diretto funziona anche se un filtro lo escluderebbe
+  const sheetWine = productId
+    ? sourceItems.find((i) => productSlug(i) === productId) ?? null
+    : null;
+
+  const categoryPath = groupId && categoryId ? `/enoteca/${groupId}/${categoryId}` : "/enoteca";
+  const openProduct = (w) => navigate(`${categoryPath}/${productSlug(w)}`);
+  const closeProduct = () => navigate(categoryPath);
+
   // ogni cambio di livello riparte dall'inizio della pagina
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [group, category]);
+  }, [groupId, categoryId]);
 
   const hasRegionBar = Boolean(activeCategory) && filterValues.length >= 2;
   const canSearch = Boolean(activeCategory) && sourceItems.length >= 10;
@@ -354,11 +447,16 @@ function Enoteca() {
   useEffect(() => {
     if (!activeCategory) return;
     document.body.classList.add("home-no-scroll");
+    // distinta da home-no-scroll (che la Home usa già per sé): serve solo
+    // a nascondere la tab bar quando si è dentro una categoria (vini/rossi
+    // ecc.), non ogni volta che home-no-scroll è attivo
+    document.body.classList.add("category-open");
     if (barOpen && !closing && !hiding)
       document.body.classList.add("region-bar-open");
     else document.body.classList.remove("region-bar-open");
     return () => {
       document.body.classList.remove("home-no-scroll");
+      document.body.classList.remove("category-open");
       document.body.classList.remove("region-bar-open");
     };
   }, [activeCategory, barOpen, closing, hiding]);
@@ -378,11 +476,7 @@ function Enoteca() {
   }, [regionFilter]);
 
 
-  const closeCategory = () => {
-    openCategory(null);
-    setGroup(null);
-  };
-
+  const closeCategory = () => navigate("/enoteca");
 
   const handleBack = () => {
     const phoneBar = window.matchMedia("(max-width: 640px)").matches;
@@ -603,7 +697,9 @@ function Enoteca() {
                 w={w}
                 accent={activeCategory.accent}
                 regionFilter={regionFilter}
-                onOpen={setSheetWine}
+                onOpen={openProduct}
+                type={activeGroup.id}
+                index={i}
               />
             ))}
           </ul>
@@ -612,7 +708,8 @@ function Enoteca() {
           <ProductSheet
             w={sheetWine}
             category={activeCategory}
-            onClose={() => setSheetWine(null)}
+            onClose={closeProduct}
+            type={activeGroup.id}
           />
         )}
       </section>
@@ -633,10 +730,7 @@ function Enoteca() {
   const totalRounded = Math.floor(totalItems / 10) * 10;
 
   // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti
-  const openDirect = (gId, cId) => {
-    setGroup(gId);
-    openCategory(cId);
-  };
+  const openDirect = (gId, cId) => navigate(`/enoteca/${gId}/${cId}`);
 
   const tabG = SHOP_GROUPS.find((g) => g.id === tabGroup);
 
