@@ -101,7 +101,7 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
 // `type` (es. "vini"/"birre"/"distillati"/"alimentari", da SHOP_GROUPS.id):
 // aggiunge una classe modificatore per-tipo su card e immagine, così si può
 // dare uno stile diverso a un tipo di prodotto senza toccare quelle condivise
-export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }) {
+export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
   const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
@@ -128,9 +128,10 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }
   }, [sub]);
 
   // nome su uno spazio fisso di due righe, mai tagliato: se ne servono
-  // di più deriva in verticale invece di troncarsi — lentissimo (24s) e
-  // sfalsato card per card (animation-delay diverso per ognuna), così su
-  // una griglia intera non si vede un "coro" sincronizzato
+  // di più deriva in verticale invece di troncarsi. Niente delay negativo
+  // di sfasamento (che faceva partire l'animazione a metà ciclo, cioè dal
+  // basso, con un salto visibile): ogni partenza è dall'inizio — testo in
+  // cima, discesa lenta, risalita — sincronizzata con l'ingresso in vista
   const nameRef = useRef(null);
   const [nameScroll, setNameScroll] = useState(false);
   useLayoutEffect(() => {
@@ -139,12 +140,53 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }
     const overflow = el.scrollHeight - el.parentElement.clientHeight;
     if (overflow > 0) {
       el.style.setProperty("--marquee-shift-y", `-${overflow + 4}px`);
-      el.style.setProperty("--marquee-delay", `-${(index % 7) * 3.2}s`);
       setNameScroll(true);
     } else {
       setNameScroll(false);
     }
-  }, [w.name, index]);
+  }, [w.name]);
+
+  // l'animazione parte solo quando la card è davvero visibile: niente
+  // schede fuori schermo che continuano a scorrere (spreco, e la riga
+  // dopo compare già a metà del suo ciclo) — appena la coppia di card
+  // della riga entra nello schermo, l'animazione riparte da zero
+  const cardRef = useRef(null);
+  const [nameInView, setNameInView] = useState(false);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !nameScroll) return;
+    const list = el.closest(".product-list");
+    if (!list) {
+      setNameInView(true); // nessun contenitore che scorre: anima e basta
+      return;
+    }
+    // niente IntersectionObserver (due tentativi, su telefono vero
+    // continuava a far partire la riga "che sbircia"): misura diretta
+    // dei rettangoli. La card è "in vista" solo se il suo box sta per
+    // intero dentro il box visibile della lista. Il controllo gira a
+    // scroll fermo (120ms dopo l'ultimo evento, quando lo snap si è
+    // assestato su una riga piena): mentre si scorre l'animazione è
+    // spenta, appena la riga si posa completa parte da zero
+    let timer = 0;
+    const check = () => {
+      const lr = list.getBoundingClientRect();
+      const cr = el.getBoundingClientRect();
+      setNameInView(cr.top >= lr.top - 2 && cr.bottom <= lr.bottom + 2);
+    };
+    const onScroll = () => {
+      setNameInView(false);
+      clearTimeout(timer);
+      timer = setTimeout(check, 120);
+    };
+    check();
+    list.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      clearTimeout(timer);
+      list.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [nameScroll]);
 
   const typeSuffix = type ? ` product-card--${type}` : "";
 
@@ -155,6 +197,7 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }
         className={"product-card-btn" + (type ? ` product-card-btn--${type}` : "")}
         style={{ "--accent": accent }}
         onClick={() => onOpen(w)}
+        ref={cardRef}
       >
         <div className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}>
           {w.img ? (
@@ -172,7 +215,10 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type, index = 0 }
         </div>
         <span className="product-name-wrap">
           <span
-            className={"product-name" + (nameScroll ? " product-name--scroll" : "")}
+            className={
+              "product-name" +
+              (nameScroll && nameInView ? " product-name--scroll" : "")
+            }
             ref={nameRef}
           >
             {w.name}
@@ -226,10 +272,6 @@ export function ProductSheet({ w, category, onClose, type }) {
     w.regione,
     w.provenienza,
   ].filter(Boolean);
-  // scroll interno solo quando le annate sono tante (unica cosa che fa
-  // davvero traboccare il pannello): altrimenti niente scroll, ci pensa
-  // il line-height più stretto della descrizione a far stare tutto
-  const hasManyAnnate = annate?.length > 1;
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     `Buongiorno, vorrei informazioni su: ${w.name}`
   )}`;
@@ -242,19 +284,73 @@ export function ProductSheet({ w, category, onClose, type }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // trascinamento verso il basso per chiudere (come i pannelli commenti
+  // di Instagram): segue il dito 1:1 mentre si trascina, poi scatta via
+  // se si supera la soglia oppure torna su elastica altrimenti. Parte
+  // solo dal bordo/contenuto non interattivo e solo quando il contenuto
+  // interno è già in cima — così non ruba lo scroll della descrizione.
+  const scrollRef = useRef(null);
+  const draggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startDragYRef = useRef(0);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  const onDragStart = (e) => {
+    if (closing) return;
+    if (e.target.closest("a, button")) return; // pulsanti/link intatti
+    if ((scrollRef.current?.scrollTop ?? 0) > 0) return; // sta scorrendo il contenuto
+    draggingRef.current = true;
+    startYRef.current = e.clientY;
+    startDragYRef.current = dragY;
+    setDragging(true);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onDragMove = (e) => {
+    if (!draggingRef.current) return;
+    const next = Math.max(0, startDragYRef.current + (e.clientY - startYRef.current));
+    setDragY(next);
+  };
+  const onDragEnd = (e) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    const sheetHeight = e.currentTarget.offsetHeight || 400;
+    if (dragY > sheetHeight * 0.28) {
+      setClosing(true); // scivola via, poi onClose al termine (vedi onTransitionEnd)
+    } else {
+      setDragY(0); // sotto soglia: torna su
+    }
+  };
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
         className={
           "product-sheet" +
           (type ? ` product-sheet--${type}` : "") +
-          (hasManyAnnate ? " product-sheet--scrollable" : "")
+          (dragging ? " product-sheet--dragging" : "")
         }
-        style={{ "--accent": category?.accent }}
+        style={{
+          "--accent": category?.accent,
+          transform: closing
+            ? "translateY(100%)"
+            : dragY
+            ? `translateY(${dragY}px)`
+            : undefined,
+        }}
         role="dialog"
         aria-modal="true"
         aria-label={w.name}
         onClick={(e) => e.stopPropagation()}
+        onTransitionEnd={(e) => {
+          if (closing && e.propertyName === "transform") onClose();
+        }}
+        onPointerDown={onDragStart}
+        onPointerMove={onDragMove}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
       >
         <span className="sheet-handle" aria-hidden="true" />
         <button
@@ -266,55 +362,61 @@ export function ProductSheet({ w, category, onClose, type }) {
         >
           ✕
         </button>
-        <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
-          {w.img ? (
-            <img
-              src={w.img}
-              alt=""
-              className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
-            />
-          ) : (
-            <BottleIcon className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")} />
-          )}
-        </div>
-        <h3 className="sheet-name">{w.name}</h3>
-        {metaItems.length > 0 && (
-          <ul className="sheet-meta-chips">
-            {metaItems.map((m, i) => (
-              <li key={i} className="sheet-meta-chip">
-                {m}
-              </li>
-            ))}
-          </ul>
-        )}
-        {desc && (
-          <div className="sheet-desc-block">
-            <span className="sheet-desc-label">Note di degustazione</span>
-            <span className="sheet-divider" aria-hidden="true" />
-            <p className="sheet-desc">{desc}</p>
+        {/* contenuto scrollabile: qualunque sia la lunghezza della
+            descrizione, resta confinato qui dentro invece di spingere
+            in giro il resto del pannello — il bottone WhatsApp sotto
+            sta sempre fermo nello stesso punto */}
+        <div className="sheet-scroll" ref={scrollRef}>
+          <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
+            {w.img ? (
+              <img
+                src={w.img}
+                alt=""
+                className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
+              />
+            ) : (
+              <BottleIcon className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")} />
+            )}
           </div>
-        )}
-        {annate?.length > 0 && (
-          <div className="sheet-annate">
-            <span className="sheet-label">Annate e prezzi</span>
-            <ul className="product-annate-list">
-              {annate.map((a, i) => (
-                <li
-                  key={a.anno}
-                  className={
-                    "product-annate-row" +
-                    (i === 0 ? " product-annate-row--current" : "")
-                  }
-                >
-                  <span className="product-annate-year">{a.anno}</span>
-                  <span className="product-annate-price">
-                    {formatPrezzo(a.prezzo)}
-                  </span>
+          <h3 className="sheet-name">{w.name}</h3>
+          {metaItems.length > 0 && (
+            <ul className="sheet-meta-chips">
+              {metaItems.map((m, i) => (
+                <li key={i} className="sheet-meta-chip">
+                  {m}
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          )}
+          {desc && (
+            <div className="sheet-desc-block">
+              <span className="sheet-desc-label">Note di degustazione</span>
+              <span className="sheet-divider" aria-hidden="true" />
+              <p className="sheet-desc">{desc}</p>
+            </div>
+          )}
+          {annate?.length > 0 && (
+            <div className="sheet-annate">
+              <span className="sheet-label">Annate e prezzi</span>
+              <ul className="product-annate-list">
+                {annate.map((a, i) => (
+                  <li
+                    key={a.anno}
+                    className={
+                      "product-annate-row" +
+                      (i === 0 ? " product-annate-row--current" : "")
+                    }
+                  >
+                    <span className="product-annate-year">{a.anno}</span>
+                    <span className="product-annate-price">
+                      {formatPrezzo(a.prezzo)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         {WHATSAPP_NUMBER && (
           <a
             className="sheet-cta"
@@ -705,7 +807,6 @@ function Enoteca() {
                 regionFilter={regionFilter}
                 onOpen={openProduct}
                 type={activeGroup.id}
-                index={i}
               />
             ))}
           </ul>

@@ -915,16 +915,17 @@ body.home-no-scroll .product-list {
   color: #2e3d34;
   overflow-wrap: break-word;
   word-break: break-word;
+  /* quando l'animazione si spegne (la riga esce di scena / parte lo
+     scroll) il testo torna in cima accompagnato, non con uno scatto */
+  transition: transform 0.3s ease;
 }
 
-/* nome troppo lungo anche su due righe: deriva su e giù senza mai
-   fermarsi del tutto — niente pausa netta agli estremi, solo un
-   ondeggiare continuo che rallenta ai bordi per via dell'ease-in-out.
-   Lentissimo (24s) e sfalsato card per card (--marquee-delay, dall'indice
-   via JS): su una griglia intera il movimento è quasi impercettibile */
+/* nome troppo lungo anche su due righe: deriva su e giù, rallentando ai
+   bordi per via dell'ease-in-out. Parte SEMPRE dall'inizio del ciclo
+   (testo in cima, poi discesa): niente delay negativo di sfasamento,
+   che lo faceva comparire già a metà corsa, cioè dal basso */
 .product-name--scroll {
-  animation: product-name-marquee 24s ease-in-out infinite;
-  animation-delay: var(--marquee-delay, 0s);
+  animation: product-name-marquee 15s ease-in-out infinite;
 }
 
 @keyframes product-name-marquee {
@@ -1024,7 +1025,6 @@ body.home-no-scroll .product-list {
   width: 100%;
   max-width: 560px;
   max-height: 82dvh;
-  overflow-y: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1038,6 +1038,34 @@ body.home-no-scroll .product-list {
   border-radius: 22px 22px 0 0;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
   animation: sheet-up 0.32s cubic-bezier(0.25, 0.8, 0.35, 1);
+  /* trascinabile verso il basso per chiudere (tipo Instagram): fuori dal
+     trascinamento, ogni cambio di transform (torna su / scivola via)
+     è morbido; durante il trascinamento niente transition, il pannello
+     deve seguire il dito 1:1 senza ritardo */
+  touch-action: none;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.product-sheet--dragging {
+  transition: none;
+}
+
+/* area che scorre dentro al pannello: foto, nome, chip, descrizione,
+   annate. Il bottone WhatsApp sta fuori da qui (vedi .sheet-cta),
+   così resta fermo nello stesso punto qualunque sia la lunghezza
+   della descrizione, invece di spostarsi col contenuto */
+.sheet-scroll {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 
 /* maniglia: segnala il pattern "pannello dal basso" */
@@ -1047,6 +1075,7 @@ body.home-no-scroll .product-list {
   height: 4px;
   border-radius: 999px;
   background: rgba(46, 94, 70, 0.25);
+  cursor: grab;
 }
 
 .sheet-close {
@@ -1068,6 +1097,22 @@ body.home-no-scroll .product-list {
 
 .sheet-close:hover {
   background: rgba(46, 94, 70, 0.18);
+}
+
+/* il pannello mette autoFocus su questo bottone all'apertura (utile per
+   chi naviga da tastiera/screen reader): senza questa regola il browser
+   ci disegna sopra il suo anello di focus di default appena il pannello
+   compare, come se l'utente l'avesse già cliccato. :focus-visible tiene
+   l'accessibilità da tastiera (Tab mostra comunque l'anello) e toglie
+   solo l'evidenziazione "gratuita" del focus automatico/del click —
+   supportato da tutti i browser moderni, nessun hack specifico */
+.sheet-close:focus {
+  outline: none;
+}
+
+.sheet-close:focus-visible {
+  outline: 2px solid var(--accent, #2e5e46);
+  outline-offset: 2px;
 }
 
 .sheet-thumb {
@@ -1224,7 +1269,7 @@ body.home-no-scroll .product-list {
   gap: 9px;
   width: 100%;
   box-sizing: border-box;
-  margin-top: 6px;
+  flex: none; /* mai schiacciato: è il piede fisso del pannello */
   padding: 12px 20px;
   font-size: 16px;
   font-weight: 700;
@@ -1255,15 +1300,13 @@ body.home-no-scroll .product-list {
   .product-sheet {
     margin-bottom: 12px; /* fallback per browser senza env() */
     margin-bottom: calc(12px + env(safe-area-inset-bottom));
+    /* un po' più alto: prima si fermava a 82dvh e con una descrizione
+       lunga tagliava il contenuto (o spostava il bottone WhatsApp in
+       giro). Ora .sheet-scroll scorre internamente, quindi il pannello
+       può stare più grande senza mai avere aria vuota in fondo */
+    max-height: 88dvh;
     border-radius: 22px;
     padding-bottom: 22px; /* la safe-area ora la copre il margine */
-    overflow-y: hidden; /* niente scroll interno: tutto sta nella card */
-  }
-
-  /* eccezione: con tante annate il pannello trabocca comunque — lì
-     lo scroll interno serve davvero, meglio di tagliare la lista */
-  .product-sheet.product-sheet--scrollable {
-    overflow-y: auto;
   }
 
   /* altezza fissa anche qui: niente più "si restringe lei" — era
