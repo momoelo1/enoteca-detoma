@@ -170,9 +170,16 @@
 
   .nav-icon {
     display: block;
-    font-size: 20px;
-    line-height: 1;
+    line-height: 0;
   }
+
+  /* il tratto segue il colore della voce: verde da inattiva,
+     bianco quando .nav-btn.is-active inverte il testo */
+  .nav-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
 
   .nav-label--full {
     display: none;

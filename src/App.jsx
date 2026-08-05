@@ -15,6 +15,7 @@ import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
 import Login from "./components/login/Login";
+import NavIcon from "./components/icons/NavIcons";
 import { SECTIONS } from "./data/data";
 
 // un indirizzo fisso per ogni sezione: al refresh o su un link diretto
@@ -32,6 +33,7 @@ function AppShell() {
   const location = useLocation();
   const tapCountRef = useRef(0); // tocchi ravvicinati sul logo
   const lastTapRef = useRef(0);
+
 
   const handleLogoClick = () => {
     const now = Date.now();
@@ -87,7 +89,7 @@ function AppShell() {
                 className={"nav-btn" + (active ? " is-active" : "")}
               >
                 <span className="nav-icon" aria-hidden="true">
-                  {s.icon}
+                  <NavIcon id={s.id} />
                 </span>
                 <span className="nav-label--full">{s.label}</span>
                 <span className="nav-label--short">{s.short || s.label}</span>

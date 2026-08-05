@@ -38,12 +38,14 @@ export const COUNTRY_GROUPS = {
 
 
 
+// l'icona della tab bar non sta più qui: components/icons/NavIcons.jsx
+// disegna un SVG per ogni `id` di questo elenco
 export const SECTIONS = [
-  { id: "home", label: "Home", icon: "🏠" },
-  { id: "enoteca", label: "Enoteca", icon: "🍷" },
-  { id: "alimentari", label: "Alimentari", icon: "🥖" },
-  { id: "confezioni", label: "Confezioni Regalo", short: "Regali", icon: "🎁" },
-  { id: "dove siamo", label: "Dove Siamo", icon: "📍"},
+  { id: "home", label: "Home" },
+  { id: "enoteca", label: "Enoteca" },
+  { id: "alimentari", label: "Alimentari" },
+  { id: "confezioni", label: "Confezioni Regalo", short: "Regali" },
+  { id: "dove siamo", label: "Dove Siamo" },
 ];
 
 

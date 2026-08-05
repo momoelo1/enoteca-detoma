@@ -1,38 +1,53 @@
 import { useEffect, useState } from "react";
-import { createBeer, updateBeer, deleteBeer, deleteBeerImage } from "../../services/beers";
+import {
+  createAlimentare,
+  updateAlimentare,
+  deleteAlimentare,
+  deleteAlimentareImage,
+} from "../../services/alimentari";
 
-// niente annate/vintage qui: le birre hanno un prezzo unico, non un
-// array anno×prezzo come i vini (schema Beer non ha `annate`)
-const toForm = (beer) => ({
-  name: beer?.name || "",
-  stile: beer?.stile || "",
-  gradazione: beer?.gradazione || "",
-  formato: beer?.formato ?? "",
-  prezzo: beer?.prezzo ?? "",
-  img: beer?.img || "",
+// niente annate qui: il cibo ha un prezzo unico, come le birre.
+// `formato` è un numero di grammi come per le birre lo è di centilitri
+// (?? e non ||: uno 0 non deve diventare campo vuoto)
+const toForm = (item) => ({
+  name: item?.name || "",
+  sottocategoria: item?.sottocategoria || "",
+  tipo: item?.tipo || "",
+  formato: item?.formato ?? "",
+  prezzo: item?.prezzo ?? "",
+  description: item?.description || "",
+  img: item?.img || "",
 });
 
 const EMPTY_FORM = {
   name: "",
-  stile: "",
-  gradazione: "",
+  sottocategoria: "",
+  tipo: "",
   formato: "",
   prezzo: "",
+  description: "",
   img: "",
 };
 
-function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
-  const isNew = !beer;
+function AdminAlimentareCard({
+  item,
+  categoryId,
+  sottocategorie = [],
+  onCreated,
+  onUpdated,
+  onDeleted,
+}) {
+  const isNew = !item;
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(beer));
+  const [form, setForm] = useState(() => toForm(item));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  // stesso pattern del form vini: FileReader -> data URL, il backend
-  // si occupa di caricarla su Cloudinary al salvataggio
+  // stesso pattern dei form vini/birre: FileReader -> data URL, il
+  // backend la carica su Cloudinary al salvataggio
   const handleImageFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -42,13 +57,13 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   };
 
   const startEdit = () => {
-    setForm(toForm(beer));
+    setForm(toForm(item));
     setError("");
     setEditing(true);
   };
 
   const cancelEdit = () => {
-    setForm(toForm(beer));
+    setForm(toForm(item));
     setError("");
     setEditing(false);
   };
@@ -71,8 +86,9 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     const payload = Object.fromEntries(
       Object.entries({
         name: form.name,
-        stile: form.stile,
-        gradazione: form.gradazione,
+        sottocategoria: form.sottocategoria.trim(),
+        tipo: form.tipo,
+        description: form.description,
         img: form.img,
       }).filter(([, v]) => v !== ""),
     );
@@ -81,12 +97,15 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
 
     try {
       if (isNew) {
-        const created = await createBeer({ ...payload, producer: producerId });
+        const created = await createAlimentare({
+          ...payload,
+          category: categoryId,
+        });
         onCreated(created);
         setForm(EMPTY_FORM);
         setEditing(false);
       } else {
-        const updated = await updateBeer(beer.id, payload);
+        const updated = await updateAlimentare(item.id, payload);
         onUpdated(updated);
         setEditing(false);
       }
@@ -98,29 +117,28 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Eliminare "${beer.name}"?`)) return;
+    if (!window.confirm(`Eliminare "${item.name}"?`)) return;
     setError("");
     try {
-      await deleteBeer(beer.id);
-      onDeleted(beer.id);
+      await deleteAlimentare(item.id);
+      onDeleted(item.id);
     } catch (err) {
       setError(err.message);
     }
   };
 
-  // rimuove la foto: se è già caricata su Cloudinary (birra salvata) la
-  // cancella davvero anche lato storage, non solo il riferimento; se è
-  // solo un'anteprima locale non ancora salvata basta svuotare il form
+  // se la foto è già su Cloudinary la cancella davvero anche lato
+  // storage; se è solo un'anteprima locale basta svuotare il form
   const handleDeleteImage = async () => {
     const isUnsavedPreview = form.img.startsWith("data:");
-    if (isNew || isUnsavedPreview || !beer?.img) {
+    if (isNew || isUnsavedPreview || !item?.img) {
       setForm((f) => ({ ...f, img: "" }));
       return;
     }
     if (!window.confirm("Eliminare l'immagine in modo permanente?")) return;
     setError("");
     try {
-      const updated = await deleteBeerImage(beer.id);
+      const updated = await deleteAlimentareImage(item.id);
       onUpdated(updated);
       setForm((f) => ({ ...f, img: "" }));
     } catch (err) {
@@ -136,32 +154,52 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="admin-modal-title">
-          {isNew ? "Aggiungi birra" : `Modifica "${beer.name}"`}
+          {isNew ? "Aggiungi prodotto" : `Modifica "${item.name}"`}
         </h3>
 
         <div className="admin-field">
           <label>Nome</label>
-          <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
-        </div>
-        <div className="admin-field">
-          <label>Stile</label>
-          <input type="text" value={form.stile} onChange={handleChange("stile")} />
-        </div>
-        <div className="admin-field">
-          <label>Gradazione</label>
           <input
             type="text"
-            value={form.gradazione}
-            onChange={handleChange("gradazione")}
+            value={form.name}
+            onChange={handleChange("name")}
+            required
+            autoFocus
           />
         </div>
         <div className="admin-field">
-          <label>Formato (cl)</label>
+          <label>Sottocategoria</label>
+          {/* elenco aperto: si può scegliere un gruppo esistente o
+              scriverne uno nuovo, che comparirà da solo nella pagina */}
+          <input
+            type="text"
+            list="sottocategorie-esistenti"
+            placeholder="es. Formaggi, Salumi, Biscotti"
+            value={form.sottocategoria}
+            onChange={handleChange("sottocategoria")}
+          />
+          <datalist id="sottocategorie-esistenti">
+            {sottocategorie.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        </div>
+        <div className="admin-field">
+          <label>Tipo</label>
+          <input
+            type="text"
+            placeholder="es. Formaggio, Salume, Conserva"
+            value={form.tipo}
+            onChange={handleChange("tipo")}
+          />
+        </div>
+        <div className="admin-field">
+          <label>Formato (g)</label>
           <input
             type="number"
             step="1"
             min="0"
-            placeholder="33"
+            placeholder="250"
             value={form.formato}
             onChange={handleChange("formato")}
           />
@@ -173,6 +211,14 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
             step="0.01"
             value={form.prezzo}
             onChange={handleChange("prezzo")}
+          />
+        </div>
+        <div className="admin-field">
+          <label>Descrizione</label>
+          <textarea
+            rows="3"
+            value={form.description}
+            onChange={handleChange("description")}
           />
         </div>
         <div className="admin-field">
@@ -221,23 +267,29 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
           <span className="admin-product-add-icon" aria-hidden="true">
             +
           </span>
-          <span>Aggiungi birra</span>
+          <span>Aggiungi prodotto</span>
         </button>
         {editModal}
       </li>
     );
   }
 
-  const meta = [beer.stile, beer.gradazione, beer.formato != null ? `${beer.formato} cl` : null]
+  const meta = [
+    item.sottocategoria,
+    item.tipo,
+    item.formato != null ? `${item.formato} g` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
   return (
     <li className="admin-product-cell">
       <div className="admin-product-card">
-        <span className="admin-product-name">{beer.name}</span>
+        <span className="admin-product-name">{item.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
-        {beer.prezzo != null && <span className="admin-product-price">€ {beer.prezzo}</span>}
+        {item.prezzo != null && (
+          <span className="admin-product-price">€ {item.prezzo}</span>
+        )}
         {error && <p className="admin-error">{error}</p>}
         <div className="admin-product-icon-actions">
           <button
@@ -267,4 +319,4 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   );
 }
 
-export default AdminBeerCard;
+export default AdminAlimentareCard;

@@ -188,14 +188,36 @@
   }
 }
 
-/* sottotitolo della pagina: una riga di voce sotto il titolo */
-.section-sub {
-  margin: -16px 0 0; /* si avvicina al titolo nonostante il gap della sezione */
-  font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 17px;
-  font-style: italic;
-  color: #52605a;
-  text-align: center;
+/* ---- testata ferma: scorre solo il contenuto ----
+   Meccanismo condiviso da tutte le pagine negozio (Enoteca, Alimentari…).
+   La pagina non scorre (body.home-no-scroll, catena flex da home.css) e
+   scorre un contenitore interno marcato .page-scroll. Titolo e tab stanno
+   fuori da quel contenitore, dentro .section-sticky, quindi restano fermi
+   senza position: sticky — che slitterebbe sotto l'header, alto quanto il
+   logo, e richiederebbe un offset fisso da tenere allineato a mano.
+   Per usarlo su una pagina nuova: body.page-pinned + .section-sticky sulla
+   testata + .page-scroll sul contenitore che deve scorrere. */
+.section-sticky {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+body.page-pinned .shop-section {
+  flex: 1;
+  min-height: 0;
+}
+
+body.page-pinned .page-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 12px;
+  align-content: start; /* la griglia non stira le righe per riempire */
 }
 
 .cat-grid {
@@ -354,6 +376,10 @@
   position: relative;
   width: 100%;
   height: 100%;
+  /* altezza della variante con foto (18 + 72 img + 8 gap + nome + 14):
+     la tiene anche la filigrana, che ha l'icona fuori flusso e senza
+     questo collasserebbe sulla sola riga del nome */
+  min-height: 132px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -400,9 +426,15 @@
   filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.15));
 }
 
-.mini-icon {
-  font-size: 46px;
-  line-height: 72px;
+/* segnaposto quando la categoria non ha ancora una foto: stessa
+   bottiglia stilizzata delle schede prodotto, tinta con l'accento */
+.mini-icon-svg {
+  height: 60px;
+  width: auto;
+  display: block;
+  margin: 6px auto;
+  fill: var(--accent, #2e5e46);
+  opacity: 0.45;
 }
 
 .mini-name {
@@ -637,8 +669,13 @@
 }
 
 .filter-icon {
-  font-size: 18px;
-  line-height: 22px;
+  display: block;
+  line-height: 0;
+}
+
+.filter-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .filter-label {
@@ -834,6 +871,18 @@ body.home-no-scroll .product-list {
   width: auto;
   fill: var(--accent, #2e5e46);
   opacity: 0.45;
+}
+
+/* segnaposto degli alimentari: icone a tratto (Phosphor "thin"), non
+   sagome piene come la bottiglia — il colore arriva da `color` perché
+   i tratti usano currentColor, non `fill`.
+   Selettore con l'elemento (svg.…) per alzare la specificità: .sheet-svg
+   imposta anche lei `fill` e sta più in basso nel file, quindi a parità
+   di classe singola vincerebbe per ordine e riempirebbe le icone. */
+svg.product-food-svg {
+  fill: none;
+  color: var(--accent, #2e5e46);
+  opacity: 0.55;
 }
 
 /* schermi grandi: la foto della bottiglia (vini) prende più spazio, sia in

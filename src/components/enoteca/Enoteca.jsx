@@ -1,13 +1,40 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  createElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
 import { getWines } from "../../services/wines";
 import { getBeers } from "../../services/beers";
+import { GlobeIcon } from "../icons/NavIcons";
+import { CategoryIcon } from "../icons/CategoryIcon";
+import {
+  Jar,
+  JarLabel,
+  Fish,
+  Bread,
+  Leaf,
+  Drop,
+  Carrot,
+  CookingPot,
+  Cherries,
+} from "@phosphor-icons/react";
 import "./enoteca.css";
 
 // id nell'URL: le schede remote (vini/birre) hanno un id Mongo vero,
 // quelle statiche (non ancora popolate) no — fallback sul nome
 const productSlug = (item) => item.id ?? encodeURIComponent(item.name);
+
+// `formato` è un numero puro nel database: l'unità è implicita e dipende
+// dal tipo di prodotto (le birre si misurano in centilitri, gli alimentari
+// in grammi). Un tipo non elencato mostra il numero senza unità.
+const FORMATO_UNIT = {
+  birre: "cl",
+  alimentari: "g",
+};
 
 // prezzo in formato italiano: "€ 32,00" (virgola, non punto)
 const formatPrezzo = (n) =>
@@ -33,6 +60,43 @@ function BottleIcon({ className }) {
   );
 }
 
+// Segnaposto per gli alimentari: una bottiglia di vino non rappresenta un
+// vasetto di miele o un pacco di taralli. L'icona si sceglie dalle PAROLE
+// di sottocategoria e tipo, non da un elenco fisso di gruppi: così regge
+// anche i gruppi nuovi che l'admin può inventare dal pannello.
+// Ordine significativo: vince la prima regola che corrisponde.
+const FOOD_ICON_RULES = [
+  [/pesc|tonno|ittic|acciug|sgombr|salmon/, Fish],
+  [/pane|forno|biscott|tarall|grissin|snack|scaldatell|bastoncin|spaghett|pasta/, Bread],
+  [/pesto|basilic/, Leaf],
+  [/miele|alveare|propoli|polline/, Drop],
+  [/verdur|carciof|peperon|sott.olio|oliva|olive/, Carrot],
+  [/sugo|sughi|ragu|salsa|passata|condiment|mostard|senap|tartufo/, CookingPot],
+  [/confettur|composta|marmellat|frutta|sciroppat|amaren|gelso|ciliegi/, Cherries],
+  [/crema|creme|pate|bruschett|cioccolat|pistacch|caramell/, JarLabel],
+];
+
+// normalize() toglie gli accenti: le regole sopra sono senza ("ragù"→"ragu")
+const foodIcon = (item) => {
+  const hay = normalize(`${item.sottocategoria || ""} ${item.tipo || ""}`);
+  const rule = FOOD_ICON_RULES.find(([re]) => re.test(hay));
+  return rule ? rule[1] : Jar; // il vasetto è il contenitore più comune qui
+};
+
+// sceglie il segnaposto giusto per il tipo di prodotto: bottiglia per
+// vini/birre/distillati, icona alimentare per gastronomia e dolceria
+function ProductPlaceholder({ item, type, className }) {
+  if (type !== "alimentari") return <BottleIcon className={className} />;
+  // createElement e non <Icon />: l'icona è scelta a runtime e il React
+  // Compiler leggerebbe un componente "creato durante il render"
+  return createElement(foodIcon(item), {
+    className: `${className} product-food-svg`,
+    weight: "thin",
+    color: "currentColor",
+    "aria-hidden": true,
+  });
+}
+
 export function CatCard({ item, onClick }) {
   return (
     <button
@@ -56,22 +120,26 @@ export function CatCard({ item, onClick }) {
   );
 }
 
-// card categoria compatta: foto + nome, un tocco → lista prodotti
-function MiniCard({ c, onClick }) {
+// card categoria compatta: un tocco → lista prodotti.
+// `filigrana`: calice/icona in filigrana al posto della foto — si usa per
+// i vini e per gli alimentari. Senza, resta la foto della categoria: è la
+// scelta di birre e distillati, che le foto ce l'hanno e vanno mostrate.
+export function MiniCard({ c, onClick, filigrana = false }) {
+  const icon = { id: c.id, label: c.short || c.label };
   return (
     <li className="mini-cell">
       <button
         type="button"
-        className="mini-card"
+        className={"mini-card" + (filigrana ? " mini-card--filigrana" : "")}
         style={{ "--accent": c.accent }}
         onClick={onClick}
       >
-        {c.img ? (
+        {filigrana ? (
+          <CategoryIcon {...icon} className="mini-icon-watermark" weight="fill" />
+        ) : c.img ? (
           <img src={c.img} alt="" className="mini-img" loading="lazy" />
         ) : (
-          <span className="mini-icon" aria-hidden="true">
-            {c.icon || "🍷"}
-          </span>
+          <CategoryIcon {...icon} className="mini-icon-svg" />
         )}
         <span className="mini-name">{c.short || c.label}</span>
       </button>
@@ -108,7 +176,8 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
   // (trim: nel database alcune regioni hanno uno spazio finale spurio)
   const regione = w.regione?.trim() !== regionFilter ? w.regione : null;
   const sub = regione || w.stile || w.colore || w.tipo;
-  const formatoLabel = w.formato != null ? `${w.formato}cl` : null;
+  const formatoLabel =
+    w.formato != null ? `${w.formato}${FORMATO_UNIT[type] || ""}` : null;
 
   // il sottotitolo può essere lungo quanto vuole (stile birra, regione...):
   // stessa dimensione testo su ogni card, mai a capo, mai tagliato — se non
@@ -127,11 +196,7 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
     }
   }, [sub]);
 
-  // nome su uno spazio fisso di due righe, mai tagliato: se ne servono
-  // di più deriva in verticale invece di troncarsi. Niente delay negativo
-  // di sfasamento (che faceva partire l'animazione a metà ciclo, cioè dal
-  // basso, con un salto visibile): ogni partenza è dall'inizio — testo in
-  // cima, discesa lenta, risalita — sincronizzata con l'ingresso in vista
+
   const nameRef = useRef(null);
   const [nameScroll, setNameScroll] = useState(false);
   useLayoutEffect(() => {
@@ -146,10 +211,7 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
     }
   }, [w.name]);
 
-  // l'animazione parte solo quando la card è davvero visibile: niente
-  // schede fuori schermo che continuano a scorrere (spreco, e la riga
-  // dopo compare già a metà del suo ciclo) — appena la coppia di card
-  // della riga entra nello schermo, l'animazione riparte da zero
+  
   const cardRef = useRef(null);
   const [nameInView, setNameInView] = useState(false);
   useEffect(() => {
@@ -208,7 +270,9 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
               loading="lazy"
             />
           ) : (
-            <BottleIcon
+            <ProductPlaceholder
+              item={w}
+              type={type}
               className={"product-thumb-svg" + (type ? ` product-thumb-svg--${type}` : "")}
             />
           )}
@@ -375,7 +439,11 @@ export function ProductSheet({ w, category, onClose, type }) {
                 className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
               />
             ) : (
-              <BottleIcon className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")} />
+              <ProductPlaceholder
+                item={w}
+                type={type}
+                className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")}
+              />
             )}
           </div>
           <h3 className="sheet-name">{w.name}</h3>
@@ -569,6 +637,20 @@ function Enoteca() {
     };
   }, [activeCategory, barOpen, closing, hiding]);
 
+  // pagina Enoteca (nessuna categoria aperta): la pagina non scorre, scorre
+  // solo la griglia delle categorie, così titolo e tab restano fermi.
+  // Riusa home-no-scroll (la stessa catena flex di home.css) SENZA
+  // category-open, che nasconderebbe la tab bar — qui deve restare.
+  useEffect(() => {
+    if (activeCategory) return;
+    document.body.classList.add("home-no-scroll");
+    document.body.classList.add("page-pinned");
+    return () => {
+      document.body.classList.remove("home-no-scroll");
+      document.body.classList.remove("page-pinned");
+    };
+  }, [activeCategory]);
+
   // apertura della ricerca: porta subito il focus sull'input
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
@@ -745,7 +827,7 @@ function Enoteca() {
                     onClick={() => setBarView("mondo")}
                   >
                     <span className="filter-icon" aria-hidden="true">
-                      🌍
+                      <GlobeIcon />
                     </span>
                     <span className="filter-label">Mondo</span>
                   </button>
@@ -823,19 +905,6 @@ function Enoteca() {
     );
   }
 
-  // totale etichette in tutta l'enoteca, arrotondato per difetto alla decina
-  const totalItems = SHOP_GROUPS.reduce(
-    (s, g) =>
-      s +
-      g.categories.reduce(
-        (t, c) =>
-          t + (c.remote ? remoteByCategory[c.id]?.length ?? 0 : c.items?.length || 0),
-        0
-      ),
-    0
-  );
-  const totalRounded = Math.floor(totalItems / 10) * 10;
-
   // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti
   const openDirect = (gId, cId) => navigate(`/enoteca/${gId}/${cId}`);
 
@@ -843,15 +912,12 @@ function Enoteca() {
 
   return (
     <section className="shop-section">
-      <h2 className="section-title">La nostra Enoteca</h2>
-      {totalRounded > 0 && (
-        <p className="section-sub">
-          Oltre {totalRounded} etichette selezionate nel cuore di Lodi.
-        </p>
-      )}
+      {/* titolo + tab restano fermi in cima: scorre solo la griglia */}
+      <div className="section-sticky">
+        <h2 className="section-title">La nostra Enoteca</h2>
 
-      {/* tab dei gruppi: Vini | Birre | Distillati | Consigliati */}
-      <nav className="group-tabs" aria-label="Gruppi">
+        {/* tab dei gruppi: Vini | Birre | Distillati | Consigliati */}
+        <nav className="group-tabs" aria-label="Gruppi">
         {SHOP_GROUPS.map((g) => (
           <button
             key={g.id}
@@ -873,13 +939,18 @@ function Enoteca() {
         >
           Consigliati
         </button>
-      </nav>
+        </nav>
+      </div>
+
       {tabG ? (
-        <ul className="mini-grid">
+        <ul className="mini-grid page-scroll">
           {tabG.categories.map((c) => (
             <MiniCard
               key={c.id}
               c={c}
+              /* filigrana ovunque tranne che nelle birre: sono le uniche
+                 a tenere le foto dei birrifici */
+              filigrana={tabG.id !== "birre"}
               onClick={() => openDirect(tabG.id, c.id)}
             />
           ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isBackendConfigured, login, getSession, logout } from "../../services/auth";
 import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
+import AlimentariManager from "../admin/AlimentariManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
 
@@ -29,7 +30,7 @@ function Login({ onBack }) {
   const [cardReady, setCardReady] = useState(false);
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
-  const [adminView, setAdminView] = useState("wines"); // "wines" | "beers" | "account"
+  const [adminView, setAdminView] = useState("wines"); // "wines" | "beers" | "alimentari" | "account"
 
   // niente scroll di sfondo SOLO per il modulo di accesso (corto); una
   // volta dentro, il pannello vini può crescere e la pagina scorre normale
@@ -109,6 +110,15 @@ function Login({ onBack }) {
             <button
               type="button"
               className={
+                "admin-topbar-link" + (adminView === "alimentari" ? " admin-topbar-link--active" : "")
+              }
+              onClick={() => setAdminView("alimentari")}
+            >
+              Alimentari
+            </button>
+            <button
+              type="button"
+              className={
                 "admin-topbar-link" + (adminView === "account" ? " admin-topbar-link--active" : "")
               }
               onClick={() => setAdminView("account")}
@@ -125,6 +135,8 @@ function Login({ onBack }) {
         </header>
         {adminView === "account" ? (
           <UserSettings session={session} onUpdated={setSession} />
+        ) : adminView === "alimentari" ? (
+          <AlimentariManager />
         ) : adminView === "beers" ? (
           <BeerManager />
         ) : (

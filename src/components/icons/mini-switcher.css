@@ -1,0 +1,43 @@
+/* ==========================================================================
+   Icone di categoria nelle mini-card (Enoteca e Alimentari).
+   ========================================================================== */
+
+/* icona semplice: usata quando una categoria non ha né foto né filigrana */
+.mini-icon-svg {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 2px auto 4px;
+  color: var(--accent, #2e5e46);
+}
+
+/* filigrana: l'icona diventa lo sfondo della card, il nome resta davanti */
+.mini-card--filigrana {
+  position: relative;
+  overflow: hidden;
+  justify-content: center;
+}
+
+/* Calice/icona in filigrana: alto quasi quanto la card (132px) e ancorato
+   in basso a destra, con un pezzo che esce dal bordo — la card ha
+   overflow:hidden, quindi viene tagliato e ne resta in vista circa metà.
+   Misure esplicite e NON `height:auto` con top+bottom: su un elemento
+   sostituito (l'SVG) `height:auto` prende la dimensione intrinseca (1em)
+   e ignora `bottom`, riducendo l'icona a ~16px, invisibile.
+   Per regolarlo: `height`/`width` insieme (l'icona è quadrata),
+   `right` decide quanto ne esce dal lato. */
+.mini-icon-watermark {
+  position: absolute;
+  right: -14px;
+  bottom: -12px;
+  width: 112px;
+  height: 112px;
+  color: var(--accent, #2e5e46);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.mini-card--filigrana .mini-name {
+  position: relative;
+  z-index: 1;
+}
