@@ -1,10 +1,4 @@
-/* ---- pagina Gastronomia / Alimentari ----
-   Tab, card prodotto e bottom sheet usano gli stessi stili dell'enoteca
-   (.group-tabs, .shop-section, .product-list, .product-card, .product-sheet…
-   in enoteca/enoteca.css), così restano identici. Qui vanno solo gli
-   stili specifici di questa pagina. */
 
-/* titolo della sottocategoria aperta */
 .sub-title {
   margin: 10px 0 4px;
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -14,8 +8,12 @@
   text-align: center;
 }
 
-/* conteggio sotto il nome del gruppo: le mini-card qui non hanno foto,
-   quindi il numero dà alla card un po' di corpo e un'informazione utile */
+
+body.home-no-scroll .product-list.product-list--alimentari {
+  scroll-snap-type: y proximity;
+  padding-bottom: 48px;
+}
+
 .mini-count {
   display: block;
   margin-top: 2px;

@@ -1,12 +1,6 @@
-// Icone della tab bar: set Phosphor, peso "thin" (licenza MIT, uso
-// commerciale libero). Sostituiscono le emoji che stavano in SECTIONS.
-//
-// Per aggiungere una voce: importa l'icona e registrala in NAV_ICONS con
-// la stessa chiave dell'`id` usato in SECTIONS (data.js).
-import { House, Wine, ForkKnife, Gift, MapPin } from "@phosphor-icons/react";
+import { House, Wine, ForkKnife, Gift, Info } from "@phosphor-icons/react";
 
-// size 100%: la misura vera la decide il CSS (.nav-icon svg), così la
-// tab bar resta l'unico posto dove si regolano le dimensioni
+
 const iconProps = { size: "100%", weight: "thin", color: "currentColor" };
 
 // chiave = SECTIONS[].id in data.js
@@ -17,7 +11,7 @@ const NAV_ICONS = {
   // le posate coprono entrambe, un formaggio o una torta solo metà
   alimentari: () => <ForkKnife {...iconProps} />,
   confezioni: () => <Gift {...iconProps} />,
-  "dove siamo": () => <MapPin {...iconProps} />,
+  info: () => <Info {...iconProps} />,
 };
 
 // mappamondo del pulsante "Mondo" nella barra regioni (Enoteca.jsx):

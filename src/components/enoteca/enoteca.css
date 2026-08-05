@@ -518,15 +518,22 @@ body.page-pinned .page-scroll {
     position: fixed;
     left: 12px;
     right: 12px;
-    /* esattamente sovrapposta alla tab bar originale, davanti a lei */
-    bottom: calc(28px + env(safe-area-inset-bottom));
+    /* esattamente sovrapposta alla tab bar originale, davanti a lei
+       (la tab bar sta a 12px: qui appena più in basso) */
+    bottom: calc(10px + env(safe-area-inset-bottom));
     z-index: 30; /* sopra .site-header (z 20), così copre la tab bar */
     gap: 4px;
     padding: 8px 10px;
-    border-radius: 22px;
-    /* opaca: è lei il protagonista, copre la tab bar sfocata sotto */
-    background: #f4f7f3;
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    /* la tab bar usa 22px, ma è più alta (bottoni icona + etichetta):
+       a parità di raggio questa, più bassa, sembra più tonda — 16px la
+       riporta all'aspetto della tab bar */
+    border-radius: 16px;
+    /* stesso vetro della tab bar (.site-nav in App.css): bianco quasi
+       trasparente + blur di sfondo, non più il fondo opaco di prima */
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.28);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -723,7 +730,37 @@ body.page-pinned .page-scroll {
    la catena flex arriva da home.css) */
 body.home-no-scroll .shop-section {
   flex: 1;
-  min-height: 0;
+  min-height: 0vh;
+}
+
+/* dentro una categoria i 56px in fondo a .shop-section non servono più:
+   servivano a scavalcare la tab bar, che qui è nascosta (category-open).
+   Restavano come una fascia vuota sotto i prodotti — visibile sempre,
+   perché sta FUORI dalla lista che scorre. La barra regioni non ne ha
+   bisogno: è position:fixed e passa sopra comunque. */
+body.category-open .shop-section {
+  padding-bottom: 10px;
+  /* la lista si accorcia insieme alla barra che sale, invece di saltare
+     di colpo da 10 a 58px. Un filo più rapida dell'entrata della barra
+     (0.62s), così lo spazio è già pronto quando la barra si assesta. */
+  transition: padding-bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.category-open .shop-section {
+    transition: none;
+  }
+}
+
+/* con la barra regioni aperta lo spazio torna a servire: .has-filter-bar
+   sta sulla sezione ed è attiva per tutta la durata (anche mentre la barra
+   rientra), quindi la fascia non collassa a metà animazione.
+   Solo sul telefono: da 641px in su la barra è una riga normale dentro la
+   sezione, occupa spazio suo e non ha bisogno di riserva. */
+@media (max-width: 640px) {
+  body.category-open .shop-section.has-filter-bar {
+    padding-bottom: 58px;
+  }
 }
 
 body.home-no-scroll .product-list {
@@ -731,9 +768,9 @@ body.home-no-scroll .product-list {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* la riga che sta a cavallo del bordo visibile va tagliata a metà:
-     lo scroll si ferma sempre sull'inizio di una riga, mai in mezzo */
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
+  /* aria sotto l'ultima riga: la lista non finisce incollata al bordo */
+  padding-bottom: 8px;
 }
 
 /* ---- lista prodotti della categoria ---- */
@@ -760,6 +797,21 @@ body.home-no-scroll .product-list {
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 20px;
   color: #52605a;
+}
+
+/* dentro una lista prodotti (body.category-open) il messaggio "nessun
+   risultato" PRENDE IL POSTO della lista: senza questa regola in quello
+   stato non esiste più nessun contenitore che scorre, il gesto arriva al
+   documento e la pagina si trascina via testata e filtri. Qui è il
+   messaggio stesso a fare da contenitore, così ce n'è sempre uno.
+   Non sulle pagine indice (body.page-pinned), dove .product-empty è solo
+   un avviso in mezzo al resto. */
+body.category-open .product-empty {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .product-list {
@@ -839,6 +891,19 @@ body.home-no-scroll .product-list {
 .product-card-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+/* TEMPORANEO — telefono: niente hover sulle card. Su touch l'hover non si
+   "spegne" dopo il tocco e la card resta sollevata finché non si tocca
+   altrove. Va rifatto diversamente (probabilmente @media (hover: hover),
+   che distingue il puntatore vero dal touch invece di andare a larghezza).
+   DEVE stare dopo la regola :hover qui sopra: stessa specificità, vince
+   l'ordine. */
+@media (max-width: 640px) {
+  .product-card-btn:hover {
+    transform: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
 }
 
 /* miniatura bottiglia sul fronte (solo se l'item ha un'immagine) */
@@ -923,6 +988,20 @@ svg.product-food-svg {
   .product-meta {
     font-size: 10px;
     line-height: 1.2;
+  }
+}
+
+/* alimentari: card più basse delle altre. Non hanno la bottiglia, solo
+   l'icona segnaposto, quindi l'altezza pensata per i vini lasciava troppo
+   vuoto. Entrambe le regole DEVONO stare dopo la media query qui sopra,
+   che imposta .product-card-btn a specificità uguale: vince l'ordine. */
+.product-card-btn--alimentari {
+  height: 240px;
+}
+
+@media (max-width: 640px) {
+  .product-card-btn--alimentari {
+    height: 220px;
   }
 }
 

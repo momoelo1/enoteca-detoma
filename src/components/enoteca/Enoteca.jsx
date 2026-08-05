@@ -11,6 +11,7 @@ import { getWines } from "../../services/wines";
 import { getBeers } from "../../services/beers";
 import { GlobeIcon } from "../icons/NavIcons";
 import { CategoryIcon } from "../icons/CategoryIcon";
+import { productSlug } from "../../utils/productSlug";
 import {
   Jar,
   JarLabel,
@@ -24,9 +25,7 @@ import {
 } from "@phosphor-icons/react";
 import "./enoteca.css";
 
-// id nell'URL: le schede remote (vini/birre) hanno un id Mongo vero,
-// quelle statiche (non ancora popolate) no — fallback sul nome
-const productSlug = (item) => item.id ?? encodeURIComponent(item.name);
+// id nell'URL: vedi utils/productSlug.js (condiviso con la pagina Alimentari)
 
 // `formato` è un numero puro nel database: l'unità è implicita e dipende
 // dal tipo di prodotto (le birre si misurano in centilitri, gli alimentari

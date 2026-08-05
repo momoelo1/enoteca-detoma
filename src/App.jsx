@@ -15,6 +15,7 @@ import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
 import Login from "./components/login/Login";
+import Info from "./components/info/Info";
 import NavIcon from "./components/icons/NavIcons";
 import { SECTIONS } from "./data/data";
 
@@ -25,7 +26,7 @@ const SECTION_PATHS = {
   enoteca: "/enoteca",
   alimentari: "/alimentari",
   confezioni: "/confezioni",
-  "dove siamo": "/dove-siamo",
+  info: "/info",
 };
 
 function AppShell() {
@@ -111,12 +112,22 @@ function AppShell() {
             path="/enoteca/:groupId/:categoryId/:productId"
             element={<Enoteca />}
           />
+          {/* come l'Enoteca: reparto/gruppo/prodotto stanno nell'URL, così
+              un refresh o un link diretto riaprono esattamente dov'era */}
           <Route path="/alimentari" element={<Gastronomia />} />
+          <Route path="/alimentari/:reparto/:groupId" element={<Gastronomia />} />
+          <Route
+            path="/alimentari/:reparto/:groupId/:productId"
+            element={<Gastronomia />}
+          />
           <Route path="/admin" element={<Login onBack={() => navigate("/")} />} />
-          {/* sezioni non ancora costruite: pagina vuota (com'era prima),
+          <Route path="/info" element={<Info />} />
+          {/* vecchio indirizzo della sezione, ora "Info": chi ce l'ha nei
+              preferiti o in un link non finisce sulla home */}
+          <Route path="/dove-siamo" element={<Navigate to="/info" replace />} />
+          {/* sezione non ancora costruita: pagina vuota (com'era prima),
               ma con un indirizzo stabile invece di finire su una pagina 404 */}
           <Route path="/confezioni" element={null} />
-          <Route path="/dove-siamo" element={null} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

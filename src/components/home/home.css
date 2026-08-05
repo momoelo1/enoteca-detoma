@@ -113,6 +113,26 @@ body.home-no-scroll {
   box-sizing: border-box;
 }
 
+/* ---- pagina bloccata davvero: SOLO dentro una lista prodotti ----
+   index.css impone min-height:100vh a tutti i body. 100vh è il viewport
+   GRANDE (barra indirizzi nascosta), 100dvh quello attuale: finché la
+   barra è visibile il body resta più alto dello schermo di quei ~60px, e
+   min-height batte height. Quell'avanzo era ciò che si riusciva a
+   trascinare, portando via testata, "← Enoteca" e filtri.
+   Vale solo per category-open (lista prodotti) e non per tutte le pagine
+   home-no-scroll: sulle pagine indice quei ~60px sono spazio che la
+   griglia usa davvero, e toglierli tagliava le mini-card in fondo.
+   DEVE stare dopo la regola qui sopra: stessa specificità, vince l'ordine. */
+html:has(body.category-open) {
+  overflow: hidden;
+  overscroll-behavior: none; /* niente rimbalzo elastico ai bordi */
+}
+
+body.category-open {
+  min-height: 0;
+  overscroll-behavior: none;
+}
+
 body.home-no-scroll #root {
   display: flex;
   flex-direction: column;

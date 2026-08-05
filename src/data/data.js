@@ -20,6 +20,27 @@ import calvados from "../images/distillati/Calvados.png";
 
 export const WHATSAPP_NUMBER = "393342306019";
 
+export const SHOP_INFO = {
+  indirizzo: {
+    via: "C.so Vittorio Emanuele, 32 - Lodi, 26900",
+  },
+  mappaLabel: "Aprilo in Google Maps",
+  orari: [
+    { giorni: "Lunedì", ore: "Chiuso" },
+    { giorni: "Martedì – Sabato", ore: "09:00 – 13:00 / 15:30 – 19:30" },
+    { giorni: "Domenica", ore: "09:00 – 13:00" },
+  ],
+  // ogni campo vuoto ("") sparisce dalla scheda contatti, non lascia buchi
+  telefono: "0371-420786",
+  email: "detoma@enotecadetoma.it",
+  piva: "01682650153",
+  // `id` sceglie l'icona (vedi SOCIAL_ICONS in Info.jsx); url vuoto = nascosto
+  social: [
+    { id: "instagram", label: "Instagram", url: "" },
+    { id: "facebook", label: "Facebook", url: "" },
+  ],
+};
+
 // paesi esteri: nella barra filtri stanno tutti dietro il bottone
 // "Mondo", che apre i paesi nella stessa barra
 export const COUNTRY_GROUPS = {
@@ -45,7 +66,7 @@ export const SECTIONS = [
   { id: "enoteca", label: "Enoteca" },
   { id: "alimentari", label: "Alimentari" },
   { id: "confezioni", label: "Confezioni Regalo", short: "Regali" },
-  { id: "dove siamo", label: "Dove Siamo" },
+  { id: "info", label: "Info" },
 ];
 
 
