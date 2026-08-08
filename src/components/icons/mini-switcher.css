@@ -37,6 +37,16 @@
   pointer-events: none;
 }
 
+/* Variante illustrata (i vini): stessa posizione dell'icona, ma è un <img>,
+   quindi serve `object-fit` o l'illustrazione si deforma nel riquadro
+   quadrato. Opacità più alta della filigrana monocroma: a colori e sfumata
+   l'incisione sparirebbe a 0.16. */
+.mini-icon-watermark--img {
+  object-fit: contain;
+  object-position: bottom right;
+  opacity: 0.38;
+}
+
 .mini-card--filigrana .mini-name {
   position: relative;
   z-index: 1;

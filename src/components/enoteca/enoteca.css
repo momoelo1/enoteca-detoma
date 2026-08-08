@@ -418,12 +418,15 @@ body.page-pinned .page-scroll {
   outline-offset: 2px;
 }
 
+/* loghi dei birrifici: niente `drop-shadow`. Il filtro segue la sagoma
+   dell'alpha del PNG, non il suo riquadro, quindi su un logo ritagliato
+   disegna un alone scuro attorno alle lettere e al cerchio invece di
+   un'ombra sotto un'immagine. */
 .mini-img {
   height: 72px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.15));
 }
 
 /* segnaposto quando la categoria non ha ancora una foto: stessa

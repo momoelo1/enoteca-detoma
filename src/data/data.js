@@ -1,9 +1,12 @@
-import vinoRosso from "../images/vini/vino-rosso.png";
-import vinoBianco from "../images/vini/vino-bianco.png";
-import vinoRosato from "../images/vini/vino-rosato.png";
-import spumantiImg from "../images/vini/spumanti.png";
-import champagneImg from "../images/vini/champagne.png";
-import liquorosiImg from "../images/vini/liquorosi.png";
+// illustrazioni incise dei vini: non sono foto come le altre immagini di
+// categoria — vanno in filigrana nell'angolo della mini-card, non a 72px
+// al centro. Per questo stanno nel campo `illustrazione` e non in `img`.
+import rossiIll from "../images/vini/rossi.webp";
+import bianchiIll from "../images/vini/bianchi.webp";
+import rosatiIll from "../images/vini/rosati.webp";
+import spumantiIll from "../images/vini/spumanti.webp";
+import champagneIll from "../images/vini/champagne.webp";
+import liquorosiIll from "../images/vini/liquorosi.webp";
 import birrai32Img from "../images/birre/32viadeibirrai.png";
 import brasserie from "../images/birre/brasserieMontBlanc.png";
 import ribadi from "../images/birre/ribadi-logo.png";
@@ -11,12 +14,12 @@ import gjulia from "../images/birre/gjulia.png"
 import forte from "../images/birre/forte.png"
 import calabrau from "../images/birre/calabrau.png";
 import salento from "../images/birre/salento.png";
-import grappa from "../images/distillati/Grappa.png";
-import whisky from "../images/distillati/whisky.png";
-import rhum from "../images/distillati/Rhum.png";
-import liquori from "../images/distillati/Liquori.png";
-import cognac from "../images/distillati/Cognac.png";
-import calvados from "../images/distillati/Calvados.png";
+import grappaIll from "../images/distillati/grappa.webp";
+import whiskyIll from "../images/distillati/whisky.webp";
+import rhumIll from "../images/distillati/rhum.webp";
+import liquoriIll from "../images/distillati/liquori.webp";
+import cognacIll from "../images/distillati/armagnac-cognac.webp";
+import calvadosIll from "../images/distillati/calvados.webp";
 
 export const WHATSAPP_NUMBER = "393342306019";
 
@@ -90,7 +93,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "grappa",
     label: "Grappa",
     description: "Grappe e acquaviti",
-    img: grappa,
+    illustrazione: grappaIll,
     accent: "#a5924f",
     items: GRAPPA,
   },
@@ -98,7 +101,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "whisky",
     label: "Whisky",
     description: "Whisky e whiskey",
-    img: whisky,
+    illustrazione: whiskyIll,
     accent: "#b07a29",
     items: WHISKY,
   },
@@ -106,7 +109,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "rhum",
     label: "Rhum",
     description: "Rhum sudamericani e da meditazione",
-    img: rhum,
+    illustrazione: rhumIll,
     accent: "#7a4a26",
     items: RHUM,
   },
@@ -114,7 +117,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "liquori",
     label: "Liquori",
     description: "Liquori e amari",
-    img: liquori,
+    illustrazione: liquoriIll,
     accent: "#5e7d54",
     items: LIQUORI,
   },
@@ -122,7 +125,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "armagnac-cognac",
     label: "Armagnac e Cognac",
     description: "Le acquaviti francesi",
-    img: cognac,
+    illustrazione: cognacIll,
     accent: "#8c4a2a",
     items: ARMAGNAC_COGNAC,
   },
@@ -130,7 +133,7 @@ export const DISTILLATI_CATEGORIES = [
     id: "calvados",
     label: "Calvados",
     description: "Acquavite di mele della Normandia",
-    img: calvados,
+    illustrazione: calvadosIll,
     accent: "#c26b32",
     items: CALVADOS,
   },
@@ -211,7 +214,7 @@ export const WINE_CATEGORIES = [
     label: "Vini Rossi",
     short: "Rossi", // link rapido sulla card "Vini" della pagina Enoteca
     description: "Scopri tutti i nostri vini rossi",
-    img: vinoRosso,
+    illustrazione: rossiIll,
     accent: "#7b2d3b",
     filterBy: "regione",
     remote: true, // niente array statico: i vini arrivano dall'API (/api/wines)
@@ -222,7 +225,7 @@ export const WINE_CATEGORIES = [
     label: "Vini Bianchi",
     short: "Bianchi",
     description: "Freschezza e profumi dei nostri bianchi",
-    img: vinoBianco,
+    illustrazione: bianchiIll,
     accent: "#d4a72c",
     filterBy: "regione",
     remote: true,
@@ -233,7 +236,7 @@ export const WINE_CATEGORIES = [
     label: "Vini Rosati",
     short: "Rosati",
     description: "Le sfumature dei nostri rosati",
-    img: vinoRosato,
+    illustrazione: rosatiIll,
     accent: "#d6798f",
     filterBy: "regione",
     remote: true,
@@ -243,7 +246,7 @@ export const WINE_CATEGORIES = [
     id: "spumanti",
     label: "Spumanti",
     description: "Bollicine per ogni occasione",
-    img: spumantiImg,
+    illustrazione: spumantiIll,
     accent: "#c2a878",
     filterBy: "regione",
     remote: true,
@@ -253,7 +256,7 @@ export const WINE_CATEGORIES = [
     id: "champagne",
     label: "Champagne",
     description: "Le bollicine francesi",
-    img: champagneImg,
+    illustrazione: champagneIll,
     accent: "#b08d57",
     filterBy: "regione",
     remote: true,
@@ -264,7 +267,7 @@ export const WINE_CATEGORIES = [
     label: "Dolci e Passiti",
     short: "Dolci e Passiti",
     description: "Dolci e assiti",
-    img: liquorosiImg,
+    illustrazione: liquorosiIll,
     accent: "#8a5a2b",
     filterBy: "regione",
     remote: true,

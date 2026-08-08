@@ -1,0 +1,10 @@
+{
+  "name": "run-enoteca-detoma-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Harness Playwright per pilotare il sito Enoteca de Toma in headless. Volutamente separato dal package.json dell'app: Playwright non deve finire tra le dipendenze del sito.",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}

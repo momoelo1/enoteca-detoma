@@ -21,7 +21,10 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.claude
+# impostazioni locali di Claude Code ignorate, ma le skill del progetto
+# (.claude/skills/) vanno in git: servono a chi clona il repo
+.claude/*
+!.claude/skills/
 .idea
 .DS_Store
 *.suo

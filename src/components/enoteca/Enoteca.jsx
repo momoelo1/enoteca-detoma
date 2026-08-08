@@ -120,11 +120,15 @@ export function CatCard({ item, onClick }) {
 }
 
 // card categoria compatta: un tocco → lista prodotti.
-// `filigrana`: calice/icona in filigrana al posto della foto — si usa per
-// i vini e per gli alimentari. Senza, resta la foto della categoria: è la
-// scelta di birre e distillati, che le foto ce l'hanno e vanno mostrate.
+// `filigrana`: l'immagine diventa lo sfondo della card, ancorata in basso a
+// destra e sfumata, con il nome davanti — è la scelta di vini e distillati,
+// che hanno le illustrazioni incise, e degli alimentari.
+// Senza, l'immagine resta al centro a piena opacità: è la scelta delle birre,
+// che i loghi dei birrifici ce l'hanno e vanno mostrati per intero.
+// Senza né immagine né illustrazione resta l'icona monocroma.
 export function MiniCard({ c, onClick, filigrana = false }) {
   const icon = { id: c.id, label: c.short || c.label };
+  const sfondo = c.illustrazione || c.img;
   return (
     <li className="mini-cell">
       <button
@@ -134,9 +138,18 @@ export function MiniCard({ c, onClick, filigrana = false }) {
         onClick={onClick}
       >
         {filigrana ? (
-          <CategoryIcon {...icon} className="mini-icon-watermark" weight="fill" />
-        ) : c.img ? (
-          <img src={c.img} alt="" className="mini-img" loading="lazy" />
+          sfondo ? (
+            <img
+              src={sfondo}
+              alt=""
+              className="mini-icon-watermark mini-icon-watermark--img"
+              loading="lazy"
+            />
+          ) : (
+            <CategoryIcon {...icon} className="mini-icon-watermark" weight="fill" />
+          )
+        ) : sfondo ? (
+          <img src={sfondo} alt="" className="mini-img" loading="lazy" />
         ) : (
           <CategoryIcon {...icon} className="mini-icon-svg" />
         )}
@@ -947,8 +960,8 @@ function Enoteca() {
             <MiniCard
               key={c.id}
               c={c}
-              /* filigrana ovunque tranne che nelle birre: sono le uniche
-                 a tenere le foto dei birrifici */
+              /* filigrana ovunque tranne che nelle birre: i loghi dei
+                 birrifici restano al centro, a piena opacità */
               filigrana={tabG.id !== "birre"}
               onClick={() => openDirect(tabG.id, c.id)}
             />

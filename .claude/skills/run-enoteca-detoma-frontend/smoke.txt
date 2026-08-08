@@ -1,0 +1,45 @@
+# Giro completo del sito: home -> enoteca -> lista -> scheda prodotto ->
+# barra regioni -> alimentari -> login admin.
+# Uso:  Get-Content .claude/skills/run-enoteca-detoma-frontend/smoke.txt | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs
+
+nav /
+wait-for .nav-btn
+screenshot home
+
+nav /enoteca
+wait-for .mini-cell
+count .mini-cell
+screenshot enoteca-gruppi
+
+click .mini-cell >> nth=0
+wait-for .product-list
+url
+body-classes
+count .product-list > *
+screenshot enoteca-lista
+
+click .product-list > *
+wait-for .sheet-name
+url
+text .sheet-name
+screenshot enoteca-scheda
+click .sheet-close
+sleep 400
+
+click text=Regioni
+sleep 600
+body-classes
+screenshot enoteca-regioni
+
+nav /alimentari
+wait-for .mini-cell
+click .mini-cell >> nth=0
+sleep 1500
+url
+screenshot alimentari-lista
+
+nav /admin
+wait-for input
+screenshot admin-login
+
+console
