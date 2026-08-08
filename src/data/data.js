@@ -1,6 +1,3 @@
-// illustrazioni incise dei vini: non sono foto come le altre immagini di
-// categoria — vanno in filigrana nell'angolo della mini-card, non a 72px
-// al centro. Per questo stanno nel campo `illustrazione` e non in `img`.
 import rossiIll from "../images/vini/rossi.webp";
 import bianchiIll from "../images/vini/bianchi.webp";
 import rosatiIll from "../images/vini/rosati.webp";

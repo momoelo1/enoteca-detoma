@@ -37,17 +37,29 @@
   pointer-events: none;
 }
 
-/* Variante illustrata (i vini): stessa posizione dell'icona, ma è un <img>,
-   quindi serve `object-fit` o l'illustrazione si deforma nel riquadro
-   quadrato. Opacità più alta della filigrana monocroma: a colori e sfumata
-   l'incisione sparirebbe a 0.16. */
+/* Variante illustrata (vini e distillati): stessa posizione dell'icona, ma è
+   un <img>, quindi serve `object-fit` o l'illustrazione si deforma nel
+   riquadro quadrato. Opacità più alta della filigrana monocroma: a colori e
+   sfumata l'incisione sparirebbe a 0.16. */
 .mini-icon-watermark--img {
   object-fit: contain;
   object-position: bottom right;
-  opacity: 0.38;
+  opacity: 0.75;
 }
 
+/* Il nome sta davanti alla filigrana e ci si sovrappone: senza un alone
+   chiaro il serif — sottile e ad alto contrasto — si perde sopra le linee
+   dell'incisione. Le prime tre ombre sono strette e si sommano fino a
+   coprire quasi del tutto (stesso colore del fondo card, non un contorno):
+   il testo ritaglia un buco netto. Le ultime due, larghe, sfumano il bordo
+   del buco così non sembra ritagliato con le forbici. */
 .mini-card--filigrana .mini-name {
   position: relative;
   z-index: 1;
+  text-shadow:
+    0 0 2px #f3f7f2,
+    0 0 2px #f3f7f2,
+    0 0 3px #f3f7f2,
+    0 0 8px #f3f7f2,
+    0 0 15px #f3f7f2;
 }
