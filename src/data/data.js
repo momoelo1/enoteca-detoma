@@ -4,19 +4,25 @@ import rosatiIll from "../images/vini/rosati.webp";
 import spumantiIll from "../images/vini/spumanti.webp";
 import champagneIll from "../images/vini/champagne.webp";
 import liquorosiIll from "../images/vini/liquorosi.webp";
-import birrai32Img from "../images/birre/32viadeibirrai.png";
-import brasserie from "../images/birre/brasserieMontBlanc.png";
-import ribadi from "../images/birre/ribadi-logo.png";
-import gjulia from "../images/birre/gjulia.png"
-import forte from "../images/birre/forte.png"
-import calabrau from "../images/birre/calabrau.png";
-import salento from "../images/birre/salento.png";
+import birrai32Img from "../images/birre/32viadeibirrai.webp";
+import brasserie from "../images/birre/brasserieMontBlanc.webp";
+import ribadi from "../images/birre/ribadi-logo.webp";
+import gjulia from "../images/birre/gjulia.webp"
+import forte from "../images/birre/forte.webp"
+import calabrau from "../images/birre/calabrau.webp";
+import salento from "../images/birre/salento.webp";
 import grappaIll from "../images/distillati/grappa.webp";
 import whiskyIll from "../images/distillati/whisky.webp";
 import rhumIll from "../images/distillati/rhum.webp";
 import liquoriIll from "../images/distillati/liquori.webp";
 import cognacIll from "../images/distillati/armagnac-cognac.webp";
 import calvadosIll from "../images/distillati/calvados.webp";
+import conserveItticheIll from "../images/gastronomia/conserve-ittiche.webp";
+import panificatiIll from "../images/gastronomia/panificati-snack-salati.webp";
+import pateCremeSalateIll from "../images/gastronomia/pate-creme-salate.webp";
+import pestoIll from "../images/gastronomia/pesto.webp";
+import sughiCondimentiIll from "../images/gastronomia/sughi-condimenti.webp";
+import verdureSottolioIll from "../images/gastronomia/verdure-sottolio.webp";
 
 export const WHATSAPP_NUMBER = "393342306019";
 
@@ -276,7 +282,17 @@ export const WINE_CATEGORIES = [
 export const GASTRONOMIA = [];
 export const DOLCERIA = [];
 
-// ---- card della pagina Alimentari ----
+
+const ILLUSTRAZIONI_GASTRONOMIA = {
+  "conserve ittiche": conserveItticheIll,
+  "panificati e snack da forno": panificatiIll,
+  "pate e creme salate": pateCremeSalateIll,
+  pesto: pestoIll,
+  "sughi e condimenti": sughiCondimentiIll,
+  "verdure sott'olio": verdureSottolioIll,
+  // "panificati e snack da forno": in attesa dell'immagine
+};
+
 export const ALIMENTARI_CATEGORIES = [
   {
     id: "gastronomia",
@@ -285,6 +301,7 @@ export const ALIMENTARI_CATEGORIES = [
     icon: "🧀",
     accent: "#c98f2e",
     items: GASTRONOMIA,
+    illustrazioni: ILLUSTRAZIONI_GASTRONOMIA,
   },
   {
     id: "dolceria",
@@ -293,6 +310,7 @@ export const ALIMENTARI_CATEGORIES = [
     icon: "🍰",
     accent: "#b56576",
     items: DOLCERIA,
+    illustrazioni: {}, // in attesa delle immagini
   },
 ];
 

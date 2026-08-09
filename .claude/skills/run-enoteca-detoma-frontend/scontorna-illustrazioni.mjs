@@ -15,6 +15,10 @@ import { resolve } from 'node:path';
 
 const SRC = process.env.USERPROFILE + '\\Downloads\\';
 
+// `from` opzionale: se manca si legge da Downloads. Un set che legge e
+// scrive nella stessa cartella rilavora i file sul posto (utile quando le
+// immagini arrivano gia' scontornate ma troppo grandi: lo scontorno non
+// trova sfondo da togliere e resta solo ritaglio + riduzione).
 const SET = {
   vini: {
     out: 'src/images/vini',
@@ -38,6 +42,17 @@ const SET = {
       'calvados.png': 'calvados.webp',
     },
   },
+  gastronomia: {
+    from: 'src/images/gastronomia',
+    out: 'src/images/gastronomia',
+    map: {
+      'conserve-ittiche.webp': 'conserve-ittiche.webp',
+      'pate-creme-salate.webp': 'pate-creme-salate.webp',
+      'pesto.webp': 'pesto.webp',
+      'sughi-condimenti.webp': 'sughi-condimenti.webp',
+      'verdure-sottolio.webp': 'verdure-sottolio.webp',
+    },
+  },
 };
 
 const sets = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SET);
@@ -46,14 +61,15 @@ const browser = await chromium.launch();
 const page = await browser.newPage();
 
 for (const name of sets) {
-  const { out: outDir, map: MAP } = SET[name] || {};
+  const { out: outDir, map: MAP, from } = SET[name] || {};
   if (!MAP) { console.error(`set sconosciuto: ${name}`); process.exitCode = 1; continue; }
   const OUT = resolve(outDir);
-  console.log(`\n[${name}] -> ${outDir}`);
+  const IN = from ? resolve(from) + '\\' : SRC;
+  console.log(`\n[${name}] ${from || 'Downloads'} -> ${outDir}`);
 
 for (const [src, dst] of Object.entries(MAP)) {
   const mime = src.endsWith('.png') ? 'png' : 'webp';
-  const b64 = readFileSync(SRC + src).toString('base64');
+  const b64 = readFileSync(IN + src).toString('base64');
   const out = await page.evaluate(async ([b64, size, mime]) => {
     const img = new Image();
     img.src = `data:image/${mime};base64,` + b64;

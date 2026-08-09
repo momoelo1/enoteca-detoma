@@ -47,13 +47,18 @@
   opacity: 0.75;
 }
 
-/* Il nome sta davanti alla filigrana e ci si sovrappone: senza un alone
+/* Il testo sta davanti alla filigrana e ci si sovrappone: senza un alone
    chiaro il serif — sottile e ad alto contrasto — si perde sopra le linee
    dell'incisione. Le prime tre ombre sono strette e si sommano fino a
    coprire quasi del tutto (stesso colore del fondo card, non un contorno):
    il testo ritaglia un buco netto. Le ultime due, larghe, sfumano il bordo
-   del buco così non sembra ritagliato con le forbici. */
-.mini-card--filigrana .mini-name {
+   del buco così non sembra ritagliato con le forbici.
+
+   Vale anche per `.mini-count` ("3 prodotti"), che c'è solo negli Alimentari:
+   la filigrana è `position:absolute` e quindi passa sopra a tutto ciò che
+   resta statico — serve il `z-index` esattamente come per il nome. */
+.mini-card--filigrana .mini-name,
+.mini-card--filigrana .mini-count {
   position: relative;
   z-index: 1;
   text-shadow:

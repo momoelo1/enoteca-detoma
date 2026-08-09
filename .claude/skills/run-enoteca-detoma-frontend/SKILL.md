@@ -129,6 +129,9 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 - Body classes observed: `home-no-scroll` (home), `home-no-scroll page-pinned`
   (`/enoteca`, `/alimentari` grids), `home-no-scroll category-open` (a category list),
   `+ region-bar-open` after `click text=Regioni`.
+- Le illustrazioni incise sono `.mini-icon-watermark--img`. `count` su quella classe
+  contro `count .mini-cell` dice al volo quanti gruppi hanno l'immagine e quanti no —
+  è il controllo più veloce dopo aver aggiunto un'illustrazione.
 
 ## Build and preview
 
@@ -136,8 +139,9 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 $env:VITE_API_URL = 'https://detoma-backend.vercel.app'; npm run build
 ```
 
-Takes ~2.5 min (Babel + the React Compiler preset dominate). Warns about
-`famiglia_3-*.png` at 3.6 MB and a 495 kB JS bundle — both pre-existing, not a failure.
+**~2.5 min on a cold `.vite` cache, ~10 s warm** (Babel + the React Compiler preset
+dominate). Warns about `famiglia_3-*.png` at 3.6 MB and a ~460 kB JS bundle — both
+pre-existing, not a failure.
 
 `npm run preview` alone serves a **blank page**: `vite.config.js` only sets
 `base: '/enoteca-detoma/'` when `command === 'build'`, so preview serves at `/` while
@@ -161,26 +165,40 @@ Stop it the same way as the dev server, on port **4173**.
 ## Preparare le illustrazioni di categoria
 
 `scontorna-illustrazioni.mjs` (stessa cartella) trasforma le illustrazioni incise
-consegnate dal cliente in asset usabili. Serve perché **i file sorgente non hanno alpha**:
-la "trasparenza" è una scacchiera dipinta nei pixel, in due grigi (254 e 244) più un alone
-tinto attorno al disegno. Messi così su una card verdina si vede un quadrato bianco.
+consegnate dal cliente in asset usabili: scontorna, ritaglia sul contenuto e riduce a
+256px webp lossy.
+
+**Controlla SEMPRE l'alpha prima di decidere cosa fare** — vedi Gotchas: l'occhio non
+distingue "trasparente" da "scacchiera dipinta". Finora sono arrivati due casi diversi:
+
+- **vini** (`.webp`) e **distillati** (`.png`): nessun alpha, la "trasparenza" era una
+  scacchiera dipinta nei pixel in due grigi (~254 e ~244) più un alone tinto attorno al
+  disegno. Su una card verdina si vedeva un quadrato bianco. 1,8 MB → 158 KB per sei.
+- **gastronomia** (`.webp`): alpha vero già a posto, serviva solo ritaglio e riduzione da
+  512px. 313 KB → 98 KB per cinque.
 
 Lo script fa flood fill dai bordi (solo lo sfondo *connesso* al bordo sparisce, così le
-etichette color crema dentro il disegno restano), toglie l'alone bianco sui bordi
-antialiasati, ritaglia sul contenuto e riduce a 256px webp lossy — 1,8 MB → 158 KB per sei.
+etichette color crema dentro il disegno restano) e toglie l'alone bianco sui bordi
+antialiasati. Su un file già scontornato il flood fill non trova niente da togliere e
+resta solo ritaglio + riduzione: passarci un set pulito è innocuo.
 
 ```powershell
-node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs           # tutti i set
-node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs distillati # solo uno
+node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs             # tutti i set
+node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs distillati  # solo uno
 ```
 
-Legge da `%USERPROFILE%\Downloads\`, scrive in `src/images/<set>/`. I set (`vini`,
-`distillati`) e la mappa nome-sorgente → nome-destinazione stanno in cima al file: per una
-serie nuova si aggiunge una voce lì. Accetta sia `.png` che `.webp` in ingresso — il
-problema della scacchiera è lo stesso in entrambi i formati.
+I set (`vini`, `distillati`, `gastronomia`) e la mappa nome-sorgente → nome-destinazione
+stanno in cima al file: per una serie nuova si aggiunge una voce lì. Di default legge da
+`%USERPROFILE%\Downloads\`; con `from` legge da una cartella del progetto e può riscrivere
+sul posto (è quello che fa `gastronomia`). Accetta `.png` e `.webp` in ingresso.
 
 **`FULL` deve restare sotto il tono più scuro della scacchiera (~243)**: se sta sopra, i
 quadretti scuri restano opachi al 25% e la scacchiera riappare sbiadita.
+
+Le immagini poi vanno collegate in `src/data/data.js`, non in un modulo a parte:
+`illustrazione:` sulle categorie di vini e distillati, e la mappa `illustrazioni` dentro
+`ALIMENTARI_CATEGORIES` per i gruppi alimentari (chiave = `sottocategoria`
+normalizzata — minuscola e senza accenti, ma spazi e apostrofi restano).
 
 Per controllare il risultato senza fidarsi dell'occhio — il visualizzatore di immagini
 disegna *lui* una scacchiera per l'alpha, quindi non distingue "trasparente" da "scacchiera
@@ -214,6 +232,16 @@ real touch layout.
 - **Empty lists + `ERR_CONNECTION_REFUSED` ×26** — you started the server without
   `VITE_API_URL`. The page still renders its shell, so it looks like a CSS bug. Restart
   the server with the env var; `console` in the driver is what surfaces it.
+- **Non fidarti dell'anteprima immagini per l'alpha.** Il visualizzatore disegna *lui* una
+  scacchiera dove c'è trasparenza, quindi "trasparente" e "scacchiera dipinta nei pixel"
+  sono identici a vedersi. Vanno contati i pixel: carica il file in Chromium e misura il
+  canale alpha (`d[i+3] < 8`). È così che si è scoperto che i sorgenti erano opachi al
+  100%, e poi che una soglia sbagliata lasciava i quadretti scuri opachi al 25%.
+- **Uno screenshot subito dopo un hot-reload CSS o un cambio tab può mentire.** Due volte
+  è tornata una griglia vuota o senza immagini mentre l'app era a posto: HMR ripaint a
+  metà, oppure `count`/`eval` eseguiti mentre React stava rimontando la lista. Prima di
+  dichiarare un bug, ricontrolla con un `nav` pulito e ispeziona gli elementi
+  (`naturalWidth`, `getComputedStyle`) invece di credere al primo PNG.
 - **`.claude` was fully gitignored.** It is now `.claude/*` + `!.claude/skills/`, so this
   skill is committed while local settings stay out. Don't revert that line.
 - **`vite preview` needs `--base /enoteca-detoma/`** — see above. Same class of bug as a
