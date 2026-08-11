@@ -44,6 +44,12 @@ page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('response', (r) => {
   if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url()}`);
 });
+// una richiesta che non arriva mai a una risposta (DNS, connessione rifiutata,
+// timeout) non passa da 'response': in console si vede solo un generico
+// "Failed to load resource" senza URL, che non dice quale risorsa manca.
+page.on('requestfailed', (r) => {
+  errors.push(`requestfailed ${r.failure()?.errorText || ''}: ${r.url()}`);
+});
 
 // "text=Vini" / "role=button[name=X]" passano dritti a Playwright; il resto e un CSS selector.
 const loc = (sel) => page.locator(sel);

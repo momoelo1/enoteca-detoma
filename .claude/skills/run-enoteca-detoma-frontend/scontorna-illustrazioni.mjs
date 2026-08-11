@@ -47,10 +47,21 @@ const SET = {
     out: 'src/images/gastronomia',
     map: {
       'conserve-ittiche.webp': 'conserve-ittiche.webp',
+      'panificati-snack-salati.webp': 'panificati-snack-salati.webp',
       'pate-creme-salate.webp': 'pate-creme-salate.webp',
       'pesto.webp': 'pesto.webp',
       'sughi-condimenti.webp': 'sughi-condimenti.webp',
       'verdure-sottolio.webp': 'verdure-sottolio.webp',
+    },
+  },
+  dolceria: {
+    from: 'src/images/dolceria',
+    out: 'src/images/dolceria',
+    map: {
+      'confetture.webp': 'confetture.webp',
+      'creme-spalmabili.webp': 'creme-spalmabili.webp',
+      'frutta-sciroppata.webp': 'frutta-sciroppata.webp',
+      'miele.webp': 'miele.webp',
     },
   },
 };
@@ -74,6 +85,12 @@ for (const [src, dst] of Object.entries(MAP)) {
     const img = new Image();
     img.src = `data:image/${mime};base64,` + b64;
     await img.decode();
+
+    // gia' ridotto: rilavorarlo non guadagna un byte e gli costa una
+    // generazione di webp lossy in piu'. Serve perche' i set che leggono e
+    // scrivono nella stessa cartella vengono rilanciati quando il cliente
+    // consegna UN file nuovo, e gli altri non devono pagarne il prezzo.
+    if (Math.max(img.width, img.height) <= size) return null;
 
     const W = img.width, H = img.height;
     const c = document.createElement('canvas');
@@ -154,9 +171,12 @@ for (const [src, dst] of Object.entries(MAP)) {
     return { url: o.toDataURL('image/webp', 0.85), w: o.width, h: o.height };
   }, [b64, 256, mime]);
 
+  if (!out) { console.log(`  ${dst.padEnd(28)} gia' a <=256px, saltato`); continue; }
+
   const buf = Buffer.from(out.url.split(',')[1], 'base64');
+  const prima = Math.round(readFileSync(IN + src).length / 1024);
   writeFileSync(resolve(OUT, dst), buf);
-  console.log(`  ${dst.padEnd(22)} ${out.w}x${out.h}  ${Math.round(buf.length / 1024)} KB`);
+  console.log(`  ${dst.padEnd(28)} ${out.w}x${out.h}  ${prima} KB -> ${Math.round(buf.length / 1024)} KB`);
 }
 }
 

@@ -45,14 +45,15 @@ admin mutations against it.
 
 ## Run (agent path)
 
-Start the dev server in the background, then poll — don't sleep. First boot re-optimizes
-deps and takes ~8 s.
+Start the dev server **detached**, then poll — don't sleep. `Start-Process` is not a
+stylistic choice: a `Start-Job` (or a plain backgrounded `npm run dev`) dies with the shell
+call that created it, so the next tool call finds nothing on 5173. A `Start-Process`
+survives, as does the backend below. Verified: ready in ~4 s, listening two poll cycles
+later.
 
 ```powershell
-$env:VITE_API_URL = 'https://detoma-backend.vercel.app'; npm run dev
-```
-
-```powershell
+$env:VITE_API_URL = 'https://detoma-backend.vercel.app'
+$p = Start-Process npm.cmd -ArgumentList 'run','dev' -RedirectStandardOutput "$env:TEMP\vite.log" -PassThru -WindowStyle Hidden
 for($i=0;$i -lt 60;$i++){ try { Invoke-WebRequest 'http://localhost:5173/' -UseBasicParsing -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Milliseconds 700 } }
 ```
 
@@ -116,7 +117,7 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 | `triplelogo` | three fast clicks on `.site-logo` → `/admin` |
 | `screenshot [name]` | PNG into the shots dir |
 | `dump-html [name]` | full HTML into the shots dir |
-| `console` | print collected console errors, page errors and HTTP ≥ 400 |
+| `console` | print console errors, page errors, HTTP ≥ 400 **and failed requests with their URL** |
 | `sleep <ms>`, `# comment`, `quit` | |
 
 ### Landmarks worth knowing
@@ -133,15 +134,61 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
   contro `count .mini-cell` dice al volo quanti gruppi hanno l'immagine e quanti no —
   è il controllo più veloce dopo aver aggiunto un'illustrazione.
 
+## Testing the admin panel without touching production
+
+The section above points `VITE_API_URL` at the **live** backend, so anything you do in the
+admin panel edits the shop's real catalogue. To exercise it for real — login, create,
+edit, delete — start the sibling repo's disposable backend instead. It boots an in-memory
+Mongo, so nothing survives and nothing is production. See
+`backend/.claude/skills/run-enoteca-detoma-backend/`.
+
+From `backend/`, with a seeded catalogue (3 wines, 1 beer, 2 alimentari) and the API held
+open on port 3011:
+
+```powershell
+Start-Process node -ArgumentList '.claude/skills/run-enoteca-detoma-backend/driver.mjs','--hold' -RedirectStandardOutput "$env:TEMP\hold.log" -RedirectStandardInput '.claude/skills/run-enoteca-detoma-backend/seed-locale.txt' -WindowStyle Hidden
+```
+
+Then start this repo's dev server against it (`Start-Process` as above, only the env var
+changes) and drive the panel — the account is `admin` / `Password1!`:
+
+```powershell
+$env:VITE_API_URL = 'http://localhost:3011'
+```
+
+```powershell
+@'
+nav /admin
+wait-for #login-username
+fill #login-username admin
+fill #login-password Password1!
+press Enter
+wait-for .admin-product-grid
+count .admin-product-grid > *
+text .admin-content-count
+click .admin-topbar-link >> text=Alimentari
+wait-for .admin-product-grid
+screenshot admin-alimentari
+console
+'@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --desktop
+```
+
+Verified: logs in, `1 vino` / `1 prodotto`, `ERRORS none`, exit 0. The public side reads
+the same data (`/enoteca/vini/bianchi` → `Gavi di prova · Piemonte · € 14,00`).
+
+Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
+`.admin-topbar-user`, `.admin-topbar-link` (Vini / Birre / Alimentari / Account),
+`.admin-product-grid`, `.admin-content-count`, `.admin-loading`.
+
 ## Build and preview
 
 ```powershell
 $env:VITE_API_URL = 'https://detoma-backend.vercel.app'; npm run build
 ```
 
-**~2.5 min on a cold `.vite` cache, ~10 s warm** (Babel + the React Compiler preset
-dominate). Warns about `famiglia_3-*.png` at 3.6 MB and a ~460 kB JS bundle — both
-pre-existing, not a failure.
+**~2.5 min on a cold `.vite` cache, ~22 s warm** (`vite:asset` 66% + the Babel/React
+Compiler preset 21% of plugin time). Warns about `famiglia_3-*.png` at 3.6 MB and a
+458 kB JS bundle — both pre-existing, not a failure.
 
 `npm run preview` alone serves a **blank page**: `vite.config.js` only sets
 `base: '/enoteca-detoma/'` when `command === 'build'`, so preview serves at `/` while
@@ -187,7 +234,11 @@ node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs     
 node .claude/skills/run-enoteca-detoma-frontend/scontorna-illustrazioni.mjs distillati  # solo uno
 ```
 
-I set (`vini`, `distillati`, `gastronomia`) e la mappa nome-sorgente → nome-destinazione
+Un file già a ≤256px viene **saltato** (stampa "già a <=256px, saltato"): i set che leggono
+e scrivono nella stessa cartella vengono rilanciati quando il cliente consegna *un* file
+nuovo, e gli altri non devono pagare una generazione di webp lossy in più.
+
+I set (`vini`, `distillati`, `gastronomia`, `dolceria`) e la mappa nome-sorgente → nome-destinazione
 stanno in cima al file: per una serie nuova si aggiunge una voce lì. Di default legge da
 `%USERPROFILE%\Downloads\`; con `from` legge da una cartella del progetto e può riscrivere
 sul posto (è quello che fa `gastronomia`). Accetta `.png` e `.webp` in ingresso.
@@ -212,6 +263,35 @@ sleep 2000
 screenshot vini
 '@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs
 ```
+
+## Convertire foto e logo (`converti-foto.mjs`)
+
+Stessa cartella, stesso Chromium: ridimensiona a webp le immagini che non sono
+illustrazioni incise. Il criterio è sempre lo stesso — **misura CSS a cui l'immagine è
+disegnata × il DPR massimo che vuoi servire (3)**; oltre quella soglia stai spedendo pixel
+che nessuno vedrà.
+
+```powershell
+node .claude/skills/run-enoteca-detoma-frontend/converti-foto.mjs        # tutti
+node .claude/skills/run-enoteca-detoma-frontend/converti-foto.mjs logo   # solo uno
+```
+
+Fatto il 2026-08-11, misurato sul `dist/` servito: **home 4211 KB → 444 KB**, alimentari
+642 KB → 138 KB. I tre job già lanciati: `famiglia_3` 3512→151 KB (era un PNG 1918×1080
+disegnato a 342×152), `famiglia_2` 295→33 KB, `logo` 205→62 KB.
+
+- **Lo script NON cancella il `.png` sorgente.** Per le foto di famiglia cancellarlo è
+  **obbligatorio**: `import.meta.glob` in `Home.jsx` prende `.png` *e* `.webp`, quindi
+  finché ci sono entrambi la stessa foto compare due volte nello slideshow. Verifica con
+  `eval [...document.querySelectorAll('.family-photo')].map(i=>i.currentSrc)` — devono
+  essere 3.
+- Il logo è un import diretto (`App.jsx`), quindi lì la riga va cambiata a mano.
+- Rilanciarlo dopo aver cancellato i png stampa "sorgente assente, già convertito" e non è
+  un errore.
+- **Sul logo l'alpha non si perde mai**: Chrome codifica il canale alpha senza perdita, a
+  qualunque qualità (misurato: errore 0 su tutte). Degrada solo l'RGB, che qui è nero
+  pieno. Per questo `q: 0.8` (62 KB, errore 3.8/255) invece di 0.92 (75 KB, errore 2.5):
+  13 KB per una differenza invisibile.
 
 ## Lint
 
@@ -256,6 +336,16 @@ real touch layout.
   dir to install, `Set-Location` back to `frontend/` or the driver path resolves twice.
 - **`.filter-back`** exists in the source but is not clickable while the region bar is
   open — close the bar by other means, or just `nav` away.
+- **`text=<parola>` is ambiguous once you're in the admin panel.** The site's own nav pills
+  sit above it, so `click text=Alimentari` hits the *site* nav (Playwright takes the first
+  match) and silently leaves the panel. Scope it:
+  `click .admin-topbar-link >> text=Alimentari`.
+- **`.admin-product-grid` always has one child more than there are products** — the first
+  cell is the "new product" card (`WineManager.jsx:122`). Read `.admin-content-count`
+  ("1 vino") instead of counting DOM nodes.
+- **`wait-for .admin-topbar` is not enough to screenshot the panel.** The topbar renders
+  immediately while the list is still `Caricamento…`; the first attempt here produced
+  exactly that screenshot. Wait for `.admin-product-grid`.
 
 ## Troubleshooting
 
@@ -268,3 +358,7 @@ real touch layout.
 - **Dev server won't bind 5173** — an old one is still listening. Kill it with the
   `Get-NetTCPConnection` line above; `Ctrl-C` on a backgrounded `npm run dev` doesn't
   reach the Vite child.
+- **`net::ERR_CONNECTION_REFUSED` on `http://localhost:5173/…` in a run that worked a
+  minute ago** — the dev server was started with `Start-Job` and died when that shell call
+  ended. Restart it with `Start-Process` (see Run). `Get-Job` returning nothing is the
+  confirmation.
