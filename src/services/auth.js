@@ -15,7 +15,9 @@ const API_URL =
 const TOKEN_KEY = "detoma_admin_token";
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
-const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+// esportata perché anche il cambio password riemette un token (il backend
+// revoca le sessioni precedenti): vedi services/users.js
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 export const authHeaders = () => {
@@ -23,6 +25,27 @@ export const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// il token dura 8h e il backend non lo rinnova: prima o poi scade mentre
+// il pannello admin è ancora aperto. Senza questo, il token morto restava
+// in localStorage e ogni salvataggio falliva con un messaggio tecnico,
+// senza che nessuno dicesse all'admin di riaccedere. Chi riceve un 401 su
+// una richiesta autenticata chiama questa: butta il token, avvisa l'app
+// (Login.jsx si mette in ascolto e torna al modulo di accesso) e
+// restituisce la frase da mostrare.
+export const SESSION_EXPIRED_EVENT = "detoma:sessione-scaduta";
+
+export const unauthorizedMessage = () => {
+  const hadToken = Boolean(getToken());
+  clearToken();
+  if (hadToken) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  return hadToken
+    ? "Sessione scaduta, accedi di nuovo."
+    : "Devi accedere per continuare.";
+};
+
+// NB: qui il 401 NON passa da `unauthorizedMessage`. Questa parse serve
+// solo a login/logout, dove un 401 vuol dire "credenziali sbagliate", non
+// "sessione scaduta".
 async function parse(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Errore di rete");
@@ -58,7 +81,7 @@ export const getSession = async () => {
 };
 
 export const logout = async () => {
-  await fetch(`${API_URL}/api/login/logout`, {
+  await fetch(`${API_URL}/api/logout`, {
     method: "POST",
     credentials: "include",
     headers: authHeaders(),

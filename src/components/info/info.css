@@ -1,7 +1,11 @@
 /* ---- pagina Info ----
    Titolo, sezione e testata ferma arrivano da enoteca/enoteca.css
    (.shop-section, .section-title, .section-sticky, .page-scroll): qui
-   vanno solo gli stili propri di questa pagina, come per gastronomia.css. */
+   vanno solo gli stili propri di questa pagina, come per gastronomia.css.
+
+   Il ritmo della pagina è voluto: fascia fotografica → riga di azioni →
+   scheda orizzontale → elenco → riga muta. Prima erano tre rettangoli di
+   vetro identici e la pagina si leggeva piatta. */
 
 .info-scroll {
   display: flex;
@@ -25,194 +29,324 @@
   min-width: 0; /* i blocchi possono stringersi invece di allargare la pagina */
 }
 
-/* nessun figlio può spingere in larghezza: il testo va a capo */
-.info-block,
-.info-block-body {
-  min-width: 0;
-  max-width: 100%;
+/* ---- fascia con la foto del negozio ---- */
+
+.info-hero {
+  position: relative;
+  margin: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  /* panoramica: la foto sorgente è 1200x378, questo taglio la rispetta
+     quasi del tutto e su telefono resta una fascia, non un francobollo */
+  aspect-ratio: 21 / 9;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
 
-.info-block-body {
+/* la pellicola: una foto sola sta ferma e riempie la fascia, più foto
+   diventano una striscia che si scorre col dito e si aggancia a ognuna.
+   Non serve cambiare nulla qui per aggiungerne: basta l'elenco in Info.jsx. */
+.info-hero-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  /* barra nascosta: la striscia si scorre col dito, la riga grigia sopra
+     la foto sarebbe solo sporcizia */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.info-hero-track::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.info-hero-img {
+  display: block;
+  /* flex: none + 100% = una foto per schermata, sempre, comunque siano
+     tante: è la larghezza della fascia a decidere, non quella dello scatto */
+  flex: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* il banco e le pareti di bottiglie stanno al centro dello scatto */
+  object-position: center;
+  scroll-snap-align: center;
+}
+
+/* ---- pallini della galleria (solo da due foto in su) ---- */
+
+.info-hero-dots {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  gap: 7px;
+  /* pastiglia scura dietro: i pallini bianchi su una foto chiara
+     sparirebbero, e il velo del figcaption sta solo in fondo */
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(20, 34, 26, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.info-hero-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.info-hero-dot--on {
+  background: #fff;
+  transform: scale(1.25);
+}
+
+.info-hero-dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.info-hero-cap {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 30px 18px 14px;
+  color: #fff;
+  /* velo scuro solo in fondo: senza, il testo bianco cade sui punti chiari
+     della vetrina e sparisce */
+  background: linear-gradient(
+    to top,
+    rgba(20, 34, 26, 0.78),
+    rgba(20, 34, 26, 0.45) 55%,
+    rgba(20, 34, 26, 0)
+  );
+}
+
+.info-hero-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(24px, 5.2vw, 32px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* ---- pallino aperto / chiuso ---- */
+
+.info-stato {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.info-stato-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* chiuso: rosso spento, non un allarme */
+  background: #e0645c;
+  box-shadow: 0 0 0 3px rgba(224, 100, 92, 0.25);
+}
+
+.info-stato--aperto .info-stato-dot {
+  background: #4ad07f;
+  box-shadow: 0 0 0 3px rgba(74, 208, 127, 0.25);
+  animation: info-battito 2.6s ease-in-out infinite;
+}
+
+/* respiro lento, non un lampeggio: dice "adesso" senza chiedere attenzione */
+@keyframes info-battito {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(74, 208, 127, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(74, 208, 127, 0.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .info-stato--aperto .info-stato-dot {
+    animation: none;
+  }
+}
+
+/* ---- riga di azioni ---- */
+
+/* Flex e non più `grid-template-columns: repeat(4, …)`: le colonne erano
+   quattro fisse ma le azioni sono tre, quindi restava una colonna vuota a
+   destra e la riga si leggeva sbilanciata a sinistra. Così le azioni si
+   dividono la larghezza in parti uguali qualunque sia il loro numero —
+   anche se domani ne togliamo o aggiungiamo una. */
+.info-azioni {
+  display: flex;
+  gap: 8px;
+}
+
+.info-azione {
+  /* stessa fetta di larghezza per tutte, a prescindere dal testo:
+     `flex-basis: 0` fa partire il calcolo da zero, altrimenti "WhatsApp"
+     si prenderebbe più spazio di "Email" solo perché è più lungo */
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 2px;
+  color: #2e5e46;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* il cerchio è disegnato attorno all'icona, non sull'intero bottone:
+   l'etichetta resta leggibile fuori e il bersaglio da toccare resta grande */
+.info-azione svg {
+  box-sizing: content-box;
+  width: 22px;
+  height: 22px;
+  padding: 13px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(46, 94, 70, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+@media (hover: hover) {
+  .info-azione:hover svg {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  }
+}
+
+.info-azione:active svg {
+  transform: translateY(0) scale(0.96);
+}
+
+.info-recapiti {
+  margin: -4px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(61, 74, 67, 0.75);
   overflow-wrap: anywhere;
 }
 
-.info-block-title {
+/* ---- dove siamo: la facciata del negozio ---- */
+
+/* Impilata, con l'illustrazione a tutta larghezza sopra il testo.
+   Prima era una riga con un francobollo da 132px a sinistra: misura giusta
+   per l'SVG inciso che c'era (un segno, non una scena), sbagliata per un
+   acquerello dove contano l'insegna, le bottiglie in vetrina e la panchina.
+   Sul telefono a tutta larghezza sono ~350px invece di 96: l'illustrazione
+   si legge davvero. */
+.info-vetrina {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
+  flex-direction: column;
+  align-items: stretch;
+  color: #3d4a43;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  /* l'immagine arriva fino ai bordi: il padding passa al solo blocco di
+     testo, e `overflow` le fa seguire gli angoli tondi della scheda */
+  padding: 0;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.info-vetrina-segno {
+  width: 100%;
+  /* Il file è 720x540, cioè esattamente 4:3: tenendo il riquadro sullo
+     stesso rapporto, `cover` non ha nulla da tagliare e l'illustrazione si
+     vede tutta intera. Se un domani si sostituisce con una foto di taglio
+     diverso, o si cambia qui il rapporto o si passa a `contain`.
+     L'aspect-ratio serve anche a prenotare lo spazio: senza, la scheda
+     "salta" quando l'immagine finisce di caricare. */
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.info-vetrina-testo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 20px 16px;
+}
+
+.info-vetrina-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(46, 94, 70, 0.7);
+}
+
+.info-vetrina-via {
   font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 22px;
+  font-size: clamp(18px, 4.4vw, 21px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: #2e5e46;
+  overflow-wrap: anywhere;
+}
+
+.info-vetrina-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 13px;
   font-weight: 600;
   color: #2e5e46;
 }
 
-.info-block-icon {
-  display: flex;
-  color: #2e5e46;
-}
-
-.info-block-body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 10px;
-  color: #3d4a43;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.info-address {
-  margin: 0;
-  font-style: normal;
-}
-
-/* l'indirizzo è il link alle mappe: resta testo normale (non verde e non
-   sottolineato, sarebbe rumore su due righe), il segnaposto in fondo fa
-   da segnale. Il verde arriva solo al passaggio/tocco. */
-.info-address-link {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 6px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.info-address-pin {
-  flex: none;
-  color: #2e5e46;
-  /* allineato all'ultima riga dell'indirizzo, non al centro del blocco */
-  margin-bottom: 2px;
-}
-
 @media (hover: hover) {
-  .info-address-link:hover {
-    color: #2e5e46;
+  .info-vetrina:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
   }
 
-  .info-address-link:hover span {
+  .info-vetrina:hover .info-vetrina-cta {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 }
 
-.info-address-link:focus-visible {
+.info-vetrina:focus-visible {
   outline: 2px solid #2e5e46;
   outline-offset: 3px;
-  border-radius: 4px;
 }
 
-/* ---- link e bottoni ---- */
-
-.info-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #2e5e46;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* stesso verde pieno del bottone WhatsApp nella scheda prodotto */
-.info-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  font-weight: 600;
-  color: #fff;
-  background: #2e5e46;
-  border-radius: 999px;
-  text-decoration: none;
-}
-
-/* ---- orari ---- */
-
-.info-hours {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.info-hours-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  /* l'orario sta SEMPRE a destra, mai sotto ai giorni: niente a capo.
-     Ci sta perché l'orario è un filo più piccolo e i giorni, se serve,
-     vanno in ellissi (vedi le due regole qui sotto). */
-  flex-wrap: nowrap;
-  gap: 12px;
-  /* filo di separazione leggero: tiene allineati giorni e orari senza
-     disegnare una tabella vera */
-  border-bottom: 1px dotted rgba(46, 94, 70, 0.25);
-  padding-bottom: 4px;
-}
-
-.info-hours-row:last-child {
-  border-bottom: none;
-}
-
-.info-hours-days {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-/* l'orologio è un elemento flex: senza questo, su una riga stretta viene
-   compresso e si vede più piccolo e schiacciato degli altri (telefono,
-   email, P.IVA), che stanno in righe larghe e non vengono mai stretti */
-.info-hours-days svg {
-  flex: none;
-}
-
-.info-hours-time {
-  text-align: right;
-  white-space: nowrap;
-  /* un filo più piccolo del resto: è quello che permette all'orario di
-     stare sulla stessa riga dei giorni anche sui telefoni stretti */
-  font-size: 13.5px;
-}
-
-/* ---- social ---- */
-
-.info-socials {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.info-social {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  color: #2e5e46;
-  font-weight: 600;
-  text-decoration: none;
-  background: rgba(255, 255, 255, 0.45);
-  border: 1px solid #2e5e46;
-  border-radius: 999px;
-}
-
-/* riga della partita IVA: stessa impaginazione dei link contatto, ma non
-   è un link — non c'è niente da aprire */
-.info-piva {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-}
+/* ---- scheda orari ---- */
 
 /* schede di vetro: stesso materiale delle .cat-card dell'Enoteca */
 .info-block {
+  min-width: 0;
+  max-width: 100%;
   padding: 20px 22px;
   background: rgba(255, 255, 255, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.6);
@@ -220,4 +354,169 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.info-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #2e5e46;
+}
+
+.info-hours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #3d4a43;
+  font-size: 15px;
+}
+
+/* L'orario sta SEMPRE sotto il suo giorno e incolonnato con lui, "Chiuso"
+   compreso: una colonna sola, nessuna eccezione.
+   Prima era giorno a sinistra e orario a destra, che andava a capo solo
+   quando non ci stava — e non ci stava quasi mai per caso: su un telefono
+   da 390px la riga ha 284px utili e "Martedì – Sabato" + "09:00 – 13:00 /
+   15:30 – 19:30" ne chiede 297 (misurati). Risultato: le righe lunghe
+   andavano a capo e quelle corte ("Chiuso") no, quindi la scheda mescolava
+   due impaginazioni diverse. Impilando sempre, la lettura è una sola —
+   e il nome del giorno non rischia più l'ellissi, che cadeva proprio sulla
+   riga di oggi, quella che il cliente sta cercando. */
+.info-hours-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 10px;
+  border-radius: 10px;
+}
+
+/* filo di separazione leggero: tiene allineati giorni e orari senza
+   disegnare una tabella vera. Sull'ultima riga e su quella di oggi
+   (che ha già il suo fondo) non serve. */
+.info-hours-row:not(:last-child):not(.info-hours-row--oggi) {
+  border-bottom: 1px dotted rgba(46, 94, 70, 0.25);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* oggi: l'unica riga che il cliente sta davvero cercando */
+.info-hours-row--oggi {
+  background: rgba(46, 94, 70, 0.1);
+  color: #2e5e46;
+  font-weight: 600;
+}
+
+.info-hours-days {
+  min-width: 0;
+  font-weight: 600;
+}
+
+.info-hours-time {
+  /* niente `margin-left: auto` né `text-align: right`: servivano a tenerlo
+     a destra quando giorno e orario stavano sulla stessa riga. Adesso parte
+     dal bordo sinistro, esattamente sotto il nome del giorno. */
+  white-space: nowrap;
+  /* un filo più piccolo del resto: tiene insieme le due fasce senza
+     spezzarle a metà */
+  font-size: 13.5px;
+}
+
+/* ---- coda: social e partita IVA ---- */
+
+.info-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 6px;
+}
+
+.info-socials {
+  display: flex;
+  gap: 10px;
+}
+
+.info-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: #2e5e46;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(46, 94, 70, 0.25);
+  transition: transform 0.18s ease;
+}
+
+@media (hover: hover) {
+  .info-social:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* la partita IVA è un obbligo di legge, non un contenuto: sta in coda,
+   piccola e smorzata, dove nessuno la cerca ma chi deve la trova */
+.info-piva {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(61, 74, 67, 0.6);
+}
+
+/* I 56px in fondo a `.shop-section` (enoteca.css) servono a scavalcare la
+   tab bar. Qui la distanza dalla barra la governa già il `padding-bottom`
+   del body, che Info.jsx calcola sulla barra vera: tenerli tutti e due
+   voleva dire contarla due volte, e la P.IVA restava a 72px dalla barra
+   invece dei 16 di adesso. Stesso ragionamento di `body.category-open
+   .shop-section`, che li azzera quando la tab bar non c'è.
+   Scritto `.shop-section.shop-section--info` e non col solo modificatore:
+   a parità di specificità deciderebbe l'ordine di import dei CSS, che in
+   questo progetto ha già fatto sparire due volte una regola. */
+.shop-section.shop-section--info {
+  padding-bottom: 0;
+}
+
+.pagina-finestra {
+  position: fixed;
+  inset: 0;
+  /* sotto la tab bar (10) e sotto l'header (20), sopra il contenuto: le due
+     barre restano nitide, quello che scorre sparisce dietro la finestra */
+  z-index: 9;
+  pointer-events: none;
+  /* La maschera è tutto il meccanismo: opaca sulla fascia dell'header
+     (--h-alto) e su quella sotto la tab bar (--h-basso), trasparente in
+     mezzo, dove il contenuto deve vedersi normalmente. Due fasce da una
+     sola sfumatura = un solo shader in più invece di due.
+     Le misure arrivano da Info.jsx: `--h-basso` è 0 da 641px in su, dove
+     la tab bar non è fissa e non c'è niente da coprire. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 var(--h-alto, 0px),
+    transparent var(--h-alto, 0px),
+    transparent calc(100% - var(--h-basso, 0px)),
+    #000 calc(100% - var(--h-basso, 0px)),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 var(--h-alto, 0px),
+    transparent var(--h-alto, 0px),
+    transparent calc(100% - var(--h-basso, 0px)),
+    #000 calc(100% - var(--h-basso, 0px)),
+    #000 100%
+  );
+}
+
+.pagina-finestra-sfondo {
+  position: absolute;
+  inset: 0;
 }

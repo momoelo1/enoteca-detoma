@@ -1,6 +1,6 @@
 // CRUD alimentari (gastronomia + dolceria) verso il backend — stesso
 // pattern di services/beers.js e services/wines.js.
-import { authHeaders } from "./auth";
+import { authHeaders, unauthorizedMessage } from "./auth";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -9,6 +9,9 @@ const API_URL =
 async function parse(res) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
+  // 401 = sessione scaduta: il token morto va buttato e l'app riportata
+  // al login, vedi `unauthorizedMessage` in auth.js
+  if (res.status === 401) throw new Error(unauthorizedMessage());
   if (!res.ok) throw new Error(data.error || "Errore di rete");
   return data;
 }

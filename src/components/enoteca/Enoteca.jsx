@@ -12,6 +12,7 @@ import { getBeers } from "../../services/beers";
 import { GlobeIcon } from "../icons/NavIcons";
 import { CategoryIcon } from "../icons/CategoryIcon";
 import { productSlug } from "../../utils/productSlug";
+import { trimBorder } from "../../utils/cloudinary";
 import {
   Jar,
   JarLabel,
@@ -276,7 +277,7 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
         <div className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}>
           {w.img ? (
             <img
-              src={w.img}
+              src={type === "alimentari" ? trimBorder(w.img) : w.img}
               alt=""
               className={"product-thumb-img" + (type ? ` product-thumb-img--${type}` : "")}
               loading="lazy"
@@ -446,7 +447,7 @@ export function ProductSheet({ w, category, onClose, type }) {
           <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
             {w.img ? (
               <img
-                src={w.img}
+                src={type === "alimentari" ? trimBorder(w.img) : w.img}
                 alt=""
                 className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
               />
@@ -924,11 +925,8 @@ function Enoteca() {
 
   return (
     <section className="shop-section">
-      {/* titolo + tab restano fermi in cima: scorre solo la griglia */}
       <div className="section-sticky">
-        <h2 className="section-title">La nostra Enoteca</h2>
-
-        {/* tab dei gruppi: Vini | Birre | Distillati | Consigliati */}
+        <h2 className="section-title">Enoteca</h2>
         <nav className="group-tabs" aria-label="Gruppi">
         {SHOP_GROUPS.map((g) => (
           <button

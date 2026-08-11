@@ -9,7 +9,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import "./App.css";
-import logo from "./images/enoteca-detoma-logo.png";
+import logo from "./images/enoteca-detoma-logo.webp";
 import Grainient from "./components/background/Grainient";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
@@ -19,8 +19,6 @@ import Info from "./components/info/Info";
 import NavIcon from "./components/icons/NavIcons";
 import { SECTIONS } from "./data/data";
 
-// un indirizzo fisso per ogni sezione: al refresh o su un link diretto
-// si resta sulla pagina giusta, invece di ripartire sempre dalla home
 const SECTION_PATHS = {
   home: "/",
   enoteca: "/enoteca",
@@ -32,7 +30,7 @@ const SECTION_PATHS = {
 function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
-  const tapCountRef = useRef(0); // tocchi ravvicinati sul logo
+  const tapCountRef = useRef(0); 
   const lastTapRef = useRef(0);
 
 
@@ -103,17 +101,12 @@ function AppShell() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          {/* stessa pagina per tutti e tre: Enoteca legge gruppo/categoria/
-              prodotto dall'URL (useParams), così un refresh — o un link
-              diretto — riapre esattamente dov'era, scheda prodotto inclusa */}
           <Route path="/enoteca" element={<Enoteca />} />
           <Route path="/enoteca/:groupId/:categoryId" element={<Enoteca />} />
           <Route
             path="/enoteca/:groupId/:categoryId/:productId"
             element={<Enoteca />}
           />
-          {/* come l'Enoteca: reparto/gruppo/prodotto stanno nell'URL, così
-              un refresh o un link diretto riaprono esattamente dov'era */}
           <Route path="/alimentari" element={<Gastronomia />} />
           <Route path="/alimentari/:reparto/:groupId" element={<Gastronomia />} />
           <Route
@@ -122,11 +115,7 @@ function AppShell() {
           />
           <Route path="/admin" element={<Login onBack={() => navigate("/")} />} />
           <Route path="/info" element={<Info />} />
-          {/* vecchio indirizzo della sezione, ora "Info": chi ce l'ha nei
-              preferiti o in un link non finisce sulla home */}
           <Route path="/dove-siamo" element={<Navigate to="/info" replace />} />
-          {/* sezione non ancora costruita: pagina vuota (com'era prima),
-              ma con un indirizzo stabile invece di finire su una pagina 404 */}
           <Route path="/confezioni" element={null} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

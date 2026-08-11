@@ -104,6 +104,12 @@ void main(){
 // uniforms without ever rebuilding the WebGL context.
 const ctxMap = new WeakMap();
 
+// Origine dei tempi condivisa da TUTTE le istanze. Con un `performance.now()`
+// preso al montaggio, due Grainient nati in momenti diversi mostrerebbero due
+// istanti diversi della stessa animazione, e dove si toccano si vedrebbe la
+// giuntura. Con un'origine sola sono la stessa immagine, sempre.
+const T0 = performance.now();
+
 const Grainient = ({
   timeSpeed = 0.25,
   colorBalance = 0.0,
@@ -202,7 +208,7 @@ const Grainient = ({
     let raf = 0;
     let isVisible = true;
     let isPageVisible = !document.hidden;
-    const t0 = performance.now();
+    const t0 = T0;
 
     const loop = t => {
       program.uniforms.iTime.value = (t - t0) * 0.001;

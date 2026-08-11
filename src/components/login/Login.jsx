@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
-import { isBackendConfigured, login, getSession, logout } from "../../services/auth";
+import {
+  isBackendConfigured,
+  login,
+  getSession,
+  logout,
+  SESSION_EXPIRED_EVENT,
+} from "../../services/auth";
 import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
 import AlimentariManager from "../admin/AlimentariManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
 
-// chiudendo la tastiera mobile Safari a volte lascia la pagina scrollata
-// (per tenere il campo visibile sopra la tastiera) e lo zoom "incollato"
-// anche con font-size 16px. Alla perdita del focus: si riporta la card
-// al suo posto e si forza un reset dello zoom riscrivendo il meta
-// viewport (il pizzico per zoomare resta disponibile ovunque sul sito).
 const restoreLayout = () => {
   window.scrollTo(0, 0);
 
@@ -32,8 +33,6 @@ function Login({ onBack }) {
   const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
   const [adminView, setAdminView] = useState("wines"); // "wines" | "beers" | "alimentari" | "account"
 
-  // niente scroll di sfondo SOLO per il modulo di accesso (corto); una
-  // volta dentro, il pannello vini può crescere e la pagina scorre normale
   useEffect(() => {
     if (session) {
       document.body.classList.remove("home-no-scroll");
@@ -43,13 +42,11 @@ function Login({ onBack }) {
     return () => document.body.classList.remove("home-no-scroll");
   }, [session]);
 
-  // piccola animazione di comparsa della card, come nel riferimento
   useEffect(() => {
     const timer = setTimeout(() => setCardReady(true), 10);
     return () => clearTimeout(timer);
   }, []);
 
-  // resta collegato tra un refresh e l'altro
   useEffect(() => {
     if (!isBackendConfigured) return;
     getSession()
@@ -58,6 +55,14 @@ function Login({ onBack }) {
   }, []);
 
 
+  useEffect(() => {
+    const onExpired = () => {
+      setSession(null);
+      setError("Sessione scaduta, accedi di nuovo.");
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,6 +80,8 @@ function Login({ onBack }) {
 
   const handleLogout = async () => {
     await logout();
+    setUsername("");
+    setPassword("");
     setSession(null);
   };
 

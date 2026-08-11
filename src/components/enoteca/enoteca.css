@@ -360,6 +360,15 @@ body.page-pinned .page-scroll {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
+  /* barra di scorrimento nascosta: la griglia scorre ancora (è .page-scroll),
+     ma senza riga grigia a destra. Usata da Enoteca e Alimentari. */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Edge legacy */
+}
+
+.mini-grid::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 @media (min-width: 720px) {
@@ -388,12 +397,24 @@ body.page-pinned .page-scroll {
   padding: 18px 12px 14px;
   overflow: hidden;
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  /* vetro, non pannello bianco: il velo è quasi assente e a reggere la
+     forma della card restano il bordo chiaro e la sfocatura dello sfondo.
+     La `saturate` compensa lo slavamento che il blur dà da solo — senza,
+     il verde della pagina sotto sbiadisce e la card sembra grigia. */
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  /* niente ombra da ferma, e non è una svista: il raggio di sfocatura
+     utile (20px) era più largo del `gap` della griglia (12px), quindi le
+     ombre di due card vicine si sovrapponevano per tutta la distanza e si
+     sommavano. Il risultato non era un'ombra sotto ogni card ma una
+     striscia grigia continua nel corridoio fra le due — misurata: fondo
+     pagina 239, corridoio 231 su tutta la larghezza, piatta. Con la card
+     opaca passava per il bordo del pannello; da vetro si vedeva solo lo
+     sporco. Se un'ombra dovesse tornare, il raggio deve stare sotto i
+     12px del gap (vedi .mini-grid) o il problema si ripresenta. */
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
@@ -410,7 +431,7 @@ body.page-pinned .page-scroll {
 
 .mini-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
 }
 
 .mini-card:focus-visible {
@@ -1008,6 +1029,25 @@ svg.product-food-svg {
   }
 }
 
+/* alimentari: foto tutte della stessa dimensione, e meno zoomate delle altre.
+   Le immagini arrivano già ritagliate al prodotto (`trimBorder`, vedi
+   utils/cloudinary.js), quindi qui basta una cornice QUADRATA — height dal
+   riquadro, larghezza uguale via aspect-ratio — dentro cui `contain` porta
+   ogni foto a toccare i bordi con il suo lato lungo: barattolo alto e
+   scatoletta larga finiscono ingombri identici, senza dipendere dalla
+   proporzione dello scatto. Lo `scale` sostituisce l'1.5 della regola base
+   (troppo per questi prodotti) e lascia un po' d'aria dentro il riquadro.
+   DEVE stare dopo la media query dei 640px più in alto, che imposta
+   .product-thumb-img a specificità uguale: vince l'ordine. */
+.product-thumb-img--alimentari {
+  height: 100%;
+  width: auto;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  object-fit: contain;
+  transform: scale(0.76);
+}
+
 /* riga di badge per specifiche numeriche (gradazione/formato) sotto
    la riga di testo descrittiva (stile/regione/colore) */
 .product-spec-row {
@@ -1279,6 +1319,19 @@ svg.product-food-svg {
   max-width: 70%;
   object-fit: contain;
   transform: scale(1.18); /* stesso zoom della card */
+}
+
+/* alimentari nel pannello: stessa cornice quadrata della card (vedi
+   .product-thumb-img--alimentari), ma qui la foto è il contenuto principale
+   e non deve restare un francobollo — `scale` quasi pieno, così il prodotto
+   arriva vicino ai bordi del riquadro. Niente max-width in percentuale: la
+   larghezza la decide già l'aspect-ratio sull'altezza del riquadro, che il
+   telefono abbassa da 160 a 130px. */
+.sheet-img--alimentari {
+  width: auto;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  transform: scale(0.95);
 }
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */

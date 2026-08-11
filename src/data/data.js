@@ -23,6 +23,10 @@ import pateCremeSalateIll from "../images/gastronomia/pate-creme-salate.webp";
 import pestoIll from "../images/gastronomia/pesto.webp";
 import sughiCondimentiIll from "../images/gastronomia/sughi-condimenti.webp";
 import verdureSottolioIll from "../images/gastronomia/verdure-sottolio.webp";
+import confettureIll from "../images/dolceria/confetture.webp";
+import cremeIll from "../images/dolceria/creme-spalmabili.webp";
+import fruttaSciroppataIll from "../images/dolceria/frutta-sciroppata.webp";
+import mieleIll from "../images/dolceria/miele.webp";
 
 export const WHATSAPP_NUMBER = "393342306019";
 
@@ -32,9 +36,17 @@ export const SHOP_INFO = {
   },
   mappaLabel: "Aprilo in Google Maps",
   orari: [
-    { giorni: "Lunedì", ore: "Chiuso" },
-    { giorni: "Martedì – Sabato", ore: "09:00 – 13:00 / 15:30 – 19:30" },
-    { giorni: "Domenica", ore: "09:00 – 13:00" },
+    { giorni: "Lunedì", ore: "Chiuso", dow: [1], fasce: [] },
+    {
+      giorni: "Martedì – Sabato",
+      ore: "09:00 – 13:00 / 15:30 – 19:30",
+      dow: [2, 3, 4, 5, 6],
+      fasce: [
+        ["09:00", "13:00"],
+        ["15:30", "19:30"],
+      ],
+    },
+    { giorni: "Domenica", ore: "09:00 – 13:00", dow: [0], fasce: [["09:00", "13:00"]] },
   ],
   // ogni campo vuoto ("") sparisce dalla scheda contatti, non lascia buchi
   telefono: "0371-420786",
@@ -64,9 +76,6 @@ export const COUNTRY_GROUPS = {
 };
 
 
-
-// l'icona della tab bar non sta più qui: components/icons/NavIcons.jsx
-// disegna un SVG per ogni `id` di questo elenco
 export const SECTIONS = [
   { id: "home", label: "Home" },
   { id: "enoteca", label: "Enoteca" },
@@ -76,13 +85,6 @@ export const SECTIONS = [
 ];
 
 
-
-
-
-// birre: dati ora sull'API (/api/beers), non più array statici qui —
-// vedi backend/scripts/importBirre.js per la migrazione una tantum
-
-// ---- distillati: un array per tipologia ----
 export const GRAPPA = [];
 export const WHISKY = [];
 export const RHUM = [];
@@ -290,15 +292,20 @@ const ILLUSTRAZIONI_GASTRONOMIA = {
   pesto: pestoIll,
   "sughi e condimenti": sughiCondimentiIll,
   "verdure sott'olio": verdureSottolioIll,
-  // "panificati e snack da forno": in attesa dell'immagine
 };
+
+const ILLUSTRAZIONI_DOLCERIA = {
+  "confetture e composte": confettureIll,
+  "creme dolci": cremeIll,
+  "frutta sciroppata": fruttaSciroppataIll,
+  "miele e prodotti dell'alveare": mieleIll,
+}
 
 export const ALIMENTARI_CATEGORIES = [
   {
     id: "gastronomia",
     label: "Gastronomia",
     description: "Specialità enogastronomiche",
-    icon: "🧀",
     accent: "#c98f2e",
     items: GASTRONOMIA,
     illustrazioni: ILLUSTRAZIONI_GASTRONOMIA,
@@ -307,17 +314,12 @@ export const ALIMENTARI_CATEGORIES = [
     id: "dolceria",
     label: "Dolceria",
     description: "Dolci e pasticceria artigianale",
-    icon: "🍰",
     accent: "#b56576",
     items: DOLCERIA,
-    illustrazioni: {}, // in attesa delle immagini
+    illustrazioni: ILLUSTRAZIONI_DOLCERIA,
   },
 ];
 
-// ---- macro-categorie del negozio: ogni card generale contiene le sue sub-card ----
-// numero WhatsApp del negozio per "Chiedi disponibilità": solo cifre col
-// prefisso internazionale, es. "393331234567".
-// TEMP: numero finto per vedere il pulsante — SOSTITUIRE con quello vero
 
 export const SHOP_GROUPS = [
   {
