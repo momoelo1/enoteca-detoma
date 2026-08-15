@@ -1,0 +1,75 @@
+/* ---- la versata ----
+   L'onda che copre lo schermo entrando in una categoria. Il colore arriva da
+   utils/coloreCategoria.js ed è diverso per ognuna: è il colore di quello che
+   si sta per guardare, non un velo di caricamento qualunque. */
+
+.versata {
+  position: fixed;
+  inset: 0;
+  /* sopra a tutto: header (20), barra regioni (30), bottom sheet (40) */
+  z-index: 70;
+  pointer-events: none;
+  /* l'onda esce dai bordi mentre sale e mentre se ne va: qui viene ritagliata,
+     così non allarga mai la pagina */
+  overflow: hidden;
+}
+
+.versata-onda {
+  position: absolute;
+  inset: 0;
+  /* riflesso sul bordo che avanza: senza, è un rettangolo colorato che
+     scorre; con, sembra un liquido che entra nel bicchiere */
+  background:
+    radial-gradient(
+      130% 55% at 50% 0%,
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0) 62%
+    ),
+    var(--versata, #2e5e46);
+  will-change: transform;
+}
+
+/* Il bordo curvo è tutto il trucco: un raggio orizzontale largo metà schermo
+   e uno verticale corto danno il menisco del liquido. Si appiattisce mentre
+   l'onda arriva in cima, come una superficie che si posa. */
+.versata-onda--sale {
+  animation: versata-sale var(--salita, 260ms) cubic-bezier(0.3, 0.7, 0.35, 1) both;
+}
+
+.versata-onda--esce {
+  animation: versata-esce var(--uscita, 340ms) cubic-bezier(0.6, 0, 0.75, 0.35) both;
+}
+
+@keyframes versata-sale {
+  from {
+    /* 101% e non 100%: su schermi con dpr frazionario un pixel dell'onda
+       resterebbe visibile in fondo */
+    transform: translateY(101%);
+    border-radius: 50% 50% 0 0 / 14% 14% 0 0;
+  }
+  to {
+    transform: translateY(0);
+    border-radius: 0;
+  }
+}
+
+@keyframes versata-esce {
+  from {
+    transform: translateY(0);
+    border-radius: 0;
+  }
+  to {
+    transform: translateY(-101%);
+    /* uscendo verso l'alto è il bordo BASSO quello che attraversa lo schermo:
+       la curva passa di sotto */
+    border-radius: 0 0 50% 50% / 0 0 14% 14%;
+  }
+}
+
+/* Con le animazioni disattivate versa() non monta nemmeno il pannello (vedi
+   Versata.jsx): questa è solo una rete di sicurezza. */
+@media (prefers-reduced-motion: reduce) {
+  .versata {
+    display: none;
+  }
+}

@@ -1,77 +1,179 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ProductPlaceholder } from "../enoteca/Enoteca";
+import { formatPrezzo } from "../../utils/prezzo";
+import { getWines } from "../../services/wines";
+import { getAlimentari } from "../../services/alimentari";
+import { productSlug } from "../../utils/productSlug";
+import { normalize } from "../../utils/normalize";
+import { trimBorder } from "../../utils/cloudinary";
+import { BACINO_VETRINA, prezzoVetrina, scegliMisti } from "../../data/vetrina";
 import "./home.css";
 
-// prende automaticamente le foto da src/images/famiglia/ appena esistono
-const familyPhotos = Object.values(
-  import.meta.glob("../../images/famiglia/*.{jpg,jpeg,png,webp}", {
-    eager: true,
-    import: "default",
-  })
-);
+// Il titolo si scrive da sé all'apertura, parola per parola, come se una
+// mano lo stesse tracciando: è in corsivo (Snell Roundhand) e una comparsa
+// da sinistra a destra si legge esattamente come una scrittura.
+// Sta scritto qui e non nel JSX perché va spezzato in parole; lo spazio fra
+// una e l'altra resta un nodo di testo vero (vedi il Fragment sotto), non un
+// margine, altrimenti il titolo non andrebbe più a capo dove deve.
+const TITOLO = "Tre Generazioni, Una Passione per il Vino";
 
-function FamilySlideshow() {
-  const [index, setIndex] = useState(0);
-  const startX = useRef(null);
+// Dove porta una scheda della vetrina: al SUO posto nel catalogo, con la
+// scheda prodotto già aperta. Non alla tab Consigliati — un segnaposto non è
+// un consiglio, e l'indirizzo che si vede nella barra deve dire la verità su
+// dove sta quel prodotto.
+const stradaProdotto = (item, type) =>
+  type === "alimentari"
+    ? `/alimentari/${item.category}/${encodeURIComponent(
+        normalize((item.sottocategoria || "").trim())
+      )}/${productSlug(item)}`
+    : `/enoteca/vini/${item.category}/${productSlug(item)}`;
 
-  // scorrimento manuale: trascina/swipe a destra o sinistra
-  const onPointerDown = (e) => {
-    startX.current = e.clientX;
-  };
-  const onPointerUp = (e) => {
-    if (startX.current == null) return;
-    const delta = e.clientX - startX.current;
-    startX.current = null;
-    if (Math.abs(delta) < 40) return;
-    setIndex(
-      (i) =>
-        (i + (delta < 0 ? 1 : -1) + familyPhotos.length) % familyPhotos.length
-    );
-  };
-  const onPointerCancel = () => {
-    startX.current = null;
-  };
+// `i`: la posizione nella fascia, che il CSS usa come ritardo — le schede
+// non compaiono tutte insieme ma una dopo l'altra. A freddo su Vercel la
+// prima risposta può tardare più di dieci secondi: quando finalmente
+// arrivano, così l'attesa si chiude con una comparsa invece che con uno
+// scatto (il ritardo è tosato a poche schede, vedi home.css).
+function VetrinaCard({ item, type, onOpen, i }) {
+  // null anche quando il prezzo è 0: la riga sparisce invece di annunciare
+  // "€ 0,00" (vedi prezzoVetrina in data/vetrina.js). Gli alimentari non
+  // hanno proprio il campo prezzo, quindi per loro non compare mai.
+  const prezzo = prezzoVetrina(item);
+  return (
+    <li className="consiglio-cell" style={{ "--i": i }}>
+      <button
+        type="button"
+        className="consiglio-card"
+        onClick={() => onOpen(item, type)}
+      >
+        {item.consigliato && (
+          <span className="consiglio-star" aria-hidden="true">
+            ★
+          </span>
+        )}
+        <span className="consiglio-thumb">
+          {item.img ? (
+            <img
+              src={type === "alimentari" ? trimBorder(item.img) : item.img}
+              alt=""
+              className="consiglio-img"
+              loading="lazy"
+            />
+          ) : (
+            <ProductPlaceholder item={item} type={type} className="consiglio-svg" />
+          )}
+        </span>
+        <span className="consiglio-name">{item.name}</span>
+        {prezzo != null && (
+          <span className="consiglio-price">{formatPrezzo(prezzo)}</span>
+        )}
+      </button>
+    </li>
+  );
+}
+
+// Una fascia della vetrina: titolo, link "vedi tutti" e la riga di schede che
+// scorre di lato. Ce ne sono due identiche (vini e alimentari) — quello che
+// cambia è solo cosa ci finisce dentro.
+// `items` a null = ancora in arrivo: la fascia non esiste proprio, niente
+// schede segnaposto vuote. La home scorre, quindi una fascia che compare
+// dopo si aggiunge SOTTO quello che si sta leggendo e non sposta niente.
+function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
+  if (!items?.length) return null;
+  return (
+    <section className="consigli-strip" aria-label={titolo}>
+      <div className="consigli-strip-head">
+        <h2 className="consigli-strip-title">{titolo}</h2>
+        <Link className="consigli-strip-all" to={tutti}>
+          {etichettaTutti} →
+        </Link>
+      </div>
+      <ul className="consigli-row">
+        {items.map((item, i) => (
+          <VetrinaCard
+            key={item.id || item.name + i}
+            item={item}
+            type={type}
+            onOpen={onOpen}
+            i={i}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// Le due fasce sotto il racconto. Hanno preso il posto delle foto di
+// famiglia, che sono passate alla pagina Info (Info.jsx, HERO_IMAGES).
+// Due chiamate sole, tagliate a BACINO_VETRINA prodotti l'una: è da lì che
+// scegliMisti() pesca i venti segnaposto — vedi data/vetrina.js per come,
+// perché proprio ottanta e quando toglierli.
+function Vetrina() {
+  const navigate = useNavigate();
+  const [vini, setVini] = useState(null);
+  const [alimentari, setAlimentari] = useState(null);
 
   useEffect(() => {
-    if (familyPhotos.length < 2) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = setInterval(
-      () => setIndex((i) => (i + 1) % familyPhotos.length),
-      4500
-    );
-    return () => clearInterval(timer);
+    let annullato = false;
+    const metti = (set, chiave) => (dati) => {
+      if (!annullato) set(scegliMisti(dati || [], chiave));
+    };
+    // rete giù: elenco vuoto, la fascia sparisce e la home resta in piedi
+    const vuoto = (set) => () => {
+      if (!annullato) set([]);
+    };
+    getWines(null, BACINO_VETRINA)
+      .then(metti(setVini, "category"))
+      .catch(vuoto(setVini));
+    getAlimentari(null, BACINO_VETRINA)
+      .then(metti(setAlimentari, "sottocategoria"))
+      .catch(vuoto(setAlimentari));
+    return () => {
+      annullato = true;
+    };
   }, []);
 
+  const apri = (item, type) => navigate(stradaProdotto(item, type));
 
   return (
-    <div
-      className="hero-photos"
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-    >
-      {familyPhotos.map((src, i) => (
-        <img
-          key={src}
-          src={src}
-          alt="La famiglia De Toma"
-          draggable={false}
-          className={"family-photo" + (i === index ? " is-visible" : "")}
-        />
-      ))}
+    <div className="vetrina">
+      <FasciaVetrina
+        titolo="I nostri consigli"
+        items={vini}
+        type="vini"
+        tutti="/enoteca"
+        etichettaTutti="Tutta l'enoteca"
+        onOpen={apri}
+      />
+      <FasciaVetrina
+        titolo="Dalla dispensa"
+        items={alimentari}
+        type="alimentari"
+        tutti="/alimentari"
+        etichettaTutti="Tutti gli alimentari"
+        onOpen={apri}
+      />
     </div>
   );
 }
 
 function Home() {
-  // la home riempie esattamente lo schermo: nessuno scroll
-  useEffect(() => {
-    document.body.classList.add("home-no-scroll");
-    return () => document.body.classList.remove("home-no-scroll");
-  }, []);
-
+  // La home SCORRE (niente `home-no-scroll`, che invece usano ancora
+  // Enoteca, Gastronomia e Login): il racconto più due fasce di schede non
+  // stanno in una schermata sola, e a comprimerli si perderebbe l'uno o le
+  // altre.
   return (
     <section className="hero">
-      <h1 className="hero-title">Tre Generazioni, Una Passione per il Vino</h1>
+      <h1 className="hero-title">
+        {TITOLO.split(" ").map((parola, i) => (
+          <Fragment key={i}>
+            {i > 0 && " "}
+            <span className="hero-parola" style={{ "--i": i }}>
+              {parola}
+            </span>
+          </Fragment>
+        ))}
+      </h1>
       <div className="hero-stories">
         <p className="hero-story">
           L&apos;amore della famiglia De Toma per il vino nasce agli inizi del
@@ -81,8 +183,8 @@ function Home() {
           l&apos;enoteca.
         </p>
         <span className="hero-divider" aria-hidden="true" />
-        <FamilySlideshow />
       </div>
+      <Vetrina />
     </section>
   );
 }

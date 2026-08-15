@@ -2,9 +2,9 @@
 // (endpoint separato, stessa forma di richieste/auth).
 import { authHeaders, unauthorizedMessage } from "./auth";
 
+// senza VITE_API_URL si va sul backend di produzione (il perché sta in auth.js)
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3001`;
+  import.meta.env.VITE_API_URL || "https://detoma-backend.vercel.app";
 
 async function parse(res) {
   if (res.status === 204) return null;
@@ -19,6 +19,12 @@ async function parse(res) {
 export const getBeers = async (producer) => {
   const query = producer ? `?producer=${encodeURIComponent(producer)}` : "";
   const res = await fetch(`${API_URL}/api/beers${query}`);
+  return parse(res);
+};
+
+// solo la selezione della casa — vedi getWinesConsigliati in services/wines.js
+export const getBeersConsigliate = async () => {
+  const res = await fetch(`${API_URL}/api/beers?consigliato=true`);
   return parse(res);
 };
 

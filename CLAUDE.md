@@ -33,13 +33,23 @@ API. Don't claim a change is "tested"; say what you actually ran.
 
 ### Talking to the backend locally
 
-`VITE_API_URL` (see `.env.example`) points at the deployed backend. If it is unset,
-services fall back to `window.location.hostname:3001` — deliberately, so the site works
-both from `localhost` and from a phone hitting the LAN IP without editing `.env`.
+`VITE_API_URL` (see `.env.example`) points at the backend. **If it is unset, the services
+fall back to the production backend** (`https://detoma-backend.vercel.app`), so a dev
+server with nothing configured shows the real catalogue — from `localhost` and from a
+phone on the LAN alike.
 
-Note the backend's `config.js` defaults `PORT` to **3002** while this fallback is
-hardcoded to **3001**; the backend's local `.env` sets `PORT=3001` to reconcile them. If
-local API calls 404, check that first.
+Two consequences worth holding onto:
+
+- **The admin panel in a local dev server writes to the real shop** unless you point
+  `VITE_API_URL` somewhere else. To exercise admin mutations safely, use the sibling
+  repo's disposable in-memory backend (`backend/.claude/skills/run-enoteca-detoma-backend/`)
+  and set `VITE_API_URL=http://localhost:3011`.
+- **To develop against the local backend you must now set `VITE_API_URL` explicitly**
+  (`http://localhost:3001`). It is no longer picked up automatically. The backend's
+  `config.js` defaults `PORT` to **3002** while its local `.env` sets `PORT=3001`; if
+  local API calls 404, check that first.
+
+The fallback lives in five copies, one per file in `src/services/` — change them together.
 
 ## Architecture
 

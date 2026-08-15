@@ -1,11 +1,17 @@
 // chiamate al backend Express di autenticazione.
-// VITE_API_URL è pensata per il deploy (backend su un altro host).
-// In locale, se non impostata, si deduce dall'indirizzo con cui si è
-// raggiunto il sito: così funziona sia da desktop (localhost) sia dal
-// telefono in LAN (l'IP), senza dover cambiare .env per ognuno.
+// VITE_API_URL la imposta il deploy (vedi .github/workflows/deploy.yml) e la
+// si può impostare a mano per puntare a un backend locale.
+// Senza, si va sul backend di PRODUZIONE su Vercel: è quello che serve nel
+// caso più frequente — aprire il sito in locale, da desktop o dal telefono in
+// LAN, e vedere il catalogo vero senza avere niente acceso.
+// Prima qui si deduceva `hostname:3001` dall'indirizzo di navigazione: comodo
+// per il backend locale, ma senza quel backend acceso ogni elenco restava
+// vuoto con un muro di ERR_CONNECTION_REFUSED.
+// ATTENZIONE: così anche il pannello admin, in locale, scrive sul catalogo
+// vero del negozio. Per lavorare sul backend locale metti VITE_API_URL in
+// .env (vedi .env.example).
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3001`;
+  import.meta.env.VITE_API_URL || "https://detoma-backend.vercel.app";
 
 // il cookie httpOnly basta in locale (stesso dominio), ma tra GitHub
 // Pages e il backend è un cookie cross-site: Safari (ITP) e altri browser

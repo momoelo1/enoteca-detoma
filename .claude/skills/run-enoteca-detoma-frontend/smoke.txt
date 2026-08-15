@@ -23,7 +23,9 @@ wait-for .sheet-name
 url
 text .sheet-name
 screenshot enoteca-scheda
-click .sheet-close
+# Esc e NON `click .sheet-close`: la ✕ è coperta al centro da .sheet-thumb
+# (misurato) e il click resta appeso per tutti i 15s di timeout. Vedi Gotchas.
+press Escape
 sleep 400
 
 click text=Regioni

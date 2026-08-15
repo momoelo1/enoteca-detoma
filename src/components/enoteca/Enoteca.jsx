@@ -6,13 +6,24 @@ import {
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
-import { getWines } from "../../services/wines";
-import { getBeers } from "../../services/beers";
+import {
+  SHOP_GROUPS,
+  COUNTRY_GROUPS,
+  ALIMENTARI_CATEGORIES,
+  WHATSAPP_NUMBER,
+} from "../../data/data";
+import { getWines, getWinesConsigliati } from "../../services/wines";
+import { getBeers, getBeersConsigliate } from "../../services/beers";
+import { getAlimentariConsigliati } from "../../services/alimentari";
 import { GlobeIcon } from "../icons/NavIcons";
 import { CategoryIcon } from "../icons/CategoryIcon";
 import { productSlug } from "../../utils/productSlug";
+import { formatPrezzo } from "../../utils/prezzo";
 import { trimBorder } from "../../utils/cloudinary";
+import { coloreVersata } from "../../utils/coloreCategoria";
+import { vola } from "../../utils/volo";
+import { versa } from "../transition/versa";
+import { useAccentoSfondo } from "../background/tinta";
 import {
   Jar,
   JarLabel,
@@ -35,13 +46,6 @@ const FORMATO_UNIT = {
   birre: "cl",
   alimentari: "g",
 };
-
-// prezzo in formato italiano: "€ 32,00" (virgola, non punto)
-const formatPrezzo = (n) =>
-  `€ ${n.toLocaleString("it-IT", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 
 // normalizza per la ricerca: minuscolo e senza accenti ("Cà"→"ca")
 const normalize = (s) =>
@@ -84,8 +88,9 @@ const foodIcon = (item) => {
 };
 
 // sceglie il segnaposto giusto per il tipo di prodotto: bottiglia per
-// vini/birre/distillati, icona alimentare per gastronomia e dolceria
-function ProductPlaceholder({ item, type, className }) {
+// vini/birre/distillati, icona alimentare per gastronomia e dolceria.
+// Esportato: lo usa anche la fascia dei consigli in home (Home.jsx)
+export function ProductPlaceholder({ item, type, className }) {
   if (type !== "alimentari") return <BottleIcon className={className} />;
   // createElement e non <Icon />: l'icona è scelta a runtime e il React
   // Compiler leggerebbe un componente "creato durante il render"
@@ -176,13 +181,61 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
     .map((c) => ({ ...c, fetcher: REMOTE_FETCHERS[g.id] }))
 );
 
+// ---- selezione della casa (tab "Consigliati") ----
+
+const VINI_GROUP = SHOP_GROUPS.find((g) => g.id === "vini");
+const BIRRE_GROUP = SHOP_GROUPS.find((g) => g.id === "birre");
+
+// I consigli arrivano da tre endpoint diversi e qui tornano un elenco solo,
+// diviso per categoria: venti bottiglie scelte si leggono come una selezione
+// solo se restano ordinate (i rossi con i rossi), altrimenti sono un mucchio.
+// L'ordine è quello di data.js — prima le categorie di vino, poi le birre,
+// poi i due reparti alimentari — non quello di arrivo dall'API.
+// Le birre non si dividono per birrificio: sarebbero gruppi da un pezzo.
+// I gruppi vuoti spariscono: nessun titolo senza niente sotto.
+const buildConsigliatiGroups = ({ vini, birre, alimentari }) =>
+  [
+    ...VINI_GROUP.categories.map((c) => ({
+      key: `vini-${c.id}`,
+      label: c.label,
+      accent: c.accent,
+      type: "vini",
+      items: vini.filter((w) => w.category === c.id),
+    })),
+    {
+      key: "birre",
+      label: BIRRE_GROUP.label,
+      accent: BIRRE_GROUP.accent,
+      type: "birre",
+      items: birre,
+    },
+    ...ALIMENTARI_CATEGORIES.map((c) => ({
+      key: `alimentari-${c.id}`,
+      label: c.label,
+      accent: c.accent,
+      type: "alimentari",
+      items: alimentari.filter((a) => a.category === c.id),
+    })),
+  ].filter((g) => g.items.length > 0);
+
 // Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo,
 // badge di specifiche (gradazione/formato quando presenti), prezzo.
 // Tutto il resto vive nel bottom sheet: si apre toccando la card.
 // `type` (es. "vini"/"birre"/"distillati"/"alimentari", da SHOP_GROUPS.id):
 // aggiunge una classe modificatore per-tipo su card e immagine, così si può
 // dare uno stile diverso a un tipo di prodotto senza toccare quelle condivise
-export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
+// `scrollSelector`: chi scorre davvero attorno alla card. Dentro una
+// categoria è la lista stessa (.product-list), ma nella tab Consigliati la
+// lista è ferma e scorre il contenitore di pagina — senza saperlo, il
+// marquee del nome non si spegnerebbe mai (vedi l'effect più in basso).
+export function ProductCard({
+  w,
+  accent,
+  regionFilter,
+  onOpen,
+  type,
+  scrollSelector = ".product-list",
+}) {
   const annate = w.annate;
   const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
   // regione già selezionata nel filtro: non ripeterla su ogni card
@@ -230,11 +283,15 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
   useEffect(() => {
     const el = cardRef.current;
     if (!el || !nameScroll) return;
-    const list = el.closest(".product-list");
-    if (!list) {
+    // "window": a scorrere è il documento (tab Consigliati), non un
+    // contenitore — il box visibile è allora quello della finestra
+    const perFinestra = scrollSelector === "window";
+    const list = perFinestra ? null : el.closest(scrollSelector);
+    if (!list && !perFinestra) {
       setNameInView(true); // nessun contenitore che scorre: anima e basta
       return;
     }
+    const scroller = list ?? window;
     // niente IntersectionObserver (due tentativi, su telefono vero
     // continuava a far partire la riga "che sbircia"): misura diretta
     // dei rettangoli. La card è "in vista" solo se il suo box sta per
@@ -244,7 +301,9 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
     // spenta, appena la riga si posa completa parte da zero
     let timer = 0;
     const check = () => {
-      const lr = list.getBoundingClientRect();
+      const lr = list
+        ? list.getBoundingClientRect()
+        : { top: 0, bottom: window.innerHeight };
       const cr = el.getBoundingClientRect();
       setNameInView(cr.top >= lr.top - 2 && cr.bottom <= lr.bottom + 2);
     };
@@ -254,16 +313,20 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
       timer = setTimeout(check, 120);
     };
     check();
-    list.addEventListener("scroll", onScroll, { passive: true });
+    scroller.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
       clearTimeout(timer);
-      list.removeEventListener("scroll", onScroll);
+      scroller.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [nameScroll]);
+  }, [nameScroll, scrollSelector]);
 
   const typeSuffix = type ? ` product-card--${type}` : "";
+
+  // la miniatura è il punto di partenza del volo verso il bottom sheet
+  // (utils/volo.js): serve il nodo vero, non la sola classe
+  const thumbRef = useRef(null);
 
   return (
     <li className={"product-card" + typeSuffix}>
@@ -271,10 +334,25 @@ export function ProductCard({ w, accent, regionFilter, onOpen, type }) {
         type="button"
         className={"product-card-btn" + (type ? ` product-card-btn--${type}` : "")}
         style={{ "--accent": accent }}
-        onClick={() => onOpen(w)}
+        onClick={() => vola(thumbRef.current, () => onOpen(w))}
         ref={cardRef}
       >
-        <div className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}>
+        {/* contrassegno della selezione della casa: si vede anche mentre si
+            scorre il catalogo intero, non solo nella tab Consigliati */}
+        {w.consigliato && (
+          <span
+            className="product-consigliato"
+            role="img"
+            aria-label="Consigliato dall'enoteca"
+            title="Consigliato dall'enoteca"
+          >
+            ★
+          </span>
+        )}
+        <div
+          className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}
+          ref={thumbRef}
+        >
           {w.img ? (
             <img
               src={type === "alimentari" ? trimBorder(w.img) : w.img}
@@ -469,6 +547,20 @@ export function ProductSheet({ w, category, onClose, type }) {
               ))}
             </ul>
           )}
+          {/* il consiglio della casa viene PRIMA delle note di degustazione:
+              è il motivo per cui il negozio ha scelto questa bottiglia, ed è
+              la cosa che un supermercato non può copiare — la scheda tecnica
+              viene dopo. Compare solo se il prodotto è davvero consigliato:
+              una nota rimasta a spunta tolta non si vede */}
+          {w.consigliato && w.consiglio && (
+            <div className="sheet-desc-block sheet-consiglio-block">
+              <span className="sheet-desc-label sheet-consiglio-label">
+                ★ Perché lo consigliamo
+              </span>
+              <span className="sheet-divider" aria-hidden="true" />
+              <p className="sheet-desc sheet-consiglio">{w.consiglio}</p>
+            </div>
+          )}
           {desc && (
             <div className="sheet-desc-block">
               <span className="sheet-desc-label">Note di degustazione</span>
@@ -516,7 +608,10 @@ export function ProductSheet({ w, category, onClose, type }) {
   );
 }
 
-function Enoteca() {
+// `consigliati`: la pagina è aperta sulla tab della selezione della casa.
+// Arriva dalla rotta (App.jsx) e non dallo stato locale come le altre tab,
+// perché è l'unica che ha senso condividere per link.
+function Enoteca({ consigliati: consigliatiRoute = false }) {
   const navigate = useNavigate();
   // gruppo/categoria/prodotto vivono nell'URL, non in uno state locale:
   // un refresh (o un link diretto) rilegge semplicemente gli stessi
@@ -551,10 +646,38 @@ function Enoteca() {
       .finally(() => setRemoteLoading(false));
   }, []);
 
+  // selezione della casa: si scarica solo entrando nella tab, e una volta
+  // sola. `null` = mai chiesta, ed è da lì che si deriva "sto caricando"
+  // (niente setState dentro un effect per segnalarlo)
+  const [consigliati, setConsigliati] = useState(null);
+  useEffect(() => {
+    if (!consigliatiRoute || consigliati) return;
+    Promise.all([
+      getWinesConsigliati(),
+      getBeersConsigliate(),
+      getAlimentariConsigliati(),
+    ])
+      .then(([vini, birre, alimentari]) =>
+        setConsigliati({ vini, birre, alimentari })
+      )
+      // rete giù: elenco vuoto, che la pagina già sa raccontare — meglio
+      // di una tab bloccata per sempre su "Caricamento…"
+      .catch(() => setConsigliati({ vini: [], birre: [], alimentari: [] }));
+  }, [consigliatiRoute, consigliati]);
+
+  const consigliatiGroups = consigliati
+    ? buildConsigliatiGroups(consigliati)
+    : [];
+
   const activeGroup = SHOP_GROUPS.find((g) => g.id === groupId);
   const activeCategory = activeGroup?.categories.find(
     (c) => c.id === categoryId
   );
+
+  // lo sfondo prende il colore della categoria aperta e torna a quello di
+  // casa appena si esce (components/background/tinta.js). È lo stesso colore
+  // dell'onda: l'ambiente resta quello in cui l'onda ti ha lasciato.
+  useAccentoSfondo(activeCategory ? coloreVersata(activeCategory) : null);
 
   // ogni volta che cambia la categoria (anche al primo caricamento di un
   // link diretto) i filtri ripartono puliti: reset "durante il render"
@@ -654,15 +777,21 @@ function Enoteca() {
   // solo la griglia delle categorie, così titolo e tab restano fermi.
   // Riusa home-no-scroll (la stessa catena flex di home.css) SENZA
   // category-open, che nasconderebbe la tab bar — qui deve restare.
+  //
+  // Eccezione: la tab Consigliati. Con l'intestazione bloccata restano 236px
+  // di finestra scorrevole (misurati su iPhone 13) e una card di prodotto ne
+  // occupa 260: una card intera non ci starebbe MAI. Lì scorre il documento,
+  // come nella pagina Info — l'intestazione se ne va e la selezione si legge
+  // per intero.
   useEffect(() => {
-    if (activeCategory) return;
+    if (activeCategory || consigliatiRoute) return;
     document.body.classList.add("home-no-scroll");
     document.body.classList.add("page-pinned");
     return () => {
       document.body.classList.remove("home-no-scroll");
       document.body.classList.remove("page-pinned");
     };
-  }, [activeCategory]);
+  }, [activeCategory, consigliatiRoute]);
 
   // apertura della ricerca: porta subito il focus sull'input
   useEffect(() => {
@@ -918,10 +1047,33 @@ function Enoteca() {
     );
   }
 
-  // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti
-  const openDirect = (gId, cId) => navigate(`/enoteca/${gId}/${cId}`);
+  // un tocco solo: dalla pagina Enoteca dritti alla lista prodotti.
+  // L'onda del colore della categoria copre lo schermo, la rotta cambia al
+  // coperto e l'onda esce (components/transition/Versata.jsx)
+  const openDirect = (gId, c) =>
+    versa(coloreVersata(c), () => navigate(`/enoteca/${gId}/${c.id}`));
 
-  const tabG = SHOP_GROUPS.find((g) => g.id === tabGroup);
+  // la tab attiva: Consigliati la decide la rotta, le altre tre lo stato
+  // locale (restano com'erano — nessuna di loro finisce nell'URL)
+  const activeTab = consigliatiRoute ? "consigliati" : tabGroup;
+  const tabG = SHOP_GROUPS.find((g) => g.id === activeTab);
+
+  const openTab = (id) => {
+    setTabGroup(id);
+    if (consigliatiRoute) navigate("/enoteca"); // si esce dalla rotta dei consigli
+  };
+
+  // scheda di un consigliato: cercata in tutti e tre gli elenchi, così un
+  // link diretto riapre il prodotto giusto qualunque sia la sua categoria
+  const consigliatoAperto =
+    productId && consigliati
+      ? consigliatiGroups
+          .flatMap((g) => g.items.map((item) => ({ item, group: g })))
+          .find(({ item }) => productSlug(item) === productId) ?? null
+      : null;
+  const openConsigliato = (item) =>
+    navigate(`/enoteca/consigliati/${productSlug(item)}`);
+  const closeConsigliato = () => navigate("/enoteca/consigliati");
 
   return (
     <section className="shop-section">
@@ -932,9 +1084,9 @@ function Enoteca() {
           <button
             key={g.id}
             type="button"
-            className={"group-tab" + (tabGroup === g.id ? " is-active" : "")}
+            className={"group-tab" + (activeTab === g.id ? " is-active" : "")}
             style={{ "--accent": g.accent }}
-            onClick={() => setTabGroup(g.id)}
+            onClick={() => openTab(g.id)}
           >
             {g.label}
           </button>
@@ -942,10 +1094,10 @@ function Enoteca() {
         <button
           type="button"
           className={
-            "group-tab" + (tabGroup === "consigliati" ? " is-active" : "")
+            "group-tab" + (activeTab === "consigliati" ? " is-active" : "")
           }
           style={{ "--accent": "#c9a227" }}
-          onClick={() => setTabGroup("consigliati")}
+          onClick={() => navigate("/enoteca/consigliati")}
         >
           Consigliati
         </button>
@@ -961,14 +1113,55 @@ function Enoteca() {
               /* filigrana ovunque tranne che nelle birre: i loghi dei
                  birrifici restano al centro, a piena opacità */
               filigrana={tabG.id !== "birre"}
-              onClick={() => openDirect(tabG.id, c.id)}
+              /* la categoria INTERA, non il suo id: openDirect ne legge
+                 anche l'accento per il colore dell'onda */
+              onClick={() => openDirect(tabG.id, c)}
             />
           ))}
         </ul>
-      ) : (
+      ) : !consigliati ? (
+        <p className="product-empty">Caricamento…</p>
+      ) : consigliatiGroups.length === 0 ? (
         <p className="product-empty">
           I consigli della casa arrivano presto — torna a trovarci.
         </p>
+      ) : (
+        /* qui scorre il documento (nessun page-pinned, vedi l'effect sopra):
+           da cui `scrollSelector="window"` sulle card, che altrimenti
+           cercherebbero lo scroll in una lista che non scorre */
+        <div className="consigliati-scroll">
+          <p className="consigliati-intro">
+            Le bottiglie e i prodotti che scegliamo noi, con il motivo per cui
+            li abbiamo scelti.
+          </p>
+          {consigliatiGroups.map((g) => (
+            <section className="consigliati-gruppo" key={g.key}>
+              <h3 className="consigliati-titolo" style={{ "--accent": g.accent }}>
+                {g.label}
+              </h3>
+              <ul className="product-list">
+                {g.items.map((item) => (
+                  <ProductCard
+                    key={item.id}
+                    w={item}
+                    accent={g.accent}
+                    onOpen={openConsigliato}
+                    type={g.type}
+                    scrollSelector="window"
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+      {consigliatoAperto && (
+        <ProductSheet
+          w={consigliatoAperto.item}
+          category={consigliatoAperto.group}
+          onClose={closeConsigliato}
+          type={consigliatoAperto.group.type}
+        />
       )}
     </section>
   );

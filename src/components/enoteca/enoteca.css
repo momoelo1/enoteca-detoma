@@ -11,6 +11,9 @@
   box-sizing: border-box;
 }
 
+/* Il titolo resta verde anche a sfondo tinto: a seguire il colore della
+   categoria sono i BOTTONI (--tinta-linea, vedi index.css), non i testi.
+   Per farlo cambiare insieme a loro basta rimettere var(--tinta-linea) qui. */
 .section-title {
   margin: 0;
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -47,9 +50,9 @@
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: rgba(255, 255, 255, 0.45);
-  border: 1px solid #2e5e46;
+  border: 1px solid var(--tinta-linea);
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
@@ -57,14 +60,14 @@
 }
 
 .filter-toggle.is-active {
-  background: #2e5e46;
+  background: var(--tinta-linea);
   color: #fff;
 }
 
 
 @media (hover: hover) {
   .filter-toggle:hover {
-    background: #2e5e46;
+    background: var(--tinta-linea);
     color: #fff;
   }
 }
@@ -119,7 +122,7 @@
   flex: none;
   width: 19px;
   height: 19px;
-  fill: #2e5e46;
+  fill: var(--tinta-linea);
   opacity: 0.7;
 }
 
@@ -147,7 +150,7 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: rgba(46, 94, 70, 0.09);
   border: none;
   border-radius: 50%;
@@ -309,7 +312,7 @@ body.page-pinned .page-scroll {
 }
 
 .cat-card:focus-visible {
-  outline: 2px solid #2e5e46;
+  outline: 2px solid var(--tinta-linea);
   outline-offset: 2px;
 }
 
@@ -435,7 +438,7 @@ body.page-pinned .page-scroll {
 }
 
 .mini-card:focus-visible {
-  outline: 2px solid #2e5e46;
+  outline: 2px solid var(--tinta-linea);
   outline-offset: 2px;
 }
 
@@ -490,7 +493,7 @@ body.page-pinned .page-scroll {
 }
 
 .group-tab.is-active {
-  color: #2e5e46;
+  color: var(--tinta-linea);
   font-weight: 700;
 }
 
@@ -681,7 +684,7 @@ body.page-pinned .page-scroll {
   padding: 9px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: transparent;
   border: none;
   border-radius: 14px;
@@ -690,13 +693,13 @@ body.page-pinned .page-scroll {
 }
 
 .filter-btn.is-active {
-  background: #2e5e46;
+  background: var(--tinta-linea);
   color: #fff;
 }
 
 .filter-btn.not-active {
   background: #f0f0f0;
-  color: #2e5e46;
+  color: var(--tinta-linea);
 }
 
 .filter-icon {
@@ -724,16 +727,16 @@ body.page-pinned .page-scroll {
   justify-content: center;
   font-size: 16px;
   font-weight: 600;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: rgba(255, 255, 255, 0.45);
-  border: 1px solid #2e5e46;
+  border: 1px solid var(--tinta-linea);
   border-radius: 999px;
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .filter-back:hover {
-  background: #2e5e46;
+  background: var(--tinta-linea);
   color: #fff;
 }
 
@@ -802,9 +805,9 @@ body.home-no-scroll .product-list {
   align-self: flex-start;
   font-size: 14px;
   font-weight: 600;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: rgba(255, 255, 255, 0.45);
-  border: 1px solid #2e5e46;
+  border: 1px solid var(--tinta-linea);
   border-radius: 999px;
   padding: 7px 16px;
   cursor: pointer;
@@ -812,7 +815,7 @@ body.home-no-scroll .product-list {
 }
 
 .back-btn:hover {
-  background: #2e5e46;
+  background: var(--tinta-linea);
   color: #fff;
 }
 
@@ -962,14 +965,20 @@ body.category-open .product-empty {
   opacity: 0.45;
 }
 
-/* segnaposto degli alimentari: icone a tratto (Phosphor "thin"), non
-   sagome piene come la bottiglia — il colore arriva da `color` perché
-   i tratti usano currentColor, non `fill`.
+/* segnaposto degli alimentari: le icone Phosphor, anche col peso "thin",
+   NON sono tratti ma sagome piene disegnate con `fill="currentColor"`.
+   Qui c'era `fill: none`, scritto pensando che fossero linee: `fill` è una
+   proprietà che si eredita, quindi il `<path>` dentro l'icona la prendeva,
+   restava senza `stroke` (Phosphor non ne mette) e non disegnava NIENTE.
+   Le icone del cibo erano invisibili in tutto il sito — nella lista
+   alimentari, nel bottom sheet e in home. Verificato in pagina: sul path
+   `fill: none` e `stroke: none` insieme.
+   Il colore arriva da `color` perché i tracciati usano currentColor.
    Selettore con l'elemento (svg.…) per alzare la specificità: .sheet-svg
    imposta anche lei `fill` e sta più in basso nel file, quindi a parità
-   di classe singola vincerebbe per ordine e riempirebbe le icone. */
+   di classe singola vincerebbe per ordine. */
 svg.product-food-svg {
-  fill: none;
+  fill: currentColor;
   color: var(--accent, #2e5e46);
   opacity: 0.55;
 }
@@ -1259,7 +1268,7 @@ svg.product-food-svg {
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #2e5e46;
+  color: var(--tinta-linea);
   background: rgba(46, 94, 70, 0.09);
   border: none;
   border-radius: 50%;
@@ -1288,6 +1297,11 @@ svg.product-food-svg {
 
 .sheet-thumb {
   position: relative;
+  /* punto d'arrivo del volo della miniatura (utils/volo.js): la partenza è la
+     .product-thumb della card, a cui il nome viene messo al volo e tolto
+     subito dopo lo scatto — due elementi con lo stesso nome nello stesso
+     istante e il browser rinuncia alla transizione */
+  view-transition-name: prodotto-volo;
   align-self: stretch; /* così max-width:70% sull'img resta relativo alla larghezza del pannello, come prima */
   display: flex;
   align-items: center;
@@ -1429,6 +1443,95 @@ svg.product-food-svg {
   color: #2e3d34;
 }
 
+/* ---- tab Consigliati ----
+   a differenza delle altre tab qui non scorre una griglia sola ma una pila
+   di gruppi (Rossi, Bianchi, Birre…), e a scorrere è il documento intero
+   (niente page-pinned: vedi Enoteca.jsx). Una colonna semplice, quindi —
+   nessun contenitore con overflow proprio */
+.consigliati-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+}
+
+.consigliati-intro {
+  margin: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.35;
+  color: #52605a;
+  text-align: center;
+}
+
+.consigliati-gruppo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* titolo di gruppo: filo d'accento a sinistra invece di una riga piena,
+   così separa senza pesare come un secondo titolo di pagina */
+.consigliati-titolo {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent, #2e5e46);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #2e3d34;
+}
+
+/* ---- selezione della casa ----
+   l'oro è l'unico colore del sito che non arriva da --accent: il consiglio
+   vale lo stesso in ogni categoria, quindi non prende il rosso dei rossi o
+   l'ambra delle birre. Stesso oro della tab "Consigliati". */
+
+/* stella sulla card, in alto a destra: sotto il filo d'accento
+   (.product-card-btn::before, 3px) per non tagliarlo */
+.product-consigliato {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  z-index: 1;
+  font-size: 14px;
+  line-height: 1;
+  color: #c9a227;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* il blocco del consiglio si stacca dalle note di degustazione, che
+   restano un paragrafo nudo: qui c'è una cornice dorata, perché è la
+   voce del negozio e non una scheda tecnica */
+.sheet-consiglio-block {
+  gap: 6px;
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 14px;
+  background: rgba(201, 162, 39, 0.07);
+}
+
+/* etichetta e filo restano dorati anche dentro una categoria con un
+   --accent diverso: DEVONO stare dopo .sheet-desc-label/.sheet-divider,
+   che leggono var(--accent) — stessa specificità, vince l'ordine */
+.sheet-consiglio-label {
+  color: #8a6d12;
+}
+
+.sheet-consiglio-block .sheet-divider {
+  background: #c9a227;
+}
+
+/* niente small-caps sulla prima riga qui (a differenza di .sheet-desc):
+   è un parere scritto a mano, si legge come una frase, non come
+   un'etichetta di bottiglia */
+.sheet-consiglio::first-line {
+  font-variant: normal;
+  letter-spacing: normal;
+  color: #52605a;
+}
+
 .sheet-annate {
   width: 100%;
   display: flex;
@@ -1460,7 +1563,7 @@ svg.product-food-svg {
   text-align: center;
   text-decoration: none;
   color: #fff;
-  background: #2e5e46;
+  background: var(--tinta-linea);
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(46, 94, 70, 0.35);
   transition: background 0.18s ease, transform 0.18s ease;
@@ -1531,6 +1634,31 @@ svg.product-food-svg {
   .product-sheet {
     animation: none;
   }
+}
+
+/* ---- il volo della miniatura verso il pannello ----
+   utils/volo.js mette `vt-attiva` su <html> per tutta la durata della
+   transizione. Il pannello NON deve salire dal basso mentre la miniatura
+   vola: il browser misura il punto d'arrivo subito dopo il cambio di stato,
+   e con `sheet-up` in corso lo misurerebbe mentre il pannello è ancora fuori
+   schermo — la foto volerebbe giù, fuori dalla vista. Qui il pannello è già
+   al suo posto e a coprire il salto ci pensa la dissolvenza della pagina. */
+.vt-attiva .product-sheet,
+.vt-attiva .sheet-backdrop {
+  animation: none;
+}
+
+/* La miniatura si prende il suo tempo, la dissolvenza della pagina sotto è
+   più svelta: così si guarda la bottiglia che si sposta e non il pannello
+   che compare. */
+::view-transition-group(prodotto-volo) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
 }
 
 /* elenco annata → prezzo (nel bottom sheet) */

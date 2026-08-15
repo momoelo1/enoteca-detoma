@@ -31,17 +31,19 @@ Install app deps if `node_modules/` is missing:
 npm install
 ```
 
-**There is no `.env` in this checkout and it is gitignored.** Without `VITE_API_URL` the
-services fall back to `window.location.hostname:3001`, nothing is listening there, and
-every product list comes up empty with a wall of `ERR_CONNECTION_REFUSED`. Set it in the
-shell that starts the server — no file to create, nothing to clean up:
+**There is no `.env` in this checkout and it is gitignored.** Since 2026-08-15 that is
+fine for read-only work: with `VITE_API_URL` unset the services fall back to the
+**production** backend (`https://detoma-backend.vercel.app`, Atlas + Cloudinary), so the
+catalogue loads with nothing configured. Reading it is fine; **do not run admin mutations
+against it** — and note that an unconfigured dev server now *can*, which the old
+`hostname:3001` fallback made impossible.
+
+Setting it explicitly still works and is what you want when driving the admin panel
+against the disposable backend (see below):
 
 ```powershell
-$env:VITE_API_URL = 'https://detoma-backend.vercel.app'
+$env:VITE_API_URL = 'http://localhost:3011'
 ```
-
-That is the **production** backend (Atlas + Cloudinary). Reading it is fine; do not run
-admin mutations against it.
 
 ## Run (agent path)
 
@@ -89,6 +91,68 @@ Stop the server:
 Get-NetTCPConnection -LocalPort 5173 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 ```
 
+### Prima di fidarti del server: due controlli che valgono mezz'ora
+
+`vite.config.js` **fissa la porta a 5173** (`server.port`), quindi non serve `--port`. Ma
+un dev server avviato con `Start-Process` **sopravvive alla chiamata che lo ha creato e
+anche alla sessione**: se ne trova già uno vivo, o Vite scivola su un'altra porta, oppure —
+con `--strictPort` — il nuovo muore in silenzio e **continui a pilotare quello vecchio**.
+Successo entrambi i giorni di lavoro su questa cartella. Due misure, non congetture:
+
+```powershell
+# 1. chi ascolta, e da QUANDO. Se StartTime è di ieri, non è il tuo.
+Get-NetTCPConnection -LocalPort 5173 -State Listen | ForEach-Object {
+  $p = Get-Process -Id $_.OwningProcess; "PID $($_.OwningProcess) avviato $($p.StartTime)"
+}
+
+# 2. a quale API è legato davvero: il modulo servito ha l'URL dentro.
+#    Vuoto = VITE_API_URL non è arrivato e userà il fallback localhost:3001.
+$c = (Invoke-WebRequest "http://localhost:5173/src/services/wines.js" -UseBasicParsing).Content
+(([regex]::Matches($c,'https?://[^"'' ]+')) | ForEach-Object { $_.Value } | Select-Object -Unique)
+# Da quando il fallback è la produzione, qui c'è SEMPRE un URL: se leggi
+# detoma-backend.vercel.app non sai ancora se è VITE_API_URL o il fallback —
+# sai solo che NON stai parlando con un backend locale.
+```
+
+Verificato il 2026-08-14: il controllo 1 ha smascherato un server delle 19:34 del giorno
+prima che rispondeva ancora, e il controllo 2 ha mostrato che era legato alla produzione
+mentre credevo di stare sul backend usa e getta.
+
+### `$env:VITE_API_URL` NON arriva a un `Start-Process npm.cmd`
+
+Questa costa un'ora se non la sai. Impostare la variabile e lanciare il server nella stessa
+chiamata **non funziona**: il modulo servito esce senza URL e le liste sono vuote.
+
+```powershell
+# NON funziona: il figlio non vede la variabile
+$env:VITE_API_URL = 'http://localhost:3011'
+Start-Process npm.cmd -ArgumentList 'run','dev' -WindowStyle Hidden
+
+# Funziona: la variabile è impostata DENTRO il processo figlio
+Start-Process cmd.exe -ArgumentList '/c','set "VITE_API_URL=http://localhost:3011" && npm run dev' `
+  -RedirectStandardOutput "$env:TEMP\vite.log" -WindowStyle Hidden
+```
+
+Il sintomo non somiglia a un problema di ambiente: il sito si disegna tutto, ma ogni lista
+di prodotti è vuota e la fascia dei consigli in home non compare. Dopo il lancio fai
+sempre il controllo 2 qui sopra.
+
+### Ripulire gli orfani (non basta uccidere la porta)
+
+Uccidere chi ascolta la porta lascia vivo il **padre**: i driver `--hold` del backend e i
+loro guardiani `mongo_killer.js` si accumulano di sessione in sessione, tenendo su mongod
+effimeri. Il 2026-08-14 ne ho trovati sei di due giorni diversi. Guarda le righe di comando,
+non i nomi — sono tutti `node`:
+
+```powershell
+Get-Process node | Select-Object Id, StartTime, @{n='cmd';e={
+  (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine }} | Format-Table -Wrap -AutoSize
+```
+
+**Non uccidere alla cieca.** In quell'elenco convivono il backend locale dello sviluppatore
+(`nodemon.js server.js` su 3001, che parla con Atlas di produzione) e i tuoi usa e getta
+(`driver.mjs --hold`). Uccidi per PID solo quelli che hai avviato tu.
+
 ### Driver flags
 
 | flag | effect |
@@ -130,6 +194,22 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 - Body classes observed: `home-no-scroll` (home), `home-no-scroll page-pinned`
   (`/enoteca`, `/alimentari` grids), `home-no-scroll category-open` (a category list),
   `+ region-bar-open` after `click text=Regioni`.
+- **La vetrina in home.** Sotto il racconto ci sono **due** `.consigli-strip` (prima era
+  una sola, sotto le foto di famiglia, che adesso stanno su `/info`): "I nostri consigli"
+  con 20 vini e "Dalla dispensa" con 20 alimentari. Schede `.consiglio-card`,
+  `.consiglio-name`, link `.consigli-strip-all`. **`wait-for .consiglio-name` aspetta solo
+  la prima fascia**: per la seconda serve `wait-for .consigli-strip >> nth=1`, altrimenti
+  `querySelectorAll(".consigli-strip")[1]` è `undefined` (presa per un bug una volta).
+  I venti prodotti sono SEGNAPOSTO scelti da `src/data/vetrina.js`, non consigliati veri:
+  in produzione i prodotti marcati `consigliato` sono zero.
+- **Selezione della casa.** Tab Consigliati dell'Enoteca:
+  `/enoteca/consigliati`, contenitore `.consigliati-scroll`, un `.consigliati-gruppo` per
+  categoria non vuota. Contrassegno sulle card del catalogo: `.product-consigliato`.
+  Blocco nella scheda: `.sheet-consiglio-block`. La scheda di un consigliato è
+  raggiungibile in diretta: `nav /enoteca/consigliati/<id>`.
+- **La home ora SCORRE** (niente `home-no-scroll`), a differenza di Enoteca, Gastronomia e
+  Login che lo usano ancora. `body-classes` su `/` deve stampare una riga vuota: se stampa
+  `home-no-scroll` stai guardando una versione vecchia.
 - Le illustrazioni incise sono `.mini-icon-watermark--img`. `count` su quella classe
   contro `count .mini-cell` dice al volo quanti gruppi hanno l'immagine e quanti no —
   è il controllo più veloce dopo aver aggiunto un'illustrazione.
@@ -142,18 +222,21 @@ edit, delete — start the sibling repo's disposable backend instead. It boots a
 Mongo, so nothing survives and nothing is production. See
 `backend/.claude/skills/run-enoteca-detoma-backend/`.
 
-From `backend/`, with a seeded catalogue (3 wines, 1 beer, 2 alimentari) and the API held
-open on port 3011:
+From `backend/`, with a seeded catalogue (4 wines, 1 beer, 2 alimentari — di cui **tre
+marcati "consigliato", uno per tipo**, che è il minimo per far comparire la tab Consigliati
+e la fascia in home) and the API held open on port 3011:
 
 ```powershell
 Start-Process node -ArgumentList '.claude/skills/run-enoteca-detoma-backend/driver.mjs','--hold' -RedirectStandardOutput "$env:TEMP\hold.log" -RedirectStandardInput '.claude/skills/run-enoteca-detoma-backend/seed-locale.txt' -WindowStyle Hidden
 ```
 
-Then start this repo's dev server against it (`Start-Process` as above, only the env var
-changes) and drive the panel — the account is `admin` / `Password1!`:
+Then start this repo's dev server against it and drive the panel — the account is
+`admin` / `Password1!`. La variabile va impostata **dentro** il processo figlio (vedi
+"`$env:VITE_API_URL` NON arriva a un `Start-Process npm.cmd`" più sopra):
 
 ```powershell
-$env:VITE_API_URL = 'http://localhost:3011'
+Start-Process cmd.exe -ArgumentList '/c','set "VITE_API_URL=http://localhost:3011" && npm run dev' `
+  -RedirectStandardOutput "$env:TEMP\vite.log" -WindowStyle Hidden
 ```
 
 ```powershell
@@ -173,8 +256,13 @@ console
 '@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --desktop
 ```
 
-Verified: logs in, `1 vino` / `1 prodotto`, `ERRORS none`, exit 0. The public side reads
-the same data (`/enoteca/vini/bianchi` → `Gavi di prova · Piemonte · € 14,00`).
+Verified 2026-08-14: logs in, `2 vini` (Vini Rossi, la categoria di apertura) / `1 prodotto`,
+un `.admin-consigliato-tag` in griglia, `ERRORS none`, exit 0. The public side reads the
+same data (`/enoteca/vini/bianchi` → `Gavi di prova · Piemonte · € 14,00`).
+
+Il campo "consigliato" si prova da qui: matita su un prodotto → la spunta **Consigliato
+dall'enoteca** sotto Descrizione → appare la nota → Salva. La griglia mostra subito il
+contrassegno `.admin-consigliato-tag`, e `/` e `/enoteca/consigliati` si aggiornano.
 
 Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
 `.admin-topbar-user`, `.admin-topbar-link` (Vini / Birre / Alimentari / Account),
@@ -293,6 +381,56 @@ disegnato a 342×152), `famiglia_2` 295→33 KB, `logo` 205→62 KB.
   pieno. Per questo `q: 0.8` (62 KB, errore 3.8/255) invece di 0.92 (75 KB, errore 2.5):
   13 KB per una differenza invisibile.
 
+### Convertire un sorgente che NON è png/jpeg (es. un `.webp` dal client)
+
+`converti-foto.mjs` ha `JOBS` scritti a mano e ricava il nome di uscita con
+`replace(/\.(png|jpe?g)$/i, '.webp')`: con un sorgente **già** `.webp` la destinazione
+coinciderebbe col sorgente e lo riscriverebbe in perdita a ogni rilancio. Per una conversione
+una-tantum da un file fuori dal repo conviene NON toccare lo script e riusare solo il suo
+metodo (stesso canvas, stesso Chromium), lanciandolo **dalla cartella della skill** — è lì
+che sta `playwright`, non fra le dipendenze dell'app:
+
+```powershell
+cd .claude/skills/run-enoteca-detoma-frontend
+node -e "import('playwright').then(async ({chromium})=>{ /* leggi, drawImage su canvas alla
+larghezza voluta, toDataURL('image/webp', q), scrivi nel src/images dell'app */ })"
+```
+
+Fatto il 2026-08-12 per `detoma-frame.webp` (illustrazione della facciata, da Downloads):
+1440×1080 → 720×540, **392 KB → 93 KB** a `q: 0.82`. 720 scelto per lasciare margine: la
+scheda "Dove siamo" poteva ancora crescere, e infatti è poi passata a tutta larghezza.
+
+## Misurare il layout invece di guardarlo
+
+Per le domande di spaziatura ("quanto dista X da Y?", "da dove vengono questi 72px?") il
+driver headless dà numeri in un colpo solo, e sono numeri che a occhio non si ricavano.
+Ricetta usata il 2026-08-12, che ha trovato **56px di `padding-bottom` su `.shop-section`**
+che nessuno cercava lì:
+
+```js
+// risali la catena dei box dal nodo fino a body: dove finisce lo spazio si vede subito
+let el = document.querySelector('.info-piva'); const out = [];
+while (el && el !== document.documentElement) {
+  const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+  const pr = el.parentElement?.getBoundingClientRect();
+  out.push({ el: el.tagName + '.' + (el.className || '').split(' ')[0],
+             padB: cs.paddingBottom, spaceToParentBottom: pr ? Math.round(pr.bottom - r.bottom) : null });
+  el = el.parentElement;
+}
+return out;   // poi console.table() lato node
+```
+
+**`getBoundingClientRect()` include le trasformazioni**, e su questo sito è una trappola
+vera: `.site-nav` entra con la @keyframes `site-nav-in` (`translateY(140%)` → 0, App.css),
+quindi misurata al montaggio la tab bar risultava **85px sotto il fondo dello schermo**. Per
+le misure di layout usa `offsetHeight` e il `bottom` di `getComputedStyle`, che sono valori
+di layout e ignorano l'animazione. Stesso genere di errore: `ResizeObserver` →
+`contentRect.height` **esclude il padding** (sull'header sono 39px): se ti serve il box
+intero, `offsetHeight`.
+
+Controlla sempre le due sponde del breakpoint: a 390×844 la tab bar è `fixed`, da 641px in
+su diventa `static` dentro l'header e le misure devono azzerarsi da sole.
+
 ## Lint
 
 ```powershell
@@ -309,9 +447,11 @@ real touch layout.
 
 ## Gotchas
 
-- **Empty lists + `ERR_CONNECTION_REFUSED` ×26** — you started the server without
-  `VITE_API_URL`. The page still renders its shell, so it looks like a CSS bug. Restart
-  the server with the env var; `console` in the driver is what surfaces it.
+- **Empty lists + `ERR_CONNECTION_REFUSED` ×26** — the classic symptom of an unset
+  `VITE_API_URL`, and **obsolete since 2026-08-15**: the fallback is the production
+  backend, so an unconfigured server now loads fine. If you still see this, you pointed
+  `VITE_API_URL` at a local backend that is not running. `console` in the driver is what
+  surfaces it.
 - **Non fidarti dell'anteprima immagini per l'alpha.** Il visualizzatore disegna *lui* una
   scacchiera dove c'è trasparenza, quindi "trasparente" e "scacchiera dipinta nei pixel"
   sono identici a vedersi. Vanno contati i pixel: carica il file in Chromium e misura il
@@ -336,6 +476,25 @@ real touch layout.
   dir to install, `Set-Location` back to `frontend/` or the driver path resolves twice.
 - **`.filter-back`** exists in the source but is not clickable while the region bar is
   open — close the bar by other means, or just `nav` away.
+- **`click .sheet-close` si pianta per 15s: chiudi la scheda con `press Escape`.** La ✕ è
+  `position:absolute` ma il suo punto centrale è coperto da `.sheet-thumb`, che quindi si
+  prende il click. Misurato il 2026-08-14 a scheda ferma (dopo `sleep 1200`): ✕ nel box
+  `y 666–696`, `.sheet-thumb` che parte a `y 682` — `document.elementFromPoint()` sul
+  centro della ✕ restituisce `DIV.sheet-thumb`, non il bottone. Succede su tutte le
+  categorie, non solo sui consigliati, ed è **indipendente** dalla feature: capita anche in
+  `/enoteca/vini/rossi`. È al limite di un pixel e dipende dall'altezza del contenuto, per
+  cui a volte passa e a volte no — il caso peggiore è proprio quello: uno smoke che passa
+  oggi e domani resta appeso. `smoke.txt` usa `press Escape` per questo.
+  **Vale anche per il dito vero:** su telefono un tocco basso sulla ✕ può non registrarsi.
+- **`count` non aspetta, `wait-for`/`text` sì.** `count .consigliati-gruppo` subito dopo un
+  `nav` restituisce 0 mentre la fetch è ancora in volo, e sembra una lista vuota. Preso per
+  un bug due volte. Metti sempre un `wait-for` su un elemento che esiste solo a dati
+  arrivati (`.consiglio-name`, `.product-list`) prima di contare.
+- **La fascia dei consigli in home non c'è finché non ci sono consigli.** `Home.jsx` rende
+  `null` se l'elenco è vuoto o non ancora arrivato: contro un catalogo senza nessun
+  prodotto marcato "consigliato" la home è identica a prima. Non è un bug di layout — è il
+  database. Il seed usa e getta (`seed-locale.txt` nella skill del backend) ne marca tre,
+  uno per tipo, apposta.
 - **`text=<parola>` is ambiguous once you're in the admin panel.** The site's own nav pills
   sit above it, so `click text=Alimentari` hits the *site* nav (Playwright takes the first
   match) and silently leaves the panel. Scope it:

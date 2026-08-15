@@ -629,6 +629,65 @@
   }
 }
 
+/* ---- selezione della casa (campo "consigliato" nei tre form) ---- */
+
+/* la spunta è l'unico input del pannello che NON deve prendere l'altezza
+   di 42px e la larghezza piena di .admin-field input: qui è una casella
+   accanto a una frase, non un campo da compilare */
+.admin-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.admin-field .admin-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  padding: 0;
+  accent-color: #c9a227;
+  cursor: pointer;
+}
+
+/* la frase accanto alla spunta si legge come testo, non come l'etichetta
+   maiuscoletta degli altri campi */
+.admin-check-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2e3d34;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.admin-field--consiglio {
+  margin-top: 0.7rem;
+}
+
+.admin-field-hint {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #6a756f;
+}
+
+/* in griglia il consiglio si riconosce da lontano: filo dorato e
+   contrassegno, lo stesso oro del badge sul sito pubblico */
+.admin-product-card--consigliato {
+  border-color: rgba(201, 162, 39, 0.45);
+  box-shadow: 0 2px 10px rgba(201, 162, 39, 0.14);
+}
+
+.admin-consigliato-tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(201, 162, 39, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #8a6d12;
+}
+
 .admin-product-name {
   display: block;
   width: 100%;

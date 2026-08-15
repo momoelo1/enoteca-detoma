@@ -12,18 +12,47 @@ import {
 import { SHOP_INFO, WHATSAPP_NUMBER } from "../../data/data";
 import { statoApertura, giornoDiRoma } from "../../utils/orari";
 import Grainient from "../background/Grainient";
+import { TINTA_BASE } from "../background/tinta";
 import interno from "../../images/detoma-interno.webp";
 import facciata from "../../images/detoma-frame.webp";
+import famiglia1 from "../../images/famiglia/famiglia_1.png";
+import famiglia2 from "../../images/famiglia/famiglia_2.webp";
+import famiglia3 from "../../images/famiglia/famiglia_3.webp";
 import "./info.css";
 
 // Le foto della fascia in cima. Per aggiungerne una: importala qui sopra e
 // mettila in fondo all'elenco con la sua `alt` — la fascia diventa da sola
 // una galleria che si scorre col dito, con i pallini sotto. Con una foto
 // sola resta esattamente la fascia ferma di prima.
+//
+// Elenco scritto a mano e non `import.meta.glob` come faceva la home: qui
+// ogni foto ha bisogno della SUA descrizione, e una scansione della cartella
+// i nomi delle persone non li sa.
+//
+// L'interno resta per primo di proposito: è la foto su cui il riquadro è
+// tagliato (21:9, `cover`) ed è quella che si vede arrivando, con sopra
+// l'orario di apertura. Le foto di famiglia — che prima stavano in home e
+// sono arrivate qui — sono marcate `ritratto`: dentro una fascia panoramica
+// vanno mostrate intere (`contain`), o si taglierebbero le teste.
 const HERO_IMAGES = [
   {
     src: interno,
     alt: "L'interno dell'enoteca de Toma: le pareti di bottiglie e il banco",
+  },
+  {
+    src: famiglia1,
+    alt: "La famiglia De Toma in enoteca",
+    ritratto: true,
+  },
+  {
+    src: famiglia2,
+    alt: "Nicola e Sabrina De Toma dietro il banco dell'enoteca",
+    ritratto: true,
+  },
+  {
+    src: famiglia3,
+    alt: "Nicola e Sabrina De Toma fra le cassette di vino",
+    ritratto: true,
   },
 ];
 
@@ -175,9 +204,13 @@ function Info() {
       >
         <div className="pagina-finestra-sfondo">
           <Grainient
-            color1="#f6f1e7"
-            color2="#bcd9c3"
-            color3="#5d8a6f"
+            color1={TINTA_BASE[0]}
+            color2={TINTA_BASE[1]}
+            color3={TINTA_BASE[2]}
+            /* i colori cambiano con la categoria aperta: senza questo, mentre
+               quello di App sfuma questo resterebbe fermo e la giuntura delle
+               due fasce si vedrebbe */
+            tintaCondivisa
             timeSpeed={0.9}
             grainAmount={0.09}
             contrast={1.15}
@@ -196,7 +229,14 @@ function Info() {
               onScroll={HERO_IMAGES.length > 1 ? onScrollFoto : undefined}
             >
               {HERO_IMAGES.map((f) => (
-                <img key={f.src} className="info-hero-img" src={f.src} alt={f.alt} />
+                <img
+                  key={f.src}
+                  className={
+                    "info-hero-img" + (f.ritratto ? " info-hero-img--ritratto" : "")
+                  }
+                  src={f.src}
+                  alt={f.alt}
+                />
               ))}
             </div>
 
@@ -217,7 +257,16 @@ function Info() {
               </div>
             )}
 
-            <figcaption className="info-hero-cap">
+            {/* "Vieni a trovarci" e l'orario valgono per la foto del negozio,
+                non per un ritratto di famiglia: sulle foto di famiglia il velo
+                scuro coprirebbe le persone e la scritta non c'entrerebbe
+                niente. Si dissolve e torna scorrendo indietro alla prima. */}
+            <figcaption
+              className={
+                "info-hero-cap" +
+                (HERO_IMAGES[fotoInVista]?.ritratto ? " info-hero-cap--via" : "")
+              }
+            >
               <span className="info-hero-title">Vieni a trovarci</span>
               {stato && (
                 <span

@@ -11,6 +11,8 @@ import {
 import "./App.css";
 import logo from "./images/enoteca-detoma-logo.webp";
 import Grainient from "./components/background/Grainient";
+import { TINTA_BASE } from "./components/background/tinta";
+import Versata from "./components/transition/Versata";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
@@ -53,11 +55,16 @@ function AppShell() {
 
   return (
     <>
+      {/* `tintaCondivisa`: i colori non stanno più qui ma in
+          background/tinta.js, perché li cambia la categoria che si sta
+          guardando — e devono cambiare insieme a quelli della seconda
+          istanza montata dalla pagina Info */}
       <div className="app-bg" aria-hidden="true">
         <Grainient
-          color1="#f6f1e7"
-          color2="#bcd9c3"
-          color3="#5d8a6f"
+          color1={TINTA_BASE[0]}
+          color2={TINTA_BASE[1]}
+          color3={TINTA_BASE[2]}
+          tintaCondivisa
           timeSpeed={0.9}
           grainAmount={0.09}
           contrast={1.15}
@@ -102,6 +109,16 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/enoteca" element={<Enoteca />} />
+          {/* la selezione della casa è l'unica tab dell'Enoteca che vive
+              nell'URL (le altre restano stato locale): è quella che ha
+              senso mandare a qualcuno per messaggio. Dichiarate PRIMA delle
+              rotte con :groupId/:categoryId — un segmento fisso vince
+              comunque su uno dinamico, ma qui si legge anche l'intenzione */}
+          <Route path="/enoteca/consigliati" element={<Enoteca consigliati />} />
+          <Route
+            path="/enoteca/consigliati/:productId"
+            element={<Enoteca consigliati />}
+          />
           <Route path="/enoteca/:groupId/:categoryId" element={<Enoteca />} />
           <Route
             path="/enoteca/:groupId/:categoryId/:productId"
@@ -120,6 +137,10 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {/* l'onda colorata delle transizioni di categoria: un solo pannello per
+          tutta l'app, lo comandano le pagine con versa() */}
+      <Versata />
     </>
   );
 }

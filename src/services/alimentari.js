@@ -2,9 +2,9 @@
 // pattern di services/beers.js e services/wines.js.
 import { authHeaders, unauthorizedMessage } from "./auth";
 
+// senza VITE_API_URL si va sul backend di produzione (il perché sta in auth.js)
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3001`;
+  import.meta.env.VITE_API_URL || "https://detoma-backend.vercel.app";
 
 async function parse(res) {
   if (res.status === 204) return null;
@@ -16,9 +16,19 @@ async function parse(res) {
   return data;
 }
 
-export const getAlimentari = async (category) => {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+// `limit`: vedi getWines in services/wines.js
+export const getAlimentari = async (category, limit) => {
+  const q = new URLSearchParams();
+  if (category) q.set("category", category);
+  if (limit) q.set("limit", limit);
+  const query = q.toString() ? `?${q}` : "";
   const res = await fetch(`${API_URL}/api/alimentari${query}`);
+  return parse(res);
+};
+
+// solo la selezione della casa — vedi getWinesConsigliati in services/wines.js
+export const getAlimentariConsigliati = async () => {
+  const res = await fetch(`${API_URL}/api/alimentari?consigliato=true`);
   return parse(res);
 };
 

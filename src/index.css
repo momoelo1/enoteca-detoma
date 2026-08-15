@@ -1,3 +1,30 @@
+/* Il colore di bordi, testi e riempimenti dei bottoni. Di norma è il verde
+   dell'insegna; dentro una categoria diventa la versione profonda del colore
+   di quella categoria, così i bottoni restano nella stessa famiglia dello
+   sfondo tinto (vedi components/background/tinta.js, che la scrive su <html>).
+
+   Serve @property e non una variabile qualunque: senza una sintassi
+   dichiarata il browser tratta il valore come testo e il cambio di colore
+   scatta di botto, mentre lo sfondo dietro ci mette 700ms a sfumare. Con la
+   registrazione la variabile è un colore vero e la transizione qui sotto la
+   interpola. */
+@property --tinta-linea {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #2e5e46;
+}
+
+:root {
+  --tinta-linea: #2e5e46;
+  transition: --tinta-linea 700ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;

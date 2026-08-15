@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
+import ConsigliatoField from "./ConsigliatoField";
 
 
 const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
@@ -22,6 +23,8 @@ const toForm = (wine) => ({
   paese: wine?.paese || "",
   img: wine?.img || "",
   description: wine?.description || "",
+  consigliato: wine?.consigliato || false,
+  consiglio: wine?.consiglio || "",
   annate: toAnnate(wine),
 });
 
@@ -31,6 +34,8 @@ const EMPTY_FORM = {
   paese: "",
   img: "",
   description: "",
+  consigliato: false,
+  consiglio: "",
   annate: [{ anno: "", prezzo: "" }],
 };
 
@@ -58,6 +63,11 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  // il blocco "consigliato" passa già il valore, non l'evento (spunta e
+  // testo hanno due tipi diversi)
+  const handleConsigliato = (field, value) =>
+    setForm((f) => ({ ...f, [field]: value }));
 
   const handleCountrySelect = (e) => {
     const value = e.target.value;
@@ -143,6 +153,11 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       }).filter(([, v]) => v !== ""),
     );
     if (annate.length > 0) payload.annate = annate;
+    // fuori dal filtro qui sopra, che scarta i valori vuoti: togliere la
+    // spunta deve poter essere salvato davvero. La nota invece resta anche
+    // a spunta tolta — se il consiglio si riattiva, il testo è ancora lì
+    payload.consigliato = form.consigliato;
+    payload.consiglio = form.consiglio;
 
     try {
       if (isNew) {
@@ -302,6 +317,11 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <label>Descrizione</label>
           <textarea rows={3} value={form.description} onChange={handleChange("description")} />
         </div>
+        <ConsigliatoField
+          consigliato={form.consigliato}
+          consiglio={form.consiglio}
+          onChange={handleConsigliato}
+        />
 
         {error && <p className="admin-error">{error}</p>}
 
@@ -347,7 +367,15 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
   return (
     <li className="admin-product-cell">
-      <div className="admin-product-card">
+      <div
+        className={
+          "admin-product-card" +
+          (wine.consigliato ? " admin-product-card--consigliato" : "")
+        }
+      >
+        {wine.consigliato && (
+          <span className="admin-consigliato-tag">★ Consigliato</span>
+        )}
         <span className="admin-product-name">{wine.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
         {primary?.prezzo != null && (

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
+import { tintaOra } from './tinta';
 import './Grainient.css';
 
 const hexToRgb = hex => {
@@ -133,6 +134,9 @@ const Grainient = ({
   color1 = '#FF9FFC',
   color2 = '#5227FF',
   color3 = '#B497CF',
+  // true = i colori li detta impostaTinta() invece delle props qui sopra
+  // (vedi TINTA in cima: serve a tenere in accordo le due istanze dello shader)
+  tintaCondivisa = false,
   className = ''
 }) => {
   const containerRef = useRef(null);
@@ -188,7 +192,25 @@ const Grainient = ({
     });
 
     const mesh = new Mesh(gl, { geometry, program });
-    ctxMap.set(container, { renderer, program, mesh });
+    // `tinta` lo aggiorna l'Effect 2 sull'oggetto stesso: il loop qui sotto è
+    // creato una volta sola e non vedrebbe mai una prop cambiata
+    const ctx = { renderer, program, mesh, tinta: false };
+    ctxMap.set(container, ctx);
+
+    // un solo punto in cui si disegna: la tinta condivisa va applicata anche
+    // ai render fuori dal loop (resize, e il primo fotogramma al montaggio),
+    // altrimenti lì tornerebbero per un istante i colori delle props
+    const disegna = () => {
+      if (ctx.tinta) {
+        const t = tintaOra();
+        if (t) {
+          program.uniforms.uColor1.value = t[0];
+          program.uniforms.uColor2.value = t[1];
+          program.uniforms.uColor3.value = t[2];
+        }
+      }
+      renderer.render({ scene: mesh });
+    };
 
     const setSize = () => {
       const rect = container.getBoundingClientRect();
@@ -198,7 +220,7 @@ const Grainient = ({
       const res = program.uniforms.iResolution.value;
       res[0] = gl.drawingBufferWidth;
       res[1] = gl.drawingBufferHeight;
-      renderer.render({ scene: mesh });
+      disegna();
     };
 
     const ro = new ResizeObserver(setSize);
@@ -212,7 +234,7 @@ const Grainient = ({
 
     const loop = t => {
       program.uniforms.iTime.value = (t - t0) * 0.001;
-      renderer.render({ scene: mesh });
+      disegna();
       raf = requestAnimationFrame(loop);
     };
 
@@ -256,6 +278,7 @@ const Grainient = ({
     const { program } = ctx;
     const u = program.uniforms;
 
+    ctx.tinta = tintaCondivisa;
     u.uTimeSpeed.value      = timeSpeed;
     u.uColorBalance.value   = colorBalance;
     u.uWarpStrength.value   = warpStrength;
@@ -274,14 +297,18 @@ const Grainient = ({
     u.uSaturation.value     = saturation;
     u.uCenterOffset.value   = new Float32Array([centerX, centerY]);
     u.uZoom.value           = zoom;
-    u.uColor1.value         = new Float32Array(hexToRgb(color1));
-    u.uColor2.value         = new Float32Array(hexToRgb(color2));
-    u.uColor3.value         = new Float32Array(hexToRgb(color3));
+    // con `tintaCondivisa` i colori li scrive disegna() a ogni frame: scriverli
+    // anche qui vorrebbe dire vedere per un fotogramma i colori delle props
+    if (!tintaCondivisa) {
+      u.uColor1.value       = new Float32Array(hexToRgb(color1));
+      u.uColor2.value       = new Float32Array(hexToRgb(color2));
+      u.uColor3.value       = new Float32Array(hexToRgb(color3));
+    }
   }, [
     timeSpeed, colorBalance, warpStrength, warpFrequency, warpSpeed,
     warpAmplitude, blendAngle, blendSoftness, rotationAmount, noiseScale,
     grainAmount, grainScale, grainAnimated, contrast, gamma, saturation,
-    centerX, centerY, zoom, color1, color2, color3
+    centerX, centerY, zoom, color1, color2, color3, tintaCondivisa
   ]);
 
 

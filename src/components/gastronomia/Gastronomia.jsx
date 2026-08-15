@@ -5,6 +5,9 @@ import { ProductCard, ProductSheet } from "../enoteca/Enoteca";
 import { getAlimentari } from "../../services/alimentari";
 import { normalize } from "../../utils/normalize";
 import { productSlug } from "../../utils/productSlug";
+import { coloreGruppoAlimentari } from "../../utils/coloreCategoria";
+import { versa } from "../transition/versa";
+import { useAccentoSfondo } from "../background/tinta";
 import "./gastronomia.css";
 
 
@@ -104,6 +107,15 @@ function Gastronomia() {
     };
   }, [groupOpen]);
 
+  // I gruppi non hanno un accento proprio in data.js (ce l'ha il reparto) e li
+  // inventa l'admin dal pannello: il colore si ricava dalla posizione nella
+  // lista, così Pesto e Miele non versano la stessa identica tinta.
+  const coloreGruppo = (g) =>
+    coloreGruppoAlimentari(tab, gruppi.indexOf(g), gruppi.length);
+
+  // lo sfondo tiene il colore del gruppo aperto, come in Enoteca
+  useAccentoSfondo(gruppoAperto ? coloreGruppo(gruppoAperto) : null);
+
   const closeGroup = () => {
     // tornando indietro l'URL perde il reparto: va ricordato nella tab
     // locale, altrimenti la griglia riparte da Gastronomia
@@ -197,7 +209,11 @@ function Gastronomia() {
                   type="button"
                   className="mini-card mini-card--filigrana"
                   style={{ "--accent": activeCategory.accent }}
-                  onClick={() => navigate(`/alimentari/${tab}/${groupHref(g)}`)}
+                  onClick={() =>
+                    versa(coloreGruppo(g), () =>
+                      navigate(`/alimentari/${tab}/${groupHref(g)}`)
+                    )
+                  }
                 >
                   {illustrazione && (
                     <img

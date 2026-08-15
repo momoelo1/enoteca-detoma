@@ -3,9 +3,9 @@
 // cookie httpOnly da solo non basta cross-site tra GitHub Pages e il backend.
 import { authHeaders, unauthorizedMessage, setToken } from "./auth";
 
+// senza VITE_API_URL si va sul backend di produzione (il perché sta in auth.js)
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3001`;
+  import.meta.env.VITE_API_URL || "https://detoma-backend.vercel.app";
 
 async function parse(res) {
   const data = await res.json().catch(() => ({}));

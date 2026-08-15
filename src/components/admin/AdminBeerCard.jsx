@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createBeer, updateBeer, deleteBeer, deleteBeerImage } from "../../services/beers";
+import ConsigliatoField from "./ConsigliatoField";
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
@@ -10,6 +11,8 @@ const toForm = (beer) => ({
   formato: beer?.formato ?? "",
   prezzo: beer?.prezzo ?? "",
   img: beer?.img || "",
+  consigliato: beer?.consigliato || false,
+  consiglio: beer?.consiglio || "",
 });
 
 const EMPTY_FORM = {
@@ -19,6 +22,8 @@ const EMPTY_FORM = {
   formato: "",
   prezzo: "",
   img: "",
+  consigliato: false,
+  consiglio: "",
 };
 
 function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
@@ -30,6 +35,11 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  // il blocco "consigliato" passa già il valore, non l'evento (spunta e
+  // testo hanno due tipi diversi)
+  const handleConsigliato = (field, value) =>
+    setForm((f) => ({ ...f, [field]: value }));
 
   // stesso pattern del form vini: FileReader -> data URL, il backend
   // si occupa di caricarla su Cloudinary al salvataggio
@@ -78,6 +88,11 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     );
     if (form.formato !== "") payload.formato = Number(form.formato);
     if (form.prezzo !== "") payload.prezzo = Number(form.prezzo);
+    // fuori dal filtro qui sopra, che scarta i valori vuoti: togliere la
+    // spunta deve poter essere salvato davvero. La nota invece resta anche
+    // a spunta tolta — se il consiglio si riattiva, il testo è ancora lì
+    payload.consigliato = form.consigliato;
+    payload.consiglio = form.consiglio;
 
     try {
       if (isNew) {
@@ -195,6 +210,11 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
             </div>
           )}
         </div>
+        <ConsigliatoField
+          consigliato={form.consigliato}
+          consiglio={form.consiglio}
+          onChange={handleConsigliato}
+        />
 
         {error && <p className="admin-error">{error}</p>}
 
@@ -234,7 +254,15 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
 
   return (
     <li className="admin-product-cell">
-      <div className="admin-product-card">
+      <div
+        className={
+          "admin-product-card" +
+          (beer.consigliato ? " admin-product-card--consigliato" : "")
+        }
+      >
+        {beer.consigliato && (
+          <span className="admin-consigliato-tag">★ Consigliato</span>
+        )}
         <span className="admin-product-name">{beer.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
         {beer.prezzo != null && <span className="admin-product-price">€ {beer.prezzo}</span>}

@@ -4,9 +4,9 @@
 // alcuni browser lo scartano.
 import { authHeaders, unauthorizedMessage } from "./auth";
 
+// senza VITE_API_URL si va sul backend di produzione (il perché sta in auth.js)
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:3001`;
+  import.meta.env.VITE_API_URL || "https://detoma-backend.vercel.app";
 
 async function parse(res) {
   if (res.status === 204) return null;
@@ -18,9 +18,25 @@ async function parse(res) {
   return data;
 }
 
-export const getWines = async (category) => {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+// `limit`: quanti vini al massimo. Lo usa la vetrina della home, che ne mostra
+// venti e non ha motivo di scaricare tutto il catalogo (534 vini, 153 KB) per
+// buttarne il 96%. Le pagine che il catalogo intero ce l'hanno da mostrare —
+// l'Enoteca, l'admin — lo chiamano senza e ricevono tutto come prima.
+export const getWines = async (category, limit) => {
+  const q = new URLSearchParams();
+  if (category) q.set("category", category);
+  if (limit) q.set("limit", limit);
+  const query = q.toString() ? `?${q}` : "";
   const res = await fetch(`${API_URL}/api/wines${query}`);
+  return parse(res);
+};
+
+// solo la selezione della casa (tab "Consigliati" dell'Enoteca). Una
+// chiamata a sé invece di filtrare i vini già scaricati dalla pagina: così
+// la tab non dipende dal precaricamento delle altre e resta riusabile
+// altrove. Stessa funzione anche in services/beers.js e alimentari.js.
+export const getWinesConsigliati = async () => {
+  const res = await fetch(`${API_URL}/api/wines?consigliato=true`);
   return parse(res);
 };
 
