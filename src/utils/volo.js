@@ -42,6 +42,22 @@ export function vola(riquadro, aggiorna) {
 
   const pulisci = () => {
     riquadro.style.viewTransitionName = "";
+    // IL PANNELLO È GIÀ AL SUO POSTO: ce l'ha portato il volo.
+    // `vt-attiva` teneva spenta la sua @keyframes sheet-up (vedi enoteca.css);
+    // togliendo la classe l'animazione non è "passata", è solo stata rimandata
+    // — parte ADESSO, e il pannello risale dal basso una seconda volta a
+    // pannello già fermo. Misurato: classe tolta a 2303ms, sheet-up partita a
+    // 2606ms. Va spenta sull'elemento prima di liberare l'html.
+    //
+    // In stile inline e non con una classe perché il className del pannello lo
+    // riscrive React a ogni render (ci sono dentro `type` e `dragging`), e si
+    // porterebbe via la classe; `animation` invece React non la tocca mai.
+    // Muore da sola con l'elemento: chiusa e riaperta, la scheda è un nodo
+    // nuovo e la salita torna a funzionare quando serve davvero.
+    for (const sel of [".product-sheet", ".sheet-backdrop"]) {
+      const el = document.querySelector(sel);
+      if (el) el.style.animation = "none";
+    }
     document.documentElement.classList.remove("vt-attiva");
   };
   // `finished` viene rifiutata se la transizione viene interrotta (due tocchi
