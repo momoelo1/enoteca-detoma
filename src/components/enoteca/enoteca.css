@@ -1501,37 +1501,6 @@ svg.product-food-svg {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
-/* il blocco del consiglio si stacca dalle note di degustazione, che
-   restano un paragrafo nudo: qui c'è una cornice dorata, perché è la
-   voce del negozio e non una scheda tecnica */
-.sheet-consiglio-block {
-  gap: 6px;
-  padding: 12px 14px 14px;
-  border: 1px solid rgba(201, 162, 39, 0.35);
-  border-radius: 14px;
-  background: rgba(201, 162, 39, 0.07);
-}
-
-/* etichetta e filo restano dorati anche dentro una categoria con un
-   --accent diverso: DEVONO stare dopo .sheet-desc-label/.sheet-divider,
-   che leggono var(--accent) — stessa specificità, vince l'ordine */
-.sheet-consiglio-label {
-  color: #8a6d12;
-}
-
-.sheet-consiglio-block .sheet-divider {
-  background: #c9a227;
-}
-
-/* niente small-caps sulla prima riga qui (a differenza di .sheet-desc):
-   è un parere scritto a mano, si legge come una frase, non come
-   un'etichetta di bottiglia */
-.sheet-consiglio::first-line {
-  font-variant: normal;
-  letter-spacing: normal;
-  color: #52605a;
-}
-
 .sheet-annate {
   width: 100%;
   display: flex;

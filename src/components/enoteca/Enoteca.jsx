@@ -9,12 +9,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   SHOP_GROUPS,
   COUNTRY_GROUPS,
-  ALIMENTARI_CATEGORIES,
   WHATSAPP_NUMBER,
 } from "../../data/data";
 import { getWines, getWinesConsigliati } from "../../services/wines";
 import { getBeers, getBeersConsigliate } from "../../services/beers";
-import { getAlimentariConsigliati } from "../../services/alimentari";
 import { GlobeIcon } from "../icons/NavIcons";
 import { CategoryIcon } from "../icons/CategoryIcon";
 import { productSlug } from "../../utils/productSlug";
@@ -186,14 +184,18 @@ const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
 const VINI_GROUP = SHOP_GROUPS.find((g) => g.id === "vini");
 const BIRRE_GROUP = SHOP_GROUPS.find((g) => g.id === "birre");
 
-// I consigli arrivano da tre endpoint diversi e qui tornano un elenco solo,
-// diviso per categoria: venti bottiglie scelte si leggono come una selezione
-// solo se restano ordinate (i rossi con i rossi), altrimenti sono un mucchio.
-// L'ordine è quello di data.js — prima le categorie di vino, poi le birre,
-// poi i due reparti alimentari — non quello di arrivo dall'API.
+// I consigli dell'Enoteca arrivano da due endpoint e qui tornano un elenco
+// solo, diviso per categoria: delle bottiglie scelte si leggono come una
+// selezione solo se restano ordinate (i rossi con i rossi), altrimenti sono
+// un mucchio. L'ordine è quello di data.js, non quello di arrivo dall'API.
 // Le birre non si dividono per birrificio: sarebbero gruppi da un pezzo.
 // I gruppi vuoti spariscono: nessun titolo senza niente sotto.
-const buildConsigliatiGroups = ({ vini, birre, alimentari }) =>
+//
+// Gli ALIMENTARI non stanno più qui: hanno la loro tab "Consigliati" dentro
+// la pagina Alimentari (Gastronomia.jsx). Stavano insieme quando i consigli
+// erano una vetrina sola; adesso che li sceglie il negozio, un miele in fondo
+// alla selezione dell'enoteca era solo fuori posto.
+const buildConsigliatiGroups = ({ vini, birre }) =>
   [
     ...VINI_GROUP.categories.map((c) => ({
       key: `vini-${c.id}`,
@@ -209,13 +211,6 @@ const buildConsigliatiGroups = ({ vini, birre, alimentari }) =>
       type: "birre",
       items: birre,
     },
-    ...ALIMENTARI_CATEGORIES.map((c) => ({
-      key: `alimentari-${c.id}`,
-      label: c.label,
-      accent: c.accent,
-      type: "alimentari",
-      items: alimentari.filter((a) => a.category === c.id),
-    })),
   ].filter((g) => g.items.length > 0);
 
 // Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo,
@@ -547,20 +542,10 @@ export function ProductSheet({ w, category, onClose, type }) {
               ))}
             </ul>
           )}
-          {/* il consiglio della casa viene PRIMA delle note di degustazione:
-              è il motivo per cui il negozio ha scelto questa bottiglia, ed è
-              la cosa che un supermercato non può copiare — la scheda tecnica
-              viene dopo. Compare solo se il prodotto è davvero consigliato:
-              una nota rimasta a spunta tolta non si vede */}
-          {w.consigliato && w.consiglio && (
-            <div className="sheet-desc-block sheet-consiglio-block">
-              <span className="sheet-desc-label sheet-consiglio-label">
-                ★ Perché lo consigliamo
-              </span>
-              <span className="sheet-divider" aria-hidden="true" />
-              <p className="sheet-desc sheet-consiglio">{w.consiglio}</p>
-            </div>
-          )}
+          {/* qui c'era il blocco "perché lo consigliamo", con una nota scritta
+              a mano dal negozio. Tolto: la selezione della casa si dice con la
+              stella sulla card e basta — una nota per prodotto era un lavoro
+              di scrittura che nessuno avrebbe tenuto aggiornato. */}
           {desc && (
             <div className="sheet-desc-block">
               <span className="sheet-desc-label">Note di degustazione</span>
@@ -652,17 +637,11 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
   const [consigliati, setConsigliati] = useState(null);
   useEffect(() => {
     if (!consigliatiRoute || consigliati) return;
-    Promise.all([
-      getWinesConsigliati(),
-      getBeersConsigliate(),
-      getAlimentariConsigliati(),
-    ])
-      .then(([vini, birre, alimentari]) =>
-        setConsigliati({ vini, birre, alimentari })
-      )
+    Promise.all([getWinesConsigliati(), getBeersConsigliate()])
+      .then(([vini, birre]) => setConsigliati({ vini, birre }))
       // rete giù: elenco vuoto, che la pagina già sa raccontare — meglio
       // di una tab bloccata per sempre su "Caricamento…"
-      .catch(() => setConsigliati({ vini: [], birre: [], alimentari: [] }));
+      .catch(() => setConsigliati({ vini: [], birre: [] }));
   }, [consigliatiRoute, consigliati]);
 
   const consigliatiGroups = consigliati
@@ -1131,8 +1110,7 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
            cercherebbero lo scroll in una lista che non scorre */
         <div className="consigliati-scroll">
           <p className="consigliati-intro">
-            Le bottiglie e i prodotti che scegliamo noi, con il motivo per cui
-            li abbiamo scelti.
+            Le bottiglie che scegliamo noi.
           </p>
           {consigliatiGroups.map((g) => (
             <section className="consigliati-gruppo" key={g.key}>

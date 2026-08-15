@@ -1,13 +1,12 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProductPlaceholder } from "../enoteca/Enoteca";
-import { formatPrezzo } from "../../utils/prezzo";
-import { getWines } from "../../services/wines";
-import { getAlimentari } from "../../services/alimentari";
+import { formatPrezzo, prezzoProdotto } from "../../utils/prezzo";
+import { getWinesConsigliati } from "../../services/wines";
+import { getAlimentariConsigliati } from "../../services/alimentari";
 import { productSlug } from "../../utils/productSlug";
 import { normalize } from "../../utils/normalize";
 import { trimBorder } from "../../utils/cloudinary";
-import { BACINO_VETRINA, prezzoVetrina, scegliMisti } from "../../data/vetrina";
 import "./home.css";
 
 // Il titolo si scrive da sé all'apertura, parola per parola, come se una
@@ -19,9 +18,8 @@ import "./home.css";
 const TITOLO = "Tre Generazioni, Una Passione per il Vino";
 
 // Dove porta una scheda della vetrina: al SUO posto nel catalogo, con la
-// scheda prodotto già aperta. Non alla tab Consigliati — un segnaposto non è
-// un consiglio, e l'indirizzo che si vede nella barra deve dire la verità su
-// dove sta quel prodotto.
+// scheda prodotto già aperta. Non alla tab Consigliati: l'indirizzo che si
+// vede nella barra deve dire la verità su dove sta quel prodotto.
 const stradaProdotto = (item, type) =>
   type === "alimentari"
     ? `/alimentari/${item.category}/${encodeURIComponent(
@@ -36,9 +34,9 @@ const stradaProdotto = (item, type) =>
 // scatto (il ritardo è tosato a poche schede, vedi home.css).
 function VetrinaCard({ item, type, onOpen, i }) {
   // null anche quando il prezzo è 0: la riga sparisce invece di annunciare
-  // "€ 0,00" (vedi prezzoVetrina in data/vetrina.js). Gli alimentari non
-  // hanno proprio il campo prezzo, quindi per loro non compare mai.
-  const prezzo = prezzoVetrina(item);
+  // "€ 0,00" (vedi prezzoProdotto in utils/prezzo.js). Gli alimentari spesso
+  // il campo non ce l'hanno proprio, quindi per loro non compare mai.
+  const prezzo = prezzoProdotto(item);
   return (
     <li className="consiglio-cell" style={{ "--i": i }}>
       <button
@@ -72,32 +70,70 @@ function VetrinaCard({ item, type, onOpen, i }) {
   );
 }
 
+// Quante schede vuote mostrare mentre i prodotti arrivano. Sei e non tre:
+// devono ECCEDERE la riga visibile (su un telefono da 390px ce ne stanno
+// meno di tre), altrimenti la fascia sembra corta e finita, invece che una
+// riga che scorre e si sta ancora riempiendo.
+const QUANTI_FANTASMI = 6;
+
+// La scheda vuota: stessa scatola della VetrinaCard, con dentro i blocchi al
+// posto di foto, nome e prezzo. Un riflesso ci passa sopra a ripetizione.
+// Sta fuori da FasciaVetrina perché il React Compiler non vuole componenti
+// definiti dentro altri componenti (vedi CLAUDE.md).
+function FantasmaCard({ i }) {
+  return (
+    <li className="consiglio-cell consiglio-cell--fantasma" style={{ "--i": i }}>
+      <div className="consiglio-card consiglio-card--fantasma">
+        <span className="fantasma-blocco fantasma-thumb" />
+        <span className="fantasma-blocco fantasma-nome" />
+        <span className="fantasma-blocco fantasma-prezzo" />
+      </div>
+    </li>
+  );
+}
+
 // Una fascia della vetrina: titolo, link "vedi tutti" e la riga di schede che
 // scorre di lato. Ce ne sono due identiche (vini e alimentari) — quello che
 // cambia è solo cosa ci finisce dentro.
-// `items` a null = ancora in arrivo: la fascia non esiste proprio, niente
-// schede segnaposto vuote. La home scorre, quindi una fascia che compare
-// dopo si aggiunge SOTTO quello che si sta leggendo e non sposta niente.
+//
+// Tre stati, e la differenza fra i primi due è tutta in `items`:
+// - `null`  = ancora in arrivo → la fascia c'è già, con le schede vuote. Il
+//   telaio (titolo, link, altezza della riga) è quello definitivo, così
+//   quando i prodotti arrivano non si sposta niente e l'attesa sembra voluta
+//   invece che un pezzo di pagina mancante.
+// - `[]`    = arrivata e vuota (rete giù, o nessun prodotto) → niente fascia:
+//   meglio una home più corta che un telaio che non si riempirà mai.
+// - piena   = le schede vere.
 function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
-  if (!items?.length) return null;
+  const inArrivo = items === null;
+  if (!inArrivo && !items.length) return null;
   return (
-    <section className="consigli-strip" aria-label={titolo}>
+    <section className="consigli-strip" aria-label={titolo} aria-busy={inArrivo}>
       <div className="consigli-strip-head">
         <h2 className="consigli-strip-title">{titolo}</h2>
         <Link className="consigli-strip-all" to={tutti}>
           {etichettaTutti} →
         </Link>
       </div>
-      <ul className="consigli-row">
-        {items.map((item, i) => (
-          <VetrinaCard
-            key={item.id || item.name + i}
-            item={item}
-            type={type}
-            onOpen={onOpen}
-            i={i}
-          />
-        ))}
+      {/* mentre carica la riga non si scorre: non c'è niente da raggiungere
+          e un trascinamento a vuoto sembra un blocco */}
+      <ul
+        className={"consigli-row" + (inArrivo ? " consigli-row--fantasma" : "")}
+        aria-hidden={inArrivo}
+      >
+        {inArrivo
+          ? Array.from({ length: QUANTI_FANTASMI }, (_, i) => (
+              <FantasmaCard key={i} i={i} />
+            ))
+          : items.map((item, i) => (
+              <VetrinaCard
+                key={item.id || item.name + i}
+                item={item}
+                type={type}
+                onOpen={onOpen}
+                i={i}
+              />
+            ))}
       </ul>
     </section>
   );
@@ -105,9 +141,16 @@ function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
 
 // Le due fasce sotto il racconto. Hanno preso il posto delle foto di
 // famiglia, che sono passate alla pagina Info (Info.jsx, HERO_IMAGES).
-// Due chiamate sole, tagliate a BACINO_VETRINA prodotti l'una: è da lì che
-// scegliMisti() pesca i venti segnaposto — vedi data/vetrina.js per come,
-// perché proprio ottanta e quando toglierli.
+//
+// Qui ci sono i consigliati VERI: i prodotti che il negozio marca con la
+// stella dal pannello admin. Prima c'erano venti segnaposto pescati dal
+// catalogo (data/vetrina.js, cancellato) perché nessun prodotto era ancora
+// marcato — una vetrina finta, che diceva "consigliati" di roba scelta da un
+// algoritmo. Adesso sceglie il negozio, e finché non sceglie non c'è fascia:
+// meglio una home più corta che un consiglio che non è di nessuno.
+//
+// Le due chiamate non hanno limite: i consigliati sono pochi per definizione,
+// e quanti mostrarne lo decide il negozio marcandoli.
 function Vetrina() {
   const navigate = useNavigate();
   const [vini, setVini] = useState(null);
@@ -115,18 +158,16 @@ function Vetrina() {
 
   useEffect(() => {
     let annullato = false;
-    const metti = (set, chiave) => (dati) => {
-      if (!annullato) set(scegliMisti(dati || [], chiave));
+    const metti = (set) => (dati) => {
+      if (!annullato) set(dati || []);
     };
     // rete giù: elenco vuoto, la fascia sparisce e la home resta in piedi
     const vuoto = (set) => () => {
       if (!annullato) set([]);
     };
-    getWines(null, BACINO_VETRINA)
-      .then(metti(setVini, "category"))
-      .catch(vuoto(setVini));
-    getAlimentari(null, BACINO_VETRINA)
-      .then(metti(setAlimentari, "sottocategoria"))
+    getWinesConsigliati().then(metti(setVini)).catch(vuoto(setVini));
+    getAlimentariConsigliati()
+      .then(metti(setAlimentari))
       .catch(vuoto(setAlimentari));
     return () => {
       annullato = true;

@@ -125,6 +125,19 @@ function AppShell() {
             element={<Enoteca />}
           />
           <Route path="/alimentari" element={<Gastronomia />} />
+          {/* come per l'Enoteca: la selezione della casa vive nell'URL, ed è
+              dichiarata prima delle rotte con :reparto/:groupId — un segmento
+              fisso vince comunque su uno dinamico, ma così si legge anche
+              l'intenzione. Serve a `/alimentari/consigliati/<id>`, che
+              altrimenti finirebbe su :reparto/:groupId */}
+          <Route
+            path="/alimentari/consigliati"
+            element={<Gastronomia consigliati />}
+          />
+          <Route
+            path="/alimentari/consigliati/:productId"
+            element={<Gastronomia consigliati />}
+          />
           <Route path="/alimentari/:reparto/:groupId" element={<Gastronomia />} />
           <Route
             path="/alimentari/:reparto/:groupId/:productId"

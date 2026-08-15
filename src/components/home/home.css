@@ -236,6 +236,97 @@
   }
 }
 
+/* ---- schede vuote (mentre i prodotti arrivano) ----
+   Stessa scatola delle schede vere — stessa misura, stesso vetro, stesso
+   raggio — così quando i prodotti arrivano cambia il contenuto e non il
+   telaio: la pagina non si sposta di un pixel.
+
+   Le regole stanno SUBITO DOPO .consiglio-card e usano due classi (0,2,0
+   contro 0,1,0): la variante non può perdere la cascata né qui né altrove,
+   che è la trappola già costata due bug (vedi CLAUDE.md). */
+.consiglio-card--fantasma {
+  cursor: default;
+  /* la scheda vuota non si tocca: non c'è ancora niente da aprire */
+  pointer-events: none;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* niente sollevamento al passaggio del mouse su una scheda che non apre nulla */
+@media (hover: hover) {
+  .consiglio-card--fantasma:hover {
+    transform: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* il filo dorato è il segno che la scheda È PRONTA: sul fantasma resta un
+   filo neutro e fermo, e l'oro si tira quando arriva il prodotto vero */
+.consiglio-card--fantasma::before {
+  background: rgba(46, 94, 70, 0.14);
+  animation: none;
+  transform: none;
+}
+
+/* il riflesso che attraversa la scheda. Sta sulla scheda e non sui singoli
+   blocchi: un'animazione per scheda invece di tre, e il riflesso continuo da
+   un blocco all'altro si legge come un'unica superficie che aspetta. */
+.consiglio-card--fantasma::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: fantasma-riflesso 1.4s ease-in-out infinite;
+  /* sfalsato di scheda in scheda: insieme sembrerebbe una barra sola che
+     scorre sopra la fascia, invece che sei schede che aspettano */
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+
+@keyframes fantasma-riflesso {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* i blocchi al posto di foto, nome e prezzo. Le misure sono quelle del
+   contenuto vero: 96px è l'altezza della miniatura, le due righe sotto
+   stanno dove stanno nome e prezzo. */
+.fantasma-blocco {
+  flex: none;
+  background: rgba(46, 94, 70, 0.09);
+  border-radius: 6px;
+}
+
+.fantasma-thumb {
+  width: 74px;
+  height: 96px;
+  border-radius: 8px;
+}
+
+.fantasma-nome {
+  width: 88%;
+  height: 11px;
+}
+
+.fantasma-prezzo {
+  width: 46%;
+  height: 11px;
+}
+
+/* mentre carica non c'è niente da raggiungere scorrendo */
+.consigli-row--fantasma {
+  overflow-x: hidden;
+}
+
 .consiglio-star {
   position: absolute;
   top: 7px;
@@ -304,12 +395,21 @@ svg.consiglio-svg.product-food-svg {
 
 /* Chi ha chiesto meno animazioni al sistema vede la home ferma e completa:
    niente titolo che si scrive, niente schede che entrano. Il contenuto è
-   esattamente lo stesso — cambia solo che è già tutto lì. */
+   esattamente lo stesso — cambia solo che è già tutto lì.
+   Le schede vuote restano: sono informazione (i prodotti stanno arrivando),
+   non decorazione. A fermarsi è solo il riflesso che ci passa sopra. */
 @media (prefers-reduced-motion: reduce) {
   .hero-parola,
   .consiglio-cell,
-  .consiglio-card::before {
+  .consiglio-card::before,
+  .consiglio-card--fantasma::after {
     animation: none;
+  }
+
+  /* senza riflesso il gradiente resterebbe fermo a metà scheda, come una
+     macchia chiara: meglio toglierlo del tutto */
+  .consiglio-card--fantasma::after {
+    display: none;
   }
 }
 

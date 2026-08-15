@@ -5,7 +5,7 @@ import {
   deleteAlimentare,
   deleteAlimentareImage,
 } from "../../services/alimentari";
-import ConsigliatoField from "./ConsigliatoField";
+import StellaConsigliato from "./StellaConsigliato";
 
 // niente annate qui: il cibo ha un prezzo unico, come le birre.
 // `formato` è un numero di grammi come per le birre lo è di centilitri
@@ -18,8 +18,6 @@ const toForm = (item) => ({
   prezzo: item?.prezzo ?? "",
   description: item?.description || "",
   img: item?.img || "",
-  consigliato: item?.consigliato || false,
-  consiglio: item?.consiglio || "",
 });
 
 const EMPTY_FORM = {
@@ -30,8 +28,6 @@ const EMPTY_FORM = {
   prezzo: "",
   description: "",
   img: "",
-  consigliato: false,
-  consiglio: "",
 };
 
 function AdminAlimentareCard({
@@ -47,14 +43,25 @@ function AdminAlimentareCard({
   const [form, setForm] = useState(() => toForm(item));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [flagging, setFlagging] = useState(false);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  // il blocco "consigliato" passa già il valore, non l'evento (spunta e
-  // testo hanno due tipi diversi)
-  const handleConsigliato = (field, value) =>
-    setForm((f) => ({ ...f, [field]: value }));
+  // vedi AdminWineCard: la stella salva da sola, solo il campo `consigliato`
+  const toggleConsigliato = async () => {
+    setFlagging(true);
+    setError("");
+    try {
+      onUpdated(
+        await updateAlimentare(item.id, { consigliato: !item.consigliato })
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFlagging(false);
+    }
+  };
 
   // stesso pattern dei form vini/birre: FileReader -> data URL, il
   // backend la carica su Cloudinary al salvataggio
@@ -104,11 +111,8 @@ function AdminAlimentareCard({
     );
     if (form.formato !== "") payload.formato = Number(form.formato);
     if (form.prezzo !== "") payload.prezzo = Number(form.prezzo);
-    // fuori dal filtro qui sopra, che scarta i valori vuoti: togliere la
-    // spunta deve poter essere salvato davvero. La nota invece resta anche
-    // a spunta tolta — se il consiglio si riattiva, il testo è ancora lì
-    payload.consigliato = form.consigliato;
-    payload.consiglio = form.consiglio;
+    // `consigliato` non passa di qui: vedi AdminWineCard, lo governa solo
+    // la stella in griglia
 
     try {
       if (isNew) {
@@ -256,11 +260,6 @@ function AdminAlimentareCard({
             </div>
           )}
         </div>
-        <ConsigliatoField
-          consigliato={form.consigliato}
-          consiglio={form.consiglio}
-          onChange={handleConsigliato}
-        />
 
         {error && <p className="admin-error">{error}</p>}
 
@@ -310,9 +309,11 @@ function AdminAlimentareCard({
           (item.consigliato ? " admin-product-card--consigliato" : "")
         }
       >
-        {item.consigliato && (
-          <span className="admin-consigliato-tag">★ Consigliato</span>
-        )}
+        <StellaConsigliato
+          attivo={item.consigliato}
+          inCorso={flagging}
+          onToggle={toggleConsigliato}
+        />
         <span className="admin-product-name">{item.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
         {item.prezzo != null && (

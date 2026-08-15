@@ -204,9 +204,12 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
   in produzione i prodotti marcati `consigliato` sono zero.
 - **Selezione della casa.** Tab Consigliati dell'Enoteca:
   `/enoteca/consigliati`, contenitore `.consigliati-scroll`, un `.consigliati-gruppo` per
-  categoria non vuota. Contrassegno sulle card del catalogo: `.product-consigliato`.
-  Blocco nella scheda: `.sheet-consiglio-block`. La scheda di un consigliato è
-  raggiungibile in diretta: `nav /enoteca/consigliati/<id>`.
+  categoria non vuota. Il segno è una stella in alto a destra sulla card:
+  `.product-consigliato` nel catalogo, `.consiglio-star` in home. La scheda di un
+  consigliato è raggiungibile in diretta: `nav /enoteca/consigliati/<id>`.
+  **Nella scheda prodotto non c'è nulla**: il blocco `.sheet-consiglio-block` con la nota
+  scritta a mano è stato tolto il 2026-08-15 insieme al campo `consiglio`. Il flag è solo
+  sì/no.
 - **La home ora SCORRE** (niente `home-no-scroll`), a differenza di Enoteca, Gastronomia e
   Login che lo usano ancora. `body-classes` su `/` deve stampare una riga vuota: se stampa
   `home-no-scroll` stai guardando una versione vecchia.
@@ -260,9 +263,11 @@ Verified 2026-08-14: logs in, `2 vini` (Vini Rossi, la categoria di apertura) / 
 un `.admin-consigliato-tag` in griglia, `ERRORS none`, exit 0. The public side reads the
 same data (`/enoteca/vini/bianchi` → `Gavi di prova · Piemonte · € 14,00`).
 
-Il campo "consigliato" si prova da qui: matita su un prodotto → la spunta **Consigliato
-dall'enoteca** sotto Descrizione → appare la nota → Salva. La griglia mostra subito il
-contrassegno `.admin-consigliato-tag`, e `/` e `/enoteca/consigliati` si aggiornano.
+Il campo "consigliato" si prova **senza aprire la modifica**: la stella in alto a destra
+sulla tessera (`.admin-stella`, `.admin-stella--attiva` quando è accesa) è un bottone e
+salva da sola con un PUT del solo campo `consigliato`. `click .admin-stella >> nth=0` e
+la tessera prende subito il bordo dorato (`.admin-product-card--consigliato`); `/` e
+`/enoteca/consigliati` si aggiornano al ricaricamento.
 
 Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
 `.admin-topbar-user`, `.admin-topbar-link` (Vini / Birre / Alimentari / Account),

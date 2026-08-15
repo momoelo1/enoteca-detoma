@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ALIMENTARI_CATEGORIES } from "../../data/data";
 import { ProductCard, ProductSheet } from "../enoteca/Enoteca";
-import { getAlimentari } from "../../services/alimentari";
+import {
+  getAlimentari,
+  getAlimentariConsigliati,
+} from "../../services/alimentari";
 import { normalize } from "../../utils/normalize";
 import { productSlug } from "../../utils/productSlug";
 import { coloreGruppoAlimentari } from "../../utils/coloreCategoria";
@@ -34,7 +37,26 @@ function groupBySub(items) {
 const groupKey = (g) => g.id || SENZA_GRUPPO;
 const groupHref = (g) => encodeURIComponent(groupKey(g));
 
-function Gastronomia() {
+// ---- selezione della casa (tab "Consigliati" degli Alimentari) ----
+//
+// Divisi per REPARTO (Gastronomia, Dolceria) e non per sottogruppo: i
+// consigliati sono pochi per definizione, e spezzarli per sottogruppo darebbe
+// una fila di titoli con un vasetto sotto ciascuno. Due titoli si leggono,
+// dodici sono un elenco puntato.
+// L'ordine è quello di data.js, non quello di arrivo dall'API. I reparti
+// vuoti spariscono: nessun titolo senza niente sotto.
+const buildConsigliatiAlimentari = (items) =>
+  ALIMENTARI_CATEGORIES.map((c) => ({
+    key: c.id,
+    label: c.label,
+    accent: c.accent,
+    items: items.filter((a) => a.category === c.id),
+  })).filter((g) => g.items.length > 0);
+
+// `consigliati`: la pagina è aperta sulla tab della selezione della casa.
+// Stessa forma della tab Consigliati dell'Enoteca (Enoteca.jsx) — lì stanno
+// bottiglie e birre, qui il cibo.
+function Gastronomia({ consigliati: consigliatiRoute = false }) {
   const navigate = useNavigate();
   const { reparto, groupId, productId } = useParams();
   const [tabState, setTabState] = useState(ALIMENTARI_CATEGORIES[0].id);
@@ -64,6 +86,8 @@ function Gastronomia() {
     : "/alimentari";
 
   useEffect(() => {
+    // sulla tab Consigliati il catalogo del reparto non serve a nessuno
+    if (consigliatiRoute) return;
     let annullato = false;
     getAlimentari(tab)
       .then((data) => {
@@ -79,7 +103,36 @@ function Gastronomia() {
     return () => {
       annullato = true;
     };
-  }, [tab]);
+  }, [tab, consigliatiRoute]);
+
+  // selezione della casa: si scarica solo entrando nella tab, e una volta
+  // sola. `null` = mai chiesta, ed è da lì che si deriva "sto caricando"
+  // (niente setState dentro un effect per segnalarlo — vedi CLAUDE.md)
+  const [consigliati, setConsigliati] = useState(null);
+  useEffect(() => {
+    if (!consigliatiRoute || consigliati) return;
+    getAlimentariConsigliati()
+      .then((d) => setConsigliati(d || []))
+      // rete giù: elenco vuoto, che la pagina già sa raccontare — meglio
+      // di una tab bloccata per sempre su "Caricamento…"
+      .catch(() => setConsigliati([]));
+  }, [consigliatiRoute, consigliati]);
+
+  const consigliatiGroups = consigliati
+    ? buildConsigliatiAlimentari(consigliati)
+    : [];
+
+  // scheda di un consigliato: cercata in tutti i reparti, così un link
+  // diretto riapre il prodotto giusto qualunque sia il suo reparto
+  const consigliatoAperto =
+    productId && consigliati
+      ? consigliatiGroups
+          .flatMap((g) => g.items.map((item) => ({ item, group: g })))
+          .find(({ item }) => productSlug(item) === productId) ?? null
+      : null;
+  const openConsigliato = (item) =>
+    navigate(`/alimentari/consigliati/${productSlug(item)}`);
+  const closeConsigliato = () => navigate("/alimentari/consigliati");
 
   // ogni cambio di livello riparte dall'inizio
   useEffect(() => {
@@ -97,15 +150,18 @@ function Gastronomia() {
     };
   }, [groupOpen]);
 
+  // La tab Consigliati fa eccezione, come in Enoteca: è una pila di reparti,
+  // non una griglia che sta in una schermata, quindi deve scorrere il
+  // documento intero — niente page-pinned, niente home-no-scroll.
   useEffect(() => {
-    if (groupOpen) return;
+    if (groupOpen || consigliatiRoute) return;
     document.body.classList.add("home-no-scroll");
     document.body.classList.add("page-pinned");
     return () => {
       document.body.classList.remove("home-no-scroll");
       document.body.classList.remove("page-pinned");
     };
-  }, [groupOpen]);
+  }, [groupOpen, consigliatiRoute]);
 
   // I gruppi non hanno un accento proprio in data.js (ce l'ha il reparto) e li
   // inventa l'admin dal pannello: il colore si ricava dalla posizione nella
@@ -115,6 +171,15 @@ function Gastronomia() {
 
   // lo sfondo tiene il colore del gruppo aperto, come in Enoteca
   useAccentoSfondo(gruppoAperto ? coloreGruppo(gruppoAperto) : null);
+
+  // la tab attiva: Consigliati la decide la rotta, i due reparti lo stato
+  // locale (restano com'erano — non finiscono nell'URL da soli)
+  const activeTab = consigliatiRoute ? "consigliati" : tab;
+
+  const openTab = (id) => {
+    setTabState(id);
+    if (consigliatiRoute) navigate("/alimentari"); // si esce dai consigli
+  };
 
   const closeGroup = () => {
     // tornando indietro l'URL perde il reparto: va ricordato nella tab
@@ -177,23 +242,74 @@ function Gastronomia() {
       <div className="section-sticky">
         <h2 className="section-title">Alimentari</h2>
 
-        {/* tab dei reparti: Gastronomia | Dolceria */}
+        {/* tab dei reparti: Gastronomia | Dolceria | Consigliati */}
         <nav className="group-tabs" aria-label="Reparti">
           {ALIMENTARI_CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={"group-tab" + (tab === c.id ? " is-active" : "")}
+              className={"group-tab" + (activeTab === c.id ? " is-active" : "")}
               style={{ "--accent": c.accent }}
-              onClick={() => setTabState(c.id)}
+              onClick={() => openTab(c.id)}
             >
               {c.label}
             </button>
           ))}
+          {/* stesso oro della tab Consigliati dell'Enoteca: la selezione
+              della casa vale uguale nei due reparti del negozio */}
+          <button
+            type="button"
+            className={
+              "group-tab" + (activeTab === "consigliati" ? " is-active" : "")
+            }
+            style={{ "--accent": "#c9a227" }}
+            onClick={() => navigate("/alimentari/consigliati")}
+          >
+            Consigliati
+          </button>
         </nav>
       </div>
 
-      {loading ? (
+      {consigliatiRoute ? (
+        !consigliati ? (
+          <p className="product-empty">Caricamento…</p>
+        ) : consigliatiGroups.length === 0 ? (
+          <p className="product-empty">
+            I consigli della casa arrivano presto — torna a trovarci.
+          </p>
+        ) : (
+          /* qui scorre il documento (nessun page-pinned, vedi l'effect
+             sopra): da cui `scrollSelector="window"` sulle card, che
+             altrimenti cercherebbero lo scroll in una lista che non scorre */
+          <div className="consigliati-scroll">
+            <p className="consigliati-intro">
+              Quello che scegliamo noi dalla dispensa.
+            </p>
+            {consigliatiGroups.map((g) => (
+              <section className="consigliati-gruppo" key={g.key}>
+                <h3
+                  className="consigliati-titolo"
+                  style={{ "--accent": g.accent }}
+                >
+                  {g.label}
+                </h3>
+                <ul className="product-list product-list--alimentari">
+                  {g.items.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      w={item}
+                      accent={g.accent}
+                      onOpen={openConsigliato}
+                      type="alimentari"
+                      scrollSelector="window"
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )
+      ) : loading ? (
         <p className="product-empty">Caricamento…</p>
       ) : items.length === 0 ? (
         <p className="product-empty">
@@ -229,6 +345,14 @@ function Gastronomia() {
             );
           })}
         </ul>
+      )}
+      {consigliatoAperto && (
+        <ProductSheet
+          w={consigliatoAperto.item}
+          category={consigliatoAperto.group}
+          onClose={closeConsigliato}
+          type="alimentari"
+        />
       )}
     </section>
   );

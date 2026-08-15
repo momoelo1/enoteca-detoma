@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
-import ConsigliatoField from "./ConsigliatoField";
+import StellaConsigliato from "./StellaConsigliato";
 
 
 const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
@@ -23,8 +23,6 @@ const toForm = (wine) => ({
   paese: wine?.paese || "",
   img: wine?.img || "",
   description: wine?.description || "",
-  consigliato: wine?.consigliato || false,
-  consiglio: wine?.consiglio || "",
   annate: toAnnate(wine),
 });
 
@@ -34,8 +32,6 @@ const EMPTY_FORM = {
   paese: "",
   img: "",
   description: "",
-  consigliato: false,
-  consiglio: "",
   annate: [{ anno: "", prezzo: "" }],
 };
 
@@ -60,14 +56,26 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [removingIndex, setRemovingIndex] = useState(null);
+  const [flagging, setFlagging] = useState(false);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  // il blocco "consigliato" passa già il valore, non l'evento (spunta e
-  // testo hanno due tipi diversi)
-  const handleConsigliato = (field, value) =>
-    setForm((f) => ({ ...f, [field]: value }));
+  // La stella salva da sola, senza passare dal form: si manda SOLO
+  // `consigliato`, e il PUT del backend fa `set(req.body)`, quindi il resto
+  // del prodotto non viene toccato. Stessa funzione in AdminBeerCard e
+  // AdminAlimentareCard, con il servizio della loro risorsa.
+  const toggleConsigliato = async () => {
+    setFlagging(true);
+    setError("");
+    try {
+      onUpdated(await updateWine(wine.id, { consigliato: !wine.consigliato }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFlagging(false);
+    }
+  };
 
   const handleCountrySelect = (e) => {
     const value = e.target.value;
@@ -153,11 +161,10 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       }).filter(([, v]) => v !== ""),
     );
     if (annate.length > 0) payload.annate = annate;
-    // fuori dal filtro qui sopra, che scarta i valori vuoti: togliere la
-    // spunta deve poter essere salvato davvero. La nota invece resta anche
-    // a spunta tolta — se il consiglio si riattiva, il testo è ancora lì
-    payload.consigliato = form.consigliato;
-    payload.consiglio = form.consiglio;
+    // `consigliato` non passa di qui: lo governa solo la stella in griglia
+    // (StellaConsigliato). Se il form lo rimandasse, salvare una modifica
+    // qualunque riscriverebbe il flag col valore che aveva all'apertura,
+    // annullando una stella toccata nel frattempo.
 
     try {
       if (isNew) {
@@ -317,11 +324,6 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <label>Descrizione</label>
           <textarea rows={3} value={form.description} onChange={handleChange("description")} />
         </div>
-        <ConsigliatoField
-          consigliato={form.consigliato}
-          consiglio={form.consiglio}
-          onChange={handleConsigliato}
-        />
 
         {error && <p className="admin-error">{error}</p>}
 
@@ -373,9 +375,11 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           (wine.consigliato ? " admin-product-card--consigliato" : "")
         }
       >
-        {wine.consigliato && (
-          <span className="admin-consigliato-tag">★ Consigliato</span>
-        )}
+        <StellaConsigliato
+          attivo={wine.consigliato}
+          inCorso={flagging}
+          onToggle={toggleConsigliato}
+        />
         <span className="admin-product-name">{wine.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
         {primary?.prezzo != null && (
