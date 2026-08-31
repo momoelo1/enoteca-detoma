@@ -141,8 +141,10 @@ determine cascade order, **a modifier class can silently lose to a base rule dep
 which component imported first** — this has caused real bugs twice. When a rule doesn't
 apply and looks like it should, check the *built* CSS in `dist/assets/`, not the source.
 
-Icons are `@phosphor-icons/react` (MIT). `GlobeIcon` (the Mondo filter button) stays
-hand-drawn, and the admin trash icon reuses an existing SVG.
+Icons are `@phosphor-icons/react` (MIT), and the admin trash icon reuses an existing SVG.
+The region filter bar is **text-only** — every button in it, "Mondo" included, is a bare
+`.filter-label`. It carried a hand-drawn globe until 2026-08-26; don't put an icon back on
+one button without doing the same to the regions beside it.
 
 ## Language
 

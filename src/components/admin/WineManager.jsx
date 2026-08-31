@@ -120,9 +120,14 @@ function WineManager() {
           <>
             <ul className="admin-product-grid">
               <AdminWineCard categoryId={categoryId} onCreated={handleCreated} />
+              {/* `categoryId` serve anche qui, non solo sulla tessera
+                  "aggiungi": è da lì che il form sa di essere su champagne,
+                  l'unica categoria senza annata. Mancava, quindi APRENDO IN
+                  MODIFICA uno champagne compariva lo stesso il campo Anno */}
               {visibleWines.map((w) => (
                 <AdminWineCard
                   key={w.id}
+                  categoryId={categoryId}
                   wine={w}
                   onUpdated={handleUpdated}
                   onDeleted={handleDeleted}

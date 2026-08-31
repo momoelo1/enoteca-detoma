@@ -132,9 +132,9 @@ function Login({ onBack }) {
             >
               Account
             </button>
-            <button type="button" className="admin-topbar-link" onClick={onBack}>
-              ← Torna al sito
-            </button>
+            {/* niente "Torna al sito" qui: l'intestazione del sito, con il
+                logo e la voce Home, è renderizzata fuori dalle Routes
+                (App.jsx) e resta visibile anche dentro il pannello */}
             <button type="button" className="admin-logout-btn" onClick={handleLogout}>
               Esci
             </button>

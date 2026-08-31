@@ -1,20 +1,54 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
+import { ML_NOTI, etichettaFormato, prezzoProdotto } from "../../utils/prezzo";
 import StellaConsigliato from "./StellaConsigliato";
 
 
 const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
 
 
+// Il form rispecchia la forma del database (models/Wine.js): un'annata
+// contiene i suoi formati, e il prezzo sta sul formato — lo stesso anno può
+// vendersi in bottiglia e in magnum a due prezzi diversi.
+//
+// `conPrezzo` è la spunta del formato: legato, porta il suo prezzo; slegato,
+// il formato si salva senza. Non sta nel database — si ricava dal prezzo che
+// c'è, e ridiventa un prezzo quando si salva. È il caso di "disponibile anche
+// Magnum": il formato esiste, il prezzo si chiede in negozio.
+//
+// Lo ZERO vale come "slegato", non come "gratis": sono le schede mai prezzate
+// (56 vini su 533 in produzione al 2026-08-26), che il sito già tratta come
+// senza prezzo (prezzoProdotto in utils/prezzo.js). Aprendole in modifica la
+// spunta è quindi spenta, che è la verità, e salvando lo zero sparisce davvero.
+const toFormato = (ml, prezzo) => ({
+  ml: ml ?? "",
+  prezzo: prezzo > 0 ? prezzo : "",
+  conPrezzo: prezzo > 0,
+});
+
+// nuovi vuoti: spunta accesa, perché il caso normale è mettere un prezzo.
+// Sono funzioni e non costanti condivise: due righe vuote nello stesso form
+// devono essere due oggetti distinti.
+const formatoVuoto = () => ({ ml: "", prezzo: "", conPrezzo: true });
+const annataVuota = () => ({ anno: "", formati: [formatoVuoto()] });
+
+// un'annata non ancora migrata non ha `formati` ma il vecchio `prezzo`
+// piatto: si legge come un formato unico standard, così aprire in modifica
+// un vino di oggi mostra il suo prezzo invece di una riga vuota
+const toAnnata = (a) => ({
+  anno: a.anno || "",
+  formati: a.formati?.length
+    ? a.formati.map((f) => toFormato(f.ml, f.prezzo))
+    : [toFormato("", a.prezzo)],
+});
+
 const toAnnate = (wine) => {
-  if (wine?.annate?.length) {
-    return wine.annate.map((a) => ({ anno: a.anno || "", prezzo: a.prezzo ?? "" }));
-  }
+  if (wine?.annate?.length) return wine.annate.map(toAnnata);
   if (wine?.anno || wine?.prezzo != null) {
-    return [{ anno: wine.anno || "", prezzo: wine.prezzo ?? "" }];
+    return [toAnnata({ anno: wine.anno, prezzo: wine.prezzo })];
   }
-  return [{ anno: "", prezzo: "" }];
+  return [annataVuota()];
 };
 
 const toForm = (wine) => ({
@@ -32,7 +66,7 @@ const EMPTY_FORM = {
   paese: "",
   img: "",
   description: "",
-  annate: [{ anno: "", prezzo: "" }],
+  annate: [annataVuota()],
 };
 
 // stato del selettore Paese, separato dal form: un vino nuovo parte
@@ -93,8 +127,46 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       annate: f.annate.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
     }));
   };
+  // scorciatoia per riscrivere i formati di una sola annata, lasciando
+  // intatte le altre: la usano tutti gli handler del livello sotto
+  const mapFormati = (index, fn) =>
+    setForm((f) => ({
+      ...f,
+      annate: f.annate.map((a, i) =>
+        i === index ? { ...a, formati: fn(a.formati) } : a,
+      ),
+    }));
+
+  const updateFormato = (index, fIndex, field, value) =>
+    mapFormati(index, (formati) =>
+      formati.map((row, j) => (j === fIndex ? { ...row, [field]: value } : row)),
+    );
+
+  // slegando il formato il prezzo si svuota subito: lasciarlo scritto sotto
+  // un campo disabilitato farebbe credere che venga salvato lo stesso
+  const togglePrezzo = (index, fIndex) =>
+    mapFormati(index, (formati) =>
+      formati.map((row, j) =>
+        j === fIndex
+          ? { ...row, conPrezzo: !row.conPrezzo, prezzo: row.conPrezzo ? "" : row.prezzo }
+          : row,
+      ),
+    );
+
+  const addFormato = (index) =>
+    mapFormati(index, (formati) => [...formati, formatoVuoto()]);
+
+  // l'ultimo formato non si toglie: un'annata senza formati non avrebbe
+  // dove tenere il prezzo. Si svuota, e resta una riga da riempire
+  const removeFormato = (index, fIndex) =>
+    mapFormati(index, (formati) =>
+      formati.length === 1
+        ? [formatoVuoto()]
+        : formati.filter((_, j) => j !== fIndex),
+    );
+
   const addAnnata = () =>
-    setForm((f) => ({ ...f, annate: [...f.annate, { anno: "", prezzo: "" }] }));
+    setForm((f) => ({ ...f, annate: [...f.annate, annataVuota()] }));
   const removeAnnata = (index) => {
     if (removingIndex !== null) return;
     setRemovingIndex(index);
@@ -147,9 +219,35 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     setError("");
     setSaving(true);
 
+    // Chiavi assenti, non zeri: un formato slegato (o col prezzo lasciato in
+    // bianco) parte SENZA `prezzo`, e uno standard SENZA `ml`. Non `null`,
+    // che Mongoose rifiuterebbe come non numerico — la chiave proprio non c'è.
+    const numero = (v) => {
+      const n = Number(v);
+      return v !== "" && Number.isFinite(n) ? n : null;
+    };
+
     const annate = form.annate
-      .filter((a) => a.anno !== "" || a.prezzo !== "")
-      .map((a) => ({ anno: a.anno, prezzo: Number(a.prezzo) || 0 }));
+      .map((a) => {
+        const formati = a.formati
+          // una riga vuota e ancora spuntata è solo una riga mai compilata:
+          // si scarta. Una riga vuota ma SLEGATA invece dice qualcosa —
+          // "bottiglia standard, prezzo da chiedere" — e va tenuta
+          .filter((f) => f.ml !== "" || f.prezzo !== "" || !f.conPrezzo)
+          .map((f) => {
+            const ml = numero(f.ml);
+            const prezzo = f.conPrezzo ? numero(f.prezzo) : null;
+            return {
+              ...(ml != null && { ml }),
+              ...(prezzo != null && { prezzo }),
+            };
+          });
+        return { anno: a.anno, ...(formati.length > 0 && { formati }) };
+      })
+      // si scarta solo ciò che non dice niente. Il filtro sta DOPO la mappa
+      // perché su champagne l'anno è sempre "": un'annata tutta slegata
+      // resterebbe vuota del tutto, e prima passava perché aveva un prezzo
+      .filter((a) => a.anno !== "" || a.formati?.length > 0);
 
     const payload = Object.fromEntries(
       Object.entries({
@@ -256,48 +354,134 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
         <div className="admin-field">
           <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
+          {/* il campo ml è stretto e il segnaposto non ci sta: la regola
+              importante ("vuoto = bottiglia") va detta una volta qui */}
+          <p className="admin-hint">
+            Un formato per riga. Lascia <strong>ml</strong> vuoto per la
+            bottiglia normale; compilalo solo per mezze bottiglie e magnum.
+            Togli la spunta <strong>Prezzo</strong> se il formato si vende ma
+            il prezzo si chiede in negozio.
+          </p>
+          {/* elenco dei formati suggeriti: il negozio ragiona per nome
+              ("Magnum"), non per numero, ma nel database va il numero.
+              Il campo resta libero — un formato fuori elenco si scrive */}
+          <datalist id="admin-ml-noti">
+            {ML_NOTI.map((ml) => (
+              <option key={ml} value={ml}>
+                {etichettaFormato(ml, { sempre: true })}
+              </option>
+            ))}
+          </datalist>
+
           <div className="admin-annate-list">
-            {form.annate.map((row, i) => (
+            {form.annate.map((annata, i) => (
               <div
                 className={
-                  "admin-annata-row admin-field--enter" +
-                  (removingIndex === i ? " admin-annata-row--removing" : "")
+                  "admin-annata admin-field--enter" +
+                  (removingIndex === i ? " admin-annata--removing" : "")
                 }
                 key={i}
               >
                 {!isChampagne && (
-                  <div className="admin-field">
-                    <input
-                      type="text"
-                      placeholder="Anno"
-                      value={row.anno}
-                      onChange={(e) => updateAnnata(i, "anno", e.target.value)}
-                    />
+                  <div className="admin-annata-testa">
+                    <div className="admin-field">
+                      <input
+                        type="text"
+                        placeholder="Anno"
+                        value={annata.anno}
+                        onChange={(e) => updateAnnata(i, "anno", e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-annata-remove"
+                      onClick={() => removeAnnata(i)}
+                      aria-label="Rimuovi annata"
+                      title="Rimuovi l'annata e tutti i suoi formati"
+                    >
+                      ✕
+                    </button>
                   </div>
                 )}
-                <div className="admin-field">
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Prezzo €"
-                    value={row.prezzo}
-                    onChange={(e) => updateAnnata(i, "prezzo", e.target.value)}
-                  />
+
+                <div className="admin-formati-list">
+                  {annata.formati.map((f, j) => (
+                    <div className="admin-formato-row" key={j}>
+                      <div className="admin-field">
+                        <input
+                          type="number"
+                          step="1"
+                          list="admin-ml-noti"
+                          placeholder="ml"
+                          title="Formato in millilitri. Vuoto = bottiglia standard da 750 ml."
+                          value={f.ml}
+                          onChange={(e) => updateFormato(i, j, "ml", e.target.value)}
+                        />
+                      </div>
+                      {/* la spunta lega il prezzo a QUESTO formato: slegata
+                          vuol dire "lo teniamo, il prezzo si chiede" — che è
+                          il "disponibile anche Magnum" scritto oggi nei nomi */}
+                      <label
+                        className={
+                          "admin-annata-check" +
+                          (f.conPrezzo ? " admin-annata-check--attiva" : "")
+                        }
+                        title={
+                          f.conPrezzo
+                            ? "Prezzo legato a questo formato — togli la spunta per lasciarlo senza prezzo"
+                            : "Formato senza prezzo — spunta per legarcene uno"
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          checked={f.conPrezzo}
+                          onChange={() => togglePrezzo(i, j)}
+                        />
+                        <span className="admin-annata-check-box" aria-hidden="true">
+                          ✓
+                        </span>
+                        <span className="admin-annata-check-text">Prezzo</span>
+                      </label>
+                      <div className="admin-field">
+                        <input
+                          type="number"
+                          step="0.01"
+                          /* campo stretto: il segnaposto lungo veniva
+                             tagliato. Che sia senza prezzo lo dice già la
+                             spunta spenta accanto */
+                          placeholder={f.conPrezzo ? "Prezzo €" : "—"}
+                          value={f.prezzo}
+                          disabled={!f.conPrezzo}
+                          onChange={(e) => updateFormato(i, j, "prezzo", e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-annata-remove"
+                        onClick={() => removeFormato(i, j)}
+                        aria-label="Rimuovi formato"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
+
                 <button
                   type="button"
-                  className="admin-annata-remove"
-                  onClick={() => removeAnnata(i)}
-                  aria-label="Rimuovi riga"
+                  className="admin-annata-add admin-annata-add--formato"
+                  onClick={() => addFormato(i)}
                 >
-                  ✕
+                  + Aggiungi formato
                 </button>
               </div>
             ))}
           </div>
-          <button type="button" className="admin-annata-add" onClick={addAnnata}>
-            {isChampagne ? "+ Aggiungi prezzo" : "+ Aggiungi annata"}
-          </button>
+          {!isChampagne && (
+            <button type="button" className="admin-annata-add" onClick={addAnnata}>
+              + Aggiungi annata
+            </button>
+          )}
         </div>
 
         <div className="admin-field">
@@ -366,6 +550,10 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       ? [{ anno: wine.anno, prezzo: wine.prezzo }]
       : [];
   const primary = annate[0];
+  // il prezzo in tessera passa dallo stesso conto del sito pubblico, così
+  // il negoziante vede in griglia esattamente quello che vede il cliente:
+  // primo formato prezzato, zero e assente trattati allo stesso modo
+  const prezzoCard = prezzoProdotto(wine);
 
   return (
     <li className="admin-product-cell">
@@ -382,10 +570,10 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         />
         <span className="admin-product-name">{wine.name}</span>
         {meta && <span className="admin-product-meta">{meta}</span>}
-        {primary?.prezzo != null && (
+        {prezzoCard != null && (
           <span className="admin-product-price">
-            {primary.anno && <span className="admin-product-price-year">{primary.anno} · </span>}
-            € {primary.prezzo}
+            {primary?.anno && <span className="admin-product-price-year">{primary.anno} · </span>}
+            € {prezzoCard}
             {annate.length > 1 && (
               <span className="admin-product-price-extra">+{annate.length - 1} annate</span>
             )}

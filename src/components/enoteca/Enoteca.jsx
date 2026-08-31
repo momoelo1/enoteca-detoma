@@ -13,11 +13,15 @@ import {
 } from "../../data/data";
 import { getWines, getWinesConsigliati } from "../../services/wines";
 import { getBeers, getBeersConsigliate } from "../../services/beers";
-import { GlobeIcon } from "../icons/NavIcons";
 import { CategoryIcon } from "../icons/CategoryIcon";
 import { productSlug } from "../../utils/productSlug";
-import { formatPrezzo } from "../../utils/prezzo";
-import { trimBorder } from "../../utils/cloudinary";
+import {
+  formatPrezzo,
+  prezzoProdotto,
+  formatiAnnata,
+  etichettaFormato,
+} from "../../utils/prezzo";
+import { trimBorder, bottleFrame } from "../../utils/cloudinary";
 import { coloreVersata } from "../../utils/coloreCategoria";
 import { vola } from "../../utils/volo";
 import { versa } from "../transition/versa";
@@ -83,6 +87,20 @@ const foodIcon = (item) => {
   const hay = normalize(`${item.sottocategoria || ""} ${item.tipo || ""}`);
   const rule = FOOD_ICON_RULES.find(([re]) => re.test(hay));
   return rule ? rule[1] : Jar; // il vasetto è il contenitore più comune qui
+};
+
+// URL della foto, normalizzata per tipo di prodotto. Le foto arrivano dai
+// fornitori con quantità di vuoto molto diverse intorno al soggetto: senza
+// una trasformazione, dentro lo stesso riquadro un prodotto si vede grande e
+// un altro minuscolo. Vedi utils/cloudinary.js per il perché di ogni ricetta.
+// Birre e distillati restano intatti: le loro foto non sono state misurate.
+// Esportato: lo usa anche la fascia dei consigli in home (Home.jsx), che
+// mostra gli stessi prodotti e deve impaginarli allo stesso modo.
+export const fotoProdotto = (item, type) => {
+  if (!item.img) return item.img;
+  if (type === "alimentari") return trimBorder(item.img);
+  if (type === "vini") return bottleFrame(item.img);
+  return item.img;
 };
 
 // sceglie il segnaposto giusto per il tipo di prodotto: bottiglia per
@@ -232,13 +250,24 @@ export function ProductCard({
   scrollSelector = ".product-list",
 }) {
   const annate = w.annate;
-  const prezzo = w.prezzo != null ? w.prezzo : annate?.[0]?.prezzo; // default: 1ª annata
+  const prezzo = prezzoProdotto(w); // vini: primo formato prezzato
   // regione già selezionata nel filtro: non ripeterla su ogni card
   // (trim: nel database alcune regioni hanno uno spazio finale spurio)
   const regione = w.regione?.trim() !== regionFilter ? w.regione : null;
   const sub = regione || w.stile || w.colore || w.tipo;
+
+  // Badge del formato. Birre e alimentari ce l'hanno sul prodotto (`formato`,
+  // numero puro); i vini dentro l'annata, dove ce ne può essere più d'uno.
+  // Per i vini si mostra SOLO quando il formato è unico e fuori misura — le
+  // mezze bottiglie dei passiti, che oggi il negozio scrive nel nome. Con
+  // due formati un badge solo mentirebbe: quella storia la racconta la scheda.
+  const formatiVino = formatiAnnata(annate?.[0]);
   const formatoLabel =
-    w.formato != null ? `${w.formato}${FORMATO_UNIT[type] || ""}` : null;
+    w.formato != null
+      ? `${w.formato}${FORMATO_UNIT[type] || ""}`
+      : formatiVino.length === 1
+        ? etichettaFormato(formatiVino[0].ml)
+        : null;
 
   // il sottotitolo può essere lungo quanto vuole (stile birra, regione...):
   // stessa dimensione testo su ogni card, mai a capo, mai tagliato — se non
@@ -350,7 +379,7 @@ export function ProductCard({
         >
           {w.img ? (
             <img
-              src={type === "alimentari" ? trimBorder(w.img) : w.img}
+              src={fotoProdotto(w, type)}
               alt=""
               className={"product-thumb-img" + (type ? ` product-thumb-img--${type}` : "")}
               loading="lazy"
@@ -520,7 +549,7 @@ export function ProductSheet({ w, category, onClose, type }) {
           <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
             {w.img ? (
               <img
-                src={type === "alimentari" ? trimBorder(w.img) : w.img}
+                src={fotoProdotto(w, type)}
                 alt=""
                 className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
               />
@@ -556,21 +585,52 @@ export function ProductSheet({ w, category, onClose, type }) {
           {annate?.length > 0 && (
             <div className="sheet-annate">
               <span className="sheet-label">Annate e prezzi</span>
+              {/* la chiave è l'indice e non `a.anno`: lo stesso anno può
+                  ripetersi e su champagne l'anno è sempre vuoto, quindi
+                  come chiave si ripeteva già oggi */}
               <ul className="product-annate-list">
-                {annate.map((a, i) => (
-                  <li
-                    key={a.anno}
-                    className={
-                      "product-annate-row" +
-                      (i === 0 ? " product-annate-row--current" : "")
-                    }
-                  >
-                    <span className="product-annate-year">{a.anno}</span>
-                    <span className="product-annate-price">
-                      {formatPrezzo(a.prezzo)}
-                    </span>
-                  </li>
-                ))}
+                {annate.map((a, i) => {
+                  const formati = formatiAnnata(a);
+                  // più formati nello stesso anno: si nomina anche la
+                  // bottiglia standard, altrimenti una riga resterebbe muta
+                  // accanto a "Magnum" e sembrerebbe un errore
+                  const nominaTutti = formati.length > 1;
+                  return (
+                    <li
+                      key={i}
+                      className={
+                        "product-annate-row" +
+                        (i === 0 ? " product-annate-row--current" : "")
+                      }
+                    >
+                      <span className="product-annate-year">{a.anno}</span>
+                      {formati.length === 0 ? (
+                        <span className="product-annate-price">—</span>
+                      ) : (
+                        <span className="product-annate-formati">
+                          {formati.map((f, j) => {
+                            const nome = etichettaFormato(f.ml, {
+                              sempre: nominaTutti,
+                            });
+                            return (
+                              <span className="product-annate-formato" key={j}>
+                                {nome && (
+                                  <span className="product-annate-ml">{nome}</span>
+                                )}
+                                {/* un formato può essere senza prezzo: nel
+                                    pannello la spunta lo slega. È il caso di
+                                    "disponibile anche Magnum" */}
+                                <span className="product-annate-price">
+                                  {f.prezzo > 0 ? formatPrezzo(f.prezzo) : "—"}
+                                </span>
+                              </span>
+                            );
+                          })}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -679,17 +739,22 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
     ? remoteByCategory[activeCategory.id] ?? []
     : activeCategory?.items ?? [];
 
-  // lo spazio finale (es. "Piemonte ") che a volte sporca il dato nel
+  // valore su cui filtra la barra. Un prodotto estero NON ha regione: il
+  // pannello admin, quando si sceglie un paese, svuota `regione` e riempie
+  // `paese`. Guardando solo `regione` gli esteri sparivano da filterValues,
+  // quindi `paesiMondo` era sempre vuoto e il bottone "Mondo" non compariva
+  // mai. Il paese ha la precedenza: è lui che manda il prodotto nel Mondo.
+  //
+  // Lo spazio finale (es. "Piemonte ") che a volte sporca il dato nel
   // database creerebbe un secondo filtro identico a vista ma diverso in
   // realtà: tolto qui, alla fonte, prima di costruire il Set
+  const filterValue = (i) =>
+    i.paese?.trim() || i[activeCategory?.filterBy]?.trim();
+
   const filterValues = activeCategory?.filterBy
-    ? [
-        ...new Set(
-          sourceItems
-            .map((i) => i[activeCategory.filterBy]?.trim())
-            .filter(Boolean)
-        ),
-      ].sort((a, b) => a.localeCompare(b, "it"))
+    ? [...new Set(sourceItems.map(filterValue).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "it")
+      )
     : [];
 
 
@@ -701,15 +766,11 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
   // La ricerca guarda nome + regione/paese + denominazione/uvaggio/stile.
   const query = normalize(searchText.trim());
   const visibleItems = sourceItems
-    .filter((i) =>
-      regionFilter
-        ? i[activeCategory.filterBy]?.trim() === regionFilter
-        : true
-    )
+    .filter((i) => (regionFilter ? filterValue(i) === regionFilter : true))
     .filter((i) => {
       if (!query) return true;
       const hay = normalize(
-        [i.name, i.regione, i.denominazione, i.uvaggio, i.stile, i.tipo, i.colore]
+        [i.name, i.regione, i.paese, i.denominazione, i.uvaggio, i.stile, i.tipo, i.colore]
           .filter(Boolean)
           .join(" ")
       );
@@ -947,9 +1008,6 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
                     }
                     onClick={() => setBarView("mondo")}
                   >
-                    <span className="filter-icon" aria-hidden="true">
-                      <GlobeIcon />
-                    </span>
                     <span className="filter-label">Mondo</span>
                   </button>
                 )}

@@ -352,6 +352,21 @@
   object-fit: contain;
 }
 
+/* Vini: stessa cornice delle card del catalogo (.product-thumb-img--vini in
+   enoteca.css). `bottleFrame` (utils/cloudinary.js) consegna la foto già
+   impaginata 2:3 senza vuoto intorno, quindi qui basta dichiarare la stessa
+   proporzione: l'altezza la dà il riquadro e ogni bottiglia occupa lo stesso
+   ingombro, qualunque fosse la tela di partenza.
+   Il `max-width` in pixel sparisce: decideva lui la larghezza quando le
+   proporzioni erano diverse, e con una proporzione fissa tornerebbe solo a
+   schiacciare la bottiglia. Se un giorno una media query toccasse
+   `.consiglio-img`, questa regola dovrà stare DOPO — stessa specificità,
+   vince l'ordine. */
+.consiglio-img--vini {
+  aspect-ratio: 2 / 3;
+  max-width: 100%;
+}
+
 .consiglio-svg {
   height: 84px;
   width: auto;
@@ -372,18 +387,52 @@ svg.consiglio-svg.product-food-svg {
   opacity: 0.6;
 }
 
+/* Spazio fisso per il nome: se il testo ci sta resta fermo, se ne serve di
+   più deriva in verticale (.consiglio-name--scroll) invece di troncarsi con
+   i puntini. È la stessa logica di .product-name-wrap in enoteca.css, che
+   però di righe ne tiene due: qui tre, perché la scheda è larga 150px e i
+   nomi dei vini alla seconda riga finivano quasi tutti sui puntini.
+   L'altezza è scritta come calcolo e non come numero tondo perché DEVE
+   restare tre righe esatte: cambiando font-size o line-height qui sotto,
+   cambia da sé. */
+.consiglio-name-wrap {
+  flex: none; /* mai schiacciata dal flexbox in una scheda più bassa del contenuto */
+  width: 100%;
+  height: calc(15px * 1.15 * 3);
+  overflow: hidden;
+}
+
 .consiglio-name {
+  display: block;
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 15px;
   font-weight: 700;
   line-height: 1.15;
   color: #2e3d34;
-  /* nomi lunghi: due righe e poi i puntini. Niente marquee qui — la
-     fascia è un assaggio, il nome intero si legge nella scheda */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* quando l'animazione si spegne (si scorre, la scheda esce di scena) il
+     testo torna in cima accompagnato, non con uno scatto */
+  transition: transform 0.3s ease;
+}
+
+/* nome troppo lungo anche su tre righe: deriva su e giù, rallentando ai
+   bordi per via dell'ease-in-out. Parte SEMPRE dall'inizio del ciclo (testo
+   in cima, poi discesa): niente delay negativo di sfasamento, che lo farebbe
+   comparire già a metà corsa, cioè dal basso. La corsa (--marquee-shift-y)
+   la misura Home.jsx sulla singola scheda. */
+.consiglio-name--scroll {
+  animation: consiglio-name-marquee 15s ease-in-out infinite;
+}
+
+@keyframes consiglio-name-marquee {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(var(--marquee-shift-y, 0));
+  }
 }
 
 .consiglio-price {
@@ -401,6 +450,7 @@ svg.consiglio-svg.product-food-svg {
 @media (prefers-reduced-motion: reduce) {
   .hero-parola,
   .consiglio-cell,
+  .consiglio-name--scroll,
   .consiglio-card::before,
   .consiglio-card--fantasma::after {
     animation: none;

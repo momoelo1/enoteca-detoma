@@ -702,16 +702,6 @@ body.page-pinned .page-scroll {
   color: var(--tinta-linea);
 }
 
-.filter-icon {
-  display: block;
-  line-height: 0;
-}
-
-.filter-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
 .filter-label {
   line-height: 1;
 }
@@ -952,10 +942,9 @@ body.category-open .product-empty {
   transform: scale(1.5); /* zoom leggero: la bottiglia riempie meglio il riquadro */
 }
 
-/* vini: zoom più marcato delle altre tipologie */
-.product-thumb-img--vini {
-  transform: scale(0.95);
-}
+/* la regola dei vini non sta qui ma più in basso, accanto a quella degli
+   alimentari: deve venire DOPO le media query, o quelle le sovrascrivono
+   (stessa specificità, vince l'ordine) */
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
 .product-thumb-svg {
@@ -1055,6 +1044,27 @@ svg.product-food-svg {
   max-width: 100%;
   object-fit: contain;
   transform: scale(0.76);
+}
+
+/* vini: stessa idea degli alimentari qui sopra, ma la cornice è VERTICALE.
+   `bottleFrame` (utils/cloudinary.js) consegna ogni foto già impaginata 2:3
+   su fondo trasparente, quindi qui basta dichiarare la stessa proporzione:
+   l'altezza la dà il riquadro, la larghezza viene da sé, e ogni bottiglia
+   occupa esattamente lo stesso ingombro qualunque fosse la tela di partenza.
+
+   Niente `max-width` in pixel: era lui a decidere la larghezza quando le
+   foto avevano proporzioni diverse, e con una proporzione fissa tornerebbe
+   solo a schiacciare il riquadro. Niente `scale`: la foto arriva già senza
+   vuoto intorno, lo zoom che serviva a compensarlo ora taglierebbe la
+   bottiglia (il riquadro ha overflow: hidden).
+   DEVE stare dopo la media query dei 640px, come sopra. */
+.product-thumb-img--vini {
+  height: 100%;
+  width: auto;
+  aspect-ratio: 2 / 3;
+  max-width: 100%;
+  object-fit: contain;
+  transform: none;
 }
 
 /* riga di badge per specifiche numeriche (gradazione/formato) sotto
@@ -1346,6 +1356,16 @@ svg.product-food-svg {
   aspect-ratio: 1 / 1;
   max-width: 100%;
   transform: scale(0.95);
+}
+
+/* vini nel pannello: la cornice 2:3 di .product-thumb-img--vini, alta quanto
+   il riquadro della scheda. Stessi motivi per cui `max-width` e `scale`
+   spariscono — la foto arriva già impaginata da `bottleFrame`. */
+.sheet-img--vini {
+  width: auto;
+  aspect-ratio: 2 / 3;
+  max-width: 100%;
+  transform: none;
 }
 
 /* bottiglia stilizzata: segnaposto finché mancano le foto vere */
@@ -1668,6 +1688,34 @@ svg.product-food-svg {
   color: #2e5e46;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* i formati della stessa annata: incolonnati a destra, uno sotto l'altro,
+   così l'anno resta un'ancora sola a sinistra e la colonna dei prezzi
+   continua a leggersi dall'alto in basso anche quando un anno ne ha due */
+.product-annate-formati {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  min-width: 0;
+}
+
+.product-annate-formato {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* nome del formato ("Magnum", "375 ml"): accompagna il prezzo, non compete
+   con lui — stesso grigio del sottotitolo delle card */
+.product-annate-ml {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a7a7a;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 /* annata "corrente" (la prima, quella mostrata di default sulla card):

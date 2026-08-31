@@ -50,8 +50,9 @@ $env:VITE_API_URL = 'http://localhost:3011'
 Start the dev server **detached**, then poll — don't sleep. `Start-Process` is not a
 stylistic choice: a `Start-Job` (or a plain backgrounded `npm run dev`) dies with the shell
 call that created it, so the next tool call finds nothing on 5173. A `Start-Process`
-survives, as does the backend below. Verified: ready in ~4 s, listening two poll cycles
-later.
+survives, as does the backend below. Ready in **4–15 s** a seconda della cache di Vite e di
+quanto è occupata la macchina (misurato `ready in 15147 ms` con due server in parallelo) —
+per questo si fa polling e non `sleep`.
 
 ```powershell
 $env:VITE_API_URL = 'https://detoma-backend.vercel.app'
@@ -66,8 +67,16 @@ bar → Alimentari → admin login:
 Get-Content .claude/skills/run-enoteca-detoma-frontend/smoke.txt | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs
 ```
 
-Verified output: `COUNT .mini-cell = 6`, `COUNT .product-list > * = 207`,
-`ERRORS none`, exit code 0.
+Verified output: `COUNT .mini-cell = 6` (statico, viene da `data.js`), `ERRORS none`,
+exit code 0. **`COUNT .product-list > *` dipende da quale backend hai puntato**: 207
+contro la produzione, 2 contro il backend usa e getta con `seed-locale.txt`. Non è un
+numero da controllare, è un numero da leggere.
+
+Durata: **~70 s** a server caldo (2026-08-25). **Il primo giro dopo aver avviato il dev
+server può fallire** su `click .mini-cell >> nth=0` con `Timeout 15000ms` — Vite sta
+ancora compilando la rotta al primo accesso e il click ha 15 s di pazienza. Successo il
+2026-08-25 con un secondo server che partiva in parallelo; lo stesso click, isolato e a
+caldo, passa. **Rilancia prima di indagare.**
 
 For a one-off check, pipe a here-string instead:
 
@@ -93,11 +102,16 @@ Get-NetTCPConnection -LocalPort 5173 -State Listen | ForEach-Object { Stop-Proce
 
 ### Prima di fidarti del server: due controlli che valgono mezz'ora
 
-`vite.config.js` **fissa la porta a 5173** (`server.port`), quindi non serve `--port`. Ma
-un dev server avviato con `Start-Process` **sopravvive alla chiamata che lo ha creato e
-anche alla sessione**: se ne trova già uno vivo, o Vite scivola su un'altra porta, oppure —
-con `--strictPort` — il nuovo muore in silenzio e **continui a pilotare quello vecchio**.
-Successo entrambi i giorni di lavoro su questa cartella. Due misure, non congetture:
+**`vite.config.js` NON fissa la porta.** Qui c'era scritto il contrario (`server.port`):
+è falso, l'unica chiave sotto `server` è `host: true`. Verificato il 2026-08-25 leggendo il
+file e lanciando due server di fila. Conseguenze, tutt'e due utili:
+
+- niente `strictPort`, quindi il secondo server **non muore**: Vite stampa
+  `Port 5173 is in use, trying another one...` e si prende la **5174**;
+- un dev server avviato con `Start-Process` sopravvive alla chiamata che lo ha creato e
+  anche alla sessione, quindi quello che trovi sulla 5173 può non essere tuo.
+
+Due misure, non congetture:
 
 ```powershell
 # 1. chi ascolta, e da QUANDO. Se StartTime è di ieri, non è il tuo.
@@ -106,17 +120,34 @@ Get-NetTCPConnection -LocalPort 5173 -State Listen | ForEach-Object {
 }
 
 # 2. a quale API è legato davvero: il modulo servito ha l'URL dentro.
-#    Vuoto = VITE_API_URL non è arrivato e userà il fallback localhost:3001.
 $c = (Invoke-WebRequest "http://localhost:5173/src/services/wines.js" -UseBasicParsing).Content
 (([regex]::Matches($c,'https?://[^"'' ]+')) | ForEach-Object { $_.Value } | Select-Object -Unique)
-# Da quando il fallback è la produzione, qui c'è SEMPRE un URL: se leggi
-# detoma-backend.vercel.app non sai ancora se è VITE_API_URL o il fallback —
-# sai solo che NON stai parlando con un backend locale.
 ```
 
-Verificato il 2026-08-14: il controllo 1 ha smascherato un server delle 19:34 del giorno
-prima che rispondeva ancora, e il controllo 2 ha mostrato che era legato alla produzione
-mentre credevo di stare sul backend usa e getta.
+**Attenzione a come si legge il controllo 2.** Da quando il fallback è la produzione, quel
+comando stampa **sempre** almeno un URL, perché la stringa di fallback sta nel sorgente:
+`detoma-backend.vercel.app` da solo non distingue "VITE_API_URL impostata" da "sto usando
+il fallback". Dice solo che **non** stai parlando con un backend locale. Se ti aspettavi
+`http://localhost:3011` e non lo vedi, la variabile non è arrivata.
+
+### Un secondo dev server, senza toccare quello dello sviluppatore
+
+Sulla 5173 gira spesso il server dello sviluppatore, e ammazzarlo è scortese. Siccome non
+c'è `strictPort`, ne lanci un altro e basta: finisce sulla **5174**, con la sua
+`VITE_API_URL`, e lo piloti con `--base`.
+
+```powershell
+Start-Process cmd.exe -ArgumentList '/c','set "VITE_API_URL=https://detoma-backend.vercel.app" && npm run dev' `
+  -RedirectStandardOutput "$env:TEMP\vite2.log" -WindowStyle Hidden
+for($i=0;$i -lt 60;$i++){ try { Invoke-WebRequest 'http://localhost:5174/' -UseBasicParsing -TimeoutSec 2 | Out-Null; break } catch { Start-Sleep -Milliseconds 700 } }
+```
+
+```powershell
+... | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --base http://localhost:5174
+```
+
+Alla fine spegni **solo la 5174**. Verificato il 2026-08-25: `Local: http://localhost:5174/`
+nel log del secondo, tutt'e due i server vivi insieme, `ERRORS none` sul secondo.
 
 ### `$env:VITE_API_URL` NON arriva a un `Start-Process npm.cmd`
 
@@ -184,6 +215,34 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 | `console` | print console errors, page errors, HTTP ≥ 400 **and failed requests with their URL** |
 | `sleep <ms>`, `# comment`, `quit` | |
 
+**`fill` spezza sullo SPAZIO: il selettore non può contenerne.** L'argomento
+viene diviso al primo spazio, quindi `fill .admin-annata-row input[type=number] 55`
+manda `.admin-annata-row` come selettore e `input[type=number] 55` come valore,
+e Playwright risponde `Element is not an <input>` — che sembra un problema del
+DOM e non è. Usa un selettore senza spazi (`input[type=number]`,
+`.admin-formato-row:nth-child(2)>.admin-field>input`) oppure riempi con `eval`.
+Vale solo per `fill`: `click` e `wait-for` prendono tutta la riga, per quello
+`click .admin-product-cell:has-text("Barolo") .admin-icon-btn >> nth=0` funziona.
+
+**`nav file:///…` non funziona.** Il percorso viene incollato sulla base e la
+pagina resta bianca — lo screenshot che ne esce è un rettangolo vuoto, non un
+errore. Per provare una pagina HTML scritta al volo (isolare una regola CSS,
+confrontare due varianti di un'immagine) servila su una porta libera:
+
+```powershell
+# server-prova.mjs: risponde lo stesso file a qualunque richiesta
+Start-Process node -ArgumentList 'server-prova.mjs','pagina.html' -WindowStyle Hidden
+```
+
+```powershell
+... | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --base http://localhost:4599
+```
+
+Usato il 2026-08-28 per dimostrare `font-variant: small-caps` sulle descrizioni
+e per confrontare quattro trasformazioni Cloudinary sulle foto delle bottiglie
+fianco a fianco. Isolare la regola in una pagina di due righe è molto più
+rapido che cercarla dentro il sito vero.
+
 ### Landmarks worth knowing
 
 - `/enoteca` and `/alimentari` both open a **`.mini-cell` grid**, not `.cat-card` — the
@@ -194,22 +253,40 @@ Non-zero exit if any command failed. Selectors are Playwright selectors, so
 - Body classes observed: `home-no-scroll` (home), `home-no-scroll page-pinned`
   (`/enoteca`, `/alimentari` grids), `home-no-scroll category-open` (a category list),
   `+ region-bar-open` after `click text=Regioni`.
-- **La vetrina in home.** Sotto il racconto ci sono **due** `.consigli-strip` (prima era
-  una sola, sotto le foto di famiglia, che adesso stanno su `/info`): "I nostri consigli"
-  con 20 vini e "Dalla dispensa" con 20 alimentari. Schede `.consiglio-card`,
-  `.consiglio-name`, link `.consigli-strip-all`. **`wait-for .consiglio-name` aspetta solo
-  la prima fascia**: per la seconda serve `wait-for .consigli-strip >> nth=1`, altrimenti
-  `querySelectorAll(".consigli-strip")[1]` è `undefined` (presa per un bug una volta).
-  I venti prodotti sono SEGNAPOSTO scelti da `src/data/vetrina.js`, non consigliati veri:
-  in produzione i prodotti marcati `consigliato` sono zero.
-- **Selezione della casa.** Tab Consigliati dell'Enoteca:
-  `/enoteca/consigliati`, contenitore `.consigliati-scroll`, un `.consigliati-gruppo` per
-  categoria non vuota. Il segno è una stella in alto a destra sulla card:
-  `.product-consigliato` nel catalogo, `.consiglio-star` in home. La scheda di un
-  consigliato è raggiungibile in diretta: `nav /enoteca/consigliati/<id>`.
-  **Nella scheda prodotto non c'è nulla**: il blocco `.sheet-consiglio-block` con la nota
-  scritta a mano è stato tolto il 2026-08-15 insieme al campo `consiglio`. Il flag è solo
-  sì/no.
+- **La vetrina in home — e la trappola delle schede fantasma.** Sotto il racconto ci sono
+  **due** `.consigli-strip`: "I nostri consigli" (vini) e "Dalla dispensa" (alimentari).
+  Sono i consigliati **veri**, presi da `?consigliato=true`: i venti segnaposto di
+  `src/data/vetrina.js` non esistono più, il file è stato cancellato il 2026-08-15.
+
+  Mentre i dati arrivano ogni fascia disegna **sei schede vuote** che portano la stessa
+  classe delle vere. Da cui tre regole, tutte misurate il 2026-08-25:
+
+  | vuoi sapere… | usa | NON usare |
+  |---|---|---|
+  | quante schede vere ci sono | `count .consiglio-name` | `count .consiglio-card` — conta anche i fantasmi |
+  | se i dati sono arrivati | `wait-for .consiglio-name` | `wait-for .consigli-strip` — il telaio c'è **subito** |
+  | se ha finito di caricare **tutto** | `count .consiglio-card--fantasma` = 0 | un `sleep` a caso |
+
+  Numeri veri di una corsa: appena `.consigli-strip >> nth=1` esiste →
+  `.consiglio-card = 12`, di cui `.consiglio-card--fantasma = 12` e `.consiglio-name = 0`.
+  Cioè: la vecchia attesa consigliata qui sopra ora ritorna **prima che esista un solo
+  prodotto**. Le due fasce caricano indipendentemente, quindi a metà strada si vedono
+  `7 = 1 vera + 6 fantasma`; a regime `2 / 0 / 2`.
+- **Selezione della casa: DUE tab, una per sezione.** Il segno è sempre una stella in alto
+  a destra sulla card (`.product-consigliato` nel catalogo, `.consiglio-star` in home).
+  - Enoteca → `/enoteca/consigliati`: solo **vini e birre**.
+  - Alimentari → `/alimentari/consigliati`: solo il **cibo**. Aggiunta il 2026-08-15
+    insieme alla terza `.group-tab` (Gastronomia | Dolceria | Consigliati); prima gli
+    alimentari comparivano in fondo alla tab dell'Enoteca.
+
+  Le due condividono il markup: `.consigliati-scroll`, `.consigliati-intro`, un
+  `.consigliati-gruppo` per gruppo non vuoto. Deep link diretto in tutt'e due:
+  `nav /alimentari/consigliati/<id>` apre la scheda. Su queste rotte `body-classes`
+  stampa **vuoto** (scorre il documento, niente `page-pinned`).
+
+  **Nella scheda prodotto non c'è nulla di consigliato**: il blocco
+  `.sheet-consiglio-block` con la nota scritta a mano è stato tolto il 2026-08-15 insieme
+  al campo `consiglio`. Il flag è solo sì/no.
 - **La home ora SCORRE** (niente `home-no-scroll`), a differenza di Enoteca, Gastronomia e
   Login che lo usano ancora. `body-classes` su `/` deve stampare una riga vuota: se stampa
   `home-no-scroll` stai guardando una versione vecchia.
@@ -259,15 +336,30 @@ console
 '@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --desktop
 ```
 
-Verified 2026-08-14: logs in, `2 vini` (Vini Rossi, la categoria di apertura) / `1 prodotto`,
-un `.admin-consigliato-tag` in griglia, `ERRORS none`, exit 0. The public side reads the
-same data (`/enoteca/vini/bianchi` → `Gavi di prova · Piemonte · € 14,00`).
+Verificato il 2026-08-25: entra, `2 vini` (Vini Rossi, la categoria di apertura),
+`.admin-product-grid > * = 3`, `.admin-stella = 2`, `ERRORS none`. Screenshot letto: la
+stella piena e dorata sul Barolo con il bordo dorato sulla tessera, quella spenta e grigia
+sul Chianti.
 
 Il campo "consigliato" si prova **senza aprire la modifica**: la stella in alto a destra
-sulla tessera (`.admin-stella`, `.admin-stella--attiva` quando è accesa) è un bottone e
-salva da sola con un PUT del solo campo `consigliato`. `click .admin-stella >> nth=0` e
-la tessera prende subito il bordo dorato (`.admin-product-card--consigliato`); `/` e
-`/enoteca/consigliati` si aggiornano al ricaricamento.
+(`.admin-stella`, più `.admin-stella--attiva` quando è accesa) è un bottone e salva da sola
+con un PUT del solo campo `consigliato`. Il vecchio `.admin-consigliato-tag` (la pillola
+"★ Consigliato") **non esiste più**.
+
+**Non giudicare l'esito dalla UI subito dopo il click.** Contro il backend usa e getta il
+PUT dal browser impiega **secondi** e la tessera si aggiorna quando risponde, quindi un
+`eval` a 3 s dal click legge ancora lo stato vecchio e sembra che il click non abbia fatto
+niente. Misurato: UI `Chianti=true` mentre il database diceva già `False`. Chiedi al
+database, non alla pagina:
+
+```powershell
+((Invoke-WebRequest 'http://localhost:3011/api/wines?category=rossi' -UseBasicParsing).Content | ConvertFrom-Json) |
+  ForEach-Object { "$($_.name)=$($_.consigliato)" }
+```
+
+E **non leggere il database da dentro la pagina** con un `fetch` nell'`eval`: quella
+risposta arriva dalla cache HTTP e mente. Serve `{cache:"no-store"}`, o meglio leggilo da
+PowerShell come qui sopra. Mezz'ora persa così il 2026-08-15.
 
 Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
 `.admin-topbar-user`, `.admin-topbar-link` (Vini / Birre / Alimentari / Account),
@@ -279,9 +371,14 @@ Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
 $env:VITE_API_URL = 'https://detoma-backend.vercel.app'; npm run build
 ```
 
-**~2.5 min on a cold `.vite` cache, ~22 s warm** (`vite:asset` 66% + the Babel/React
-Compiler preset 21% of plugin time). Warns about `famiglia_3-*.png` at 3.6 MB and a
-458 kB JS bundle — both pre-existing, not a failure.
+Timing is **very variable**, measured on this machine: 9,7 s / 15 s / 1 m 19 s / 2 m 30 s
+per corse diverse dello stesso identico albero (`vite:asset` 66% + il preset Babel/React
+Compiler 21% del tempo dei plugin). Non allarmarti per una corsa lenta: non è un errore.
+
+Asset di uscita al 2026-08-25: `index-*.js` **461 kB**, immagine più pesante
+`famiglia_3-*.webp` **151 kB**, e l'unico `.png` rimasto è `famiglia_1` a 55 kB.
+Il vecchio warning su `famiglia_3-*.png` a 3,6 MB **non esiste più** — quella foto è stata
+convertita in webp (vedi `converti-foto.mjs`).
 
 `npm run preview` alone serves a **blank page**: `vite.config.js` only sets
 `base: '/enoteca-detoma/'` when `command === 'build'`, so preview serves at `/` while
@@ -436,6 +533,22 @@ intero, `offsetHeight`.
 Controlla sempre le due sponde del breakpoint: a 390×844 la tab bar è `fixed`, da 641px in
 su diventa `static` dentro l'header e le misure devono azzerarsi da sole.
 
+**Il nome del prodotto è l'altra trappola, e morde più della tab bar.** Un nome
+troppo lungo prende la classe `product-name--scroll` e scorre in verticale
+(@keyframes `product-name-marquee`, 15s) dentro `.product-name-wrap`, che è alto
+42px con `overflow: hidden`. Misurato col rect, quindi, il nome **si muove nel
+tempo**: campionato ogni 600ms il 2026-08-28 andava da `translateY(-8)` a
+`translateY(-26)` e ritorno, mentre `offsetTop` restava fisso a 137.
+
+Costo di non saperlo: due misure prese in istanti diversi sembravano dire che
+una modifica al CSS delle immagini aveva peggiorato una sovrapposizione da 6px a
+11px. Non era vero — erano due fotogrammi della stessa animazione, e la
+sovrapposizione non esiste proprio, perché il wrap ritaglia il testo. **Se stai
+misurando qualcosa vicino a `.product-name`, campiona più volte prima di
+concludere, e confronta `offsetTop` (layout) con `rect.top` (visivo): se
+divergono, stai guardando l'animazione.** La prima riga tagliata a metà glifo
+negli screenshot è il marquee che fa il suo lavoro, non un bug.
+
 ## Lint
 
 ```powershell
@@ -452,6 +565,36 @@ real touch layout.
 
 ## Gotchas
 
+- **Il login dal browser contro il backend usa e getta impiega 20–40 s, e
+  `wait-for` si arrende a 20.** Il sintomo è identico a un login rotto: la pagina
+  resta con il bottone su "Accesso…", `wait-for .admin-product-grid` va in
+  timeout e `console` stampa `ERRORS none` — perché la richiesta è ancora *in
+  volo*, non fallita. Misurato il 2026-08-27 con una fetch dentro la pagina:
+  **25,7 s, status 200**. È il costo a freddo di `bcrypt.compare` più il Mongo
+  in memoria; le GET normali stanno sui 3–5 s. Nel driver:
+
+  ```
+  press Enter
+  sleep 34000        # NON wait-for: il suo tetto di 20 s è troppo basso
+  ```
+
+  Prima di dare la colpa al codice, prova il login da PowerShell (`/api/login`
+  risponde in meno di un secondo) e poi dentro la pagina: se il secondo è lento
+  e il primo no, è questo e non una regressione. `127.0.0.1` al posto di
+  `localhost` guadagna poco (3,2 s contro 5,2 su una GET), non è la causa.
+- **`Uncaught SyntaxError: Invalid or unexpected token` su una scheda già
+  aperta = cache delle dipendenze di Vite, non il tuo codice.** Quando Vite
+  ri-ottimizza le dipendenze a metà sessione riscrive `node_modules/.vite/deps`
+  e invalida i chunk che la pagina aperta ha già importato; ri-chiederli torna
+  una risposta parziale e il browser la riporta come errore di sintassi.
+  Successo il 2026-08-28: server avviato 14:43, sorgenti toccati 14:54–14:57,
+  `.vite/deps` riscritto 15:02, errore su una scheda aperta da prima.
+  **Come si riconosce in un minuto**: apri le stesse rotte con il driver (che
+  parte sempre da un contesto pulito). Se lì è `ERRORS none` su tutte, il
+  sorgente è sano e il problema è la scheda. Conferma servita: `Invoke-WebRequest`
+  su `/src/…` e cerca una modifica recente, per essere sicuro che quel server
+  serva davvero l'albero corrente. Rimedio: ricarica forzata; se resiste, ferma
+  il server, cancella `node_modules/.vite`, riparti.
 - **Empty lists + `ERR_CONNECTION_REFUSED` ×26** — the classic symptom of an unset
   `VITE_API_URL`, and **obsolete since 2026-08-15**: the fallback is the production
   backend, so an unconfigured server now loads fine. If you still see this, you pointed
@@ -510,6 +653,42 @@ real touch layout.
 - **`wait-for .admin-topbar` is not enough to screenshot the panel.** The topbar renders
   immediately while the list is still `Caricamento…`; the first attempt here produced
   exactly that screenshot. Wait for `.admin-product-grid`.
+- **"Si renderizza due volte" in dev è StrictMode, non un bug.** `main.jsx` avvolge l'app
+  in `<StrictMode>`, che in sviluppo invoca due volte il render e rifà partire gli effect:
+  in DevTools e nel pannello Network vedi il doppio (`/api/wines?...` due volte, il
+  componente contato due volte). Misurato sul bottom sheet il 2026-08-15: **dev 2 render /
+  1 nodo nel DOM, build di produzione 1 render / 1 nodo**, uguale su tutte le vie
+  d'ingresso. Prima di chiamarlo bug, riproducilo con `npm run build` +
+  `npx vite preview --base /enoteca-detoma/`. **Non togliere `StrictMode`.**
+- **Un `click` di Playwright può non arrivare su un elemento che si solleva in hover.**
+  `.admin-product-card` e `.consiglio-card` hanno `transform: translateY(-2px)` in hover
+  con una transizione di 0,15–0,18 s: il puntatore sintetico arriva e clicca a metà del
+  movimento, e il click a volte si perde — senza errore, sembra solo che non succeda
+  niente. Un dito vero si posa prima di premere, quindi **non è un bug del sito**. Nel
+  driver: fai stabilizzare (un `click` che stabilisce l'hover, poi il vero click; oppure
+  `sleep` prima), o verifica l'effetto sul database invece che sulla UI. Se devi isolare
+  se è questo, spegni le trasformazioni e riprova:
+  ```
+  eval (()=>{const s=document.createElement("style");s.textContent=".admin-product-card{transition:none!important} .admin-product-card:hover{transform:none!important}";document.head.appendChild(s);return "hover off"})()
+  ```
+- **Per vedere uno stato di caricamento serve rallentare l'API, non indovinare.** Le fasce
+  in home caricano in ~0,7 s: i fantasmi non si fotografano a mano. Un proxy usa e getta
+  che inoltra alla produzione con un ritardo fisso rende lo stato deterministico — **solo
+  GET**, così non può scrivere sul catalogo vero:
+  ```js
+  // %TEMP%\proxy-lento.mjs — node proxy-lento.mjs 4000 3012, poi VITE_API_URL=http://localhost:3012
+  import http from "node:http"; import https from "node:https";
+  const RITARDO=+process.argv[2]||4000, PORTA=+process.argv[3]||3012, O="detoma-backend.vercel.app";
+  http.createServer((req,res)=>{ res.setHeader("Access-Control-Allow-Origin","*");
+    if(req.method==="OPTIONS")return res.writeHead(204).end();
+    if(req.method!=="GET")return res.writeHead(405).end("solo GET");
+    https.get({host:O,path:req.url,headers:{host:O}},up=>{const p=[];up.on("data",c=>p.push(c));
+      up.on("end",()=>setTimeout(()=>{res.writeHead(up.statusCode,{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"});
+        res.end(Buffer.concat(p))},RITARDO))});
+  }).listen(PORTA);
+  ```
+  Usato il 2026-08-15 per fotografare le schede fantasma e misurare che il telaio vuoto e
+  quello pieno hanno la **stessa** altezza (138×190 e riga 223 px, telefono).
 
 ## Troubleshooting
 

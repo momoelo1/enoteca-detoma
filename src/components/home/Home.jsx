@@ -1,12 +1,17 @@
-import { Fragment, useEffect, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ProductPlaceholder } from "../enoteca/Enoteca";
+import { ProductPlaceholder, fotoProdotto } from "../enoteca/Enoteca";
 import { formatPrezzo, prezzoProdotto } from "../../utils/prezzo";
 import { getWinesConsigliati } from "../../services/wines";
 import { getAlimentariConsigliati } from "../../services/alimentari";
 import { productSlug } from "../../utils/productSlug";
 import { normalize } from "../../utils/normalize";
-import { trimBorder } from "../../utils/cloudinary";
 import "./home.css";
 
 // Il titolo si scrive da sé all'apertura, parola per parola, come se una
@@ -37,12 +42,93 @@ function VetrinaCard({ item, type, onOpen, i }) {
   // "€ 0,00" (vedi prezzoProdotto in utils/prezzo.js). Gli alimentari spesso
   // il campo non ce l'hanno proprio, quindi per loro non compare mai.
   const prezzo = prezzoProdotto(item);
+
+  // Nome più lungo delle tre righe: invece dei puntini deriva in verticale,
+  // come sulle card del catalogo (.product-name in Enoteca.jsx/enoteca.css).
+  // Quanto sborda dal riquadro diventa la corsa dell'animazione.
+  const nameRef = useRef(null);
+  const [nameScroll, setNameScroll] = useState(false);
+  useLayoutEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    let vivo = true;
+    const misura = () => {
+      if (!vivo) return;
+      const overflow = el.scrollHeight - el.parentElement.clientHeight;
+      if (overflow > 0) {
+        el.style.setProperty("--marquee-shift-y", `-${overflow + 4}px`);
+        setNameScroll(true);
+      } else {
+        el.style.removeProperty("--marquee-shift-y");
+        setNameScroll(false);
+      }
+    };
+    misura();
+    // Rimisura quando il font vero è arrivato. Al primo layout il nome è
+    // ancora disegnato col ripiego (Georgia), più largo: sborda di più, e
+    // la corsa che ne usciva restava lì anche dopo — misurato in pagina,
+    // quattro nomi su dodici derivavano pur stando comodi in tre righe, e
+    // gli altri scorrevano più del dovuto lasciando una riga vuota in fondo.
+    document.fonts?.ready.then(misura);
+    return () => {
+      vivo = false;
+    };
+  }, [item.name]);
+
+  // Un nome deriva solo quando la sua scheda si vede DAVVERO tutta, ferma.
+  // Qui gli scorrimenti da tenere d'occhio sono due, non uno come nel
+  // catalogo: la fascia scorre di lato (.consigli-row) e la home scorre in
+  // su e in giù — quindi la scheda dev'essere intera dentro la fascia in
+  // orizzontale e dentro la finestra in verticale.
+  //
+  // Niente IntersectionObserver (sul catalogo è stato provato due volte e su
+  // telefono vero faceva partire la scheda "che sbircia"): misura diretta dei
+  // rettangoli, a scorrimento fermo — 120ms dopo l'ultimo evento, quando lo
+  // scroll-snap si è assestato. Mentre si scorre l'animazione è spenta e
+  // riparte da capo appena la scheda si posa.
+  const cardRef = useRef(null);
+  const [nameInView, setNameInView] = useState(false);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !nameScroll) return;
+    const row = el.closest(".consigli-row");
+    let timer = 0;
+    const check = () => {
+      const cr = el.getBoundingClientRect();
+      const rr = row
+        ? row.getBoundingClientRect()
+        : { left: 0, right: window.innerWidth };
+      setNameInView(
+        cr.left >= rr.left - 2 &&
+          cr.right <= rr.right + 2 &&
+          cr.top >= -2 &&
+          cr.bottom <= window.innerHeight + 2
+      );
+    };
+    const onScroll = () => {
+      setNameInView(false);
+      clearTimeout(timer);
+      timer = setTimeout(check, 120);
+    };
+    check();
+    row?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      clearTimeout(timer);
+      row?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [nameScroll]);
+
   return (
     <li className="consiglio-cell" style={{ "--i": i }}>
       <button
         type="button"
         className="consiglio-card"
         onClick={() => onOpen(item, type)}
+        ref={cardRef}
       >
         {item.consigliato && (
           <span className="consiglio-star" aria-hidden="true">
@@ -52,16 +138,26 @@ function VetrinaCard({ item, type, onOpen, i }) {
         <span className="consiglio-thumb">
           {item.img ? (
             <img
-              src={type === "alimentari" ? trimBorder(item.img) : item.img}
+              src={fotoProdotto(item, type)}
               alt=""
-              className="consiglio-img"
+              className={"consiglio-img consiglio-img--" + type}
               loading="lazy"
             />
           ) : (
             <ProductPlaceholder item={item} type={type} className="consiglio-svg" />
           )}
         </span>
-        <span className="consiglio-name">{item.name}</span>
+        <span className="consiglio-name-wrap">
+          <span
+            className={
+              "consiglio-name" +
+              (nameScroll && nameInView ? " consiglio-name--scroll" : "")
+            }
+            ref={nameRef}
+          >
+            {item.name}
+          </span>
+        </span>
         {prezzo != null && (
           <span className="consiglio-price">{formatPrezzo(prezzo)}</span>
         )}
