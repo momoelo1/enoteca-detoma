@@ -12,26 +12,43 @@ const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
 // contiene i suoi formati, e il prezzo sta sul formato — lo stesso anno può
 // vendersi in bottiglia e in magnum a due prezzi diversi.
 //
-// `conPrezzo` è la spunta del formato: legato, porta il suo prezzo; slegato,
-// il formato si salva senza. Non sta nel database — si ricava dal prezzo che
-// c'è, e ridiventa un prezzo quando si salva. È il caso di "disponibile anche
-// Magnum": il formato esiste, il prezzo si chiede in negozio.
+// `conMl` è la spunta del formato: accesa, la riga porta un formato scelto
+// dal menù (mezza bottiglia, magnum...); spenta, è la bottiglia normale e nel
+// database `ml` non c'è proprio. Non sta nel database — si ricava dal ml che
+// c'è, e ridiventa un ml quando si salva.
 //
-// Lo ZERO vale come "slegato", non come "gratis": sono le schede mai prezzate
-// (56 vini su 533 in produzione al 2026-08-26), che il sito già tratta come
-// senza prezzo (prezzoProdotto in utils/prezzo.js). Aprendole in modifica la
-// spunta è quindi spenta, che è la verità, e salvando lo zero sparisce davvero.
+// Il prezzo non si spunta e non si obbliga: lasciato in bianco vale ZERO
+// (models/Wine.js), che il sito legge già come prezzo assente e mostra "—"
+// (prezzoProdotto in utils/prezzo.js). Nell'altro verso vale lo stesso: uno
+// zero salvato riapre come casella vuota, non come "gratis" — sono le schede
+// mai prezzate, 56 vini su 533 in produzione al 2026-08-26.
 const toFormato = (ml, prezzo) => ({
   ml: ml ?? "",
   prezzo: prezzo > 0 ? prezzo : "",
-  conPrezzo: prezzo > 0,
+  conMl: ml != null && ml !== "",
 });
 
-// nuovi vuoti: spunta accesa, perché il caso normale è mettere un prezzo.
+// nuovi vuoti: spunta spenta, perché il caso normale è la bottiglia normale.
 // Sono funzioni e non costanti condivise: due righe vuote nello stesso form
 // devono essere due oggetti distinti.
-const formatoVuoto = () => ({ ml: "", prezzo: "", conPrezzo: true });
+const formatoVuoto = () => ({ ml: "", prezzo: "", conMl: false });
 const annataVuota = () => ({ anno: "", formati: [formatoVuoto()] });
+
+// il formato di ripiego: spuntando la casella il menù si posiziona già sulla
+// bottiglia normale, e chi salva senza toccarlo salva quella. Un menù aperto
+// sul niente costringeva a una scelta in più per il caso più comune.
+const ML_BOTTIGLIA = 750;
+
+// le voci del menù dei formati: quelle note (ML_NOTI in utils/prezzo.js) più
+// — se c'è — il valore già salvato sul vino ma fuori elenco. Il campo prima
+// era libero: un menù che non contiene il valore corrente lo cambierebbe di
+// nascosto al primo salvataggio.
+const opzioniMl = (ml) => {
+  const n = Number(ml);
+  return ml !== "" && Number.isFinite(n) && !ML_NOTI.includes(n)
+    ? [...ML_NOTI, n].sort((a, b) => a - b)
+    : ML_NOTI;
+};
 
 // un'annata non ancora migrata non ha `formati` ma il vecchio `prezzo`
 // piatto: si legge come un formato unico standard, così aprire in modifica
@@ -142,13 +159,18 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
       formati.map((row, j) => (j === fIndex ? { ...row, [field]: value } : row)),
     );
 
-  // slegando il formato il prezzo si svuota subito: lasciarlo scritto sotto
-  // un campo disabilitato farebbe credere che venga salvato lo stesso
-  const togglePrezzo = (index, fIndex) =>
+  // togliendo la spunta il ml si svuota subito: lasciarlo scelto sotto un
+  // menù disabilitato farebbe credere che venga salvato lo stesso. Mettendola,
+  // il menù parte dalla bottiglia normale invece che dal vuoto
+  const toggleMl = (index, fIndex) =>
     mapFormati(index, (formati) =>
       formati.map((row, j) =>
         j === fIndex
-          ? { ...row, conPrezzo: !row.conPrezzo, prezzo: row.conPrezzo ? "" : row.prezzo }
+          ? {
+              ...row,
+              conMl: !row.conMl,
+              ml: row.conMl ? "" : row.ml || ML_BOTTIGLIA,
+            }
           : row,
       ),
     );
@@ -156,8 +178,8 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const addFormato = (index) =>
     mapFormati(index, (formati) => [...formati, formatoVuoto()]);
 
-  // l'ultimo formato non si toglie: un'annata senza formati non avrebbe
-  // dove tenere il prezzo. Si svuota, e resta una riga da riempire
+  // l'ultima riga non si toglie: un'annata senza formati non avrebbe dove
+  // tenere il prezzo. Si svuota, e resta una riga da riempire
   const removeFormato = (index, fIndex) =>
     mapFormati(index, (formati) =>
       formati.length === 1
@@ -219,9 +241,9 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     setError("");
     setSaving(true);
 
-    // Chiavi assenti, non zeri: un formato slegato (o col prezzo lasciato in
-    // bianco) parte SENZA `prezzo`, e uno standard SENZA `ml`. Non `null`,
-    // che Mongoose rifiuterebbe come non numerico — la chiave proprio non c'è.
+    // Sul `ml` la chiave è assente, non zero: una riga senza spunta parte
+    // SENZA `ml` — è la bottiglia normale. Non `null`, che Mongoose
+    // rifiuterebbe come non numerico: la chiave proprio non c'è.
     const numero = (v) => {
       const n = Number(v);
       return v !== "" && Number.isFinite(n) ? n : null;
@@ -230,29 +252,34 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     const annate = form.annate
       .map((a) => {
         const formati = a.formati
-          // una riga vuota e ancora spuntata è solo una riga mai compilata:
-          // si scarta. Una riga vuota ma SLEGATA invece dice qualcosa —
-          // "bottiglia standard, prezzo da chiedere" — e va tenuta
-          .filter((f) => f.ml !== "" || f.prezzo !== "" || !f.conPrezzo)
-          .map((f) => {
-            const ml = numero(f.ml);
-            const prezzo = f.conPrezzo ? numero(f.prezzo) : null;
-            return {
-              ...(ml != null && { ml }),
-              ...(prezzo != null && { prezzo }),
-            };
-          });
+          // una riga mai toccata — niente formato e niente prezzo — non dice
+          // niente e si scarta: è così che un vino ancora da prezzare si salva
+          // lo stesso, con la sola annata
+          .filter((f) => f.conMl || f.prezzo !== "")
+          .map((f) => ({
+            // spuntata ma col menù mai aperto: vale la bottiglia normale
+            ...(f.conMl && { ml: numero(f.ml) ?? ML_BOTTIGLIA }),
+            // prezzo in bianco = zero, che il sito mostra come "—"
+            prezzo: numero(f.prezzo) ?? 0,
+          }));
         return { anno: a.anno, ...(formati.length > 0 && { formati }) };
       })
       // si scarta solo ciò che non dice niente. Il filtro sta DOPO la mappa
-      // perché su champagne l'anno è sempre "": un'annata tutta slegata
-      // resterebbe vuota del tutto, e prima passava perché aveva un prezzo
+      // perché su champagne l'anno è sempre "": un'annata con tutte le righe
+      // ancora da prezzare resterebbe vuota del tutto
       .filter((a) => a.anno !== "" || a.formati?.length > 0);
 
     const payload = Object.fromEntries(
       Object.entries({
         name: form.name,
-        regione: form.regione,
+        // la regione si ripulisce QUI, prima di partire: uno spazio finale
+        // battuto per sbaglio ("Piemonte ") crea una regione gemella, e il
+        // filtro del pannello ne fa due bottoni identici a vista con dentro
+        // metà vini per uno. Il filtro ora fa il trim per conto suo
+        // (WineManager.jsx), ma questo chiude il rubinetto invece di
+        // rincorrere il sintomo. Il campo è libero apposta — le regioni non
+        // sono un elenco chiuso — quindi lo sbaglio è sempre possibile
+        regione: form.regione.trim(),
         paese: form.paese,
         img: form.img,
         description: form.description,
@@ -354,24 +381,15 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
 
         <div className="admin-field">
           <label>{isChampagne ? "Prezzi" : "Annate e prezzi"}</label>
-          {/* il campo ml è stretto e il segnaposto non ci sta: la regola
-              importante ("vuoto = bottiglia") va detta una volta qui */}
+          {/* la regola importante ("senza spunta = bottiglia normale") va
+              detta una volta qui: nella riga non c'è posto per scriverla */}
           <p className="admin-hint">
-            Un formato per riga. Lascia <strong>ml</strong> vuoto per la
-            bottiglia normale; compilalo solo per mezze bottiglie e magnum.
-            Togli la spunta <strong>Prezzo</strong> se il formato si vende ma
-            il prezzo si chiede in negozio.
+            Un prezzo per riga. Senza spunta la riga è la{" "}
+            <strong>bottiglia normale</strong>; metti la spunta{" "}
+            <strong>Formato</strong> per mezze bottiglie e magnum e scegli
+            quale. Il prezzo lasciato in bianco vale zero e sul sito non
+            compare.
           </p>
-          {/* elenco dei formati suggeriti: il negozio ragiona per nome
-              ("Magnum"), non per numero, ma nel database va il numero.
-              Il campo resta libero — un formato fuori elenco si scrive */}
-          <datalist id="admin-ml-noti">
-            {ML_NOTI.map((ml) => (
-              <option key={ml} value={ml}>
-                {etichettaFormato(ml, { sempre: true })}
-              </option>
-            ))}
-          </datalist>
 
           <div className="admin-annate-list">
             {form.annate.map((annata, i) => (
@@ -407,51 +425,62 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                 <div className="admin-formati-list">
                   {annata.formati.map((f, j) => (
                     <div className="admin-formato-row" key={j}>
-                      <div className="admin-field">
-                        <input
-                          type="number"
-                          step="1"
-                          list="admin-ml-noti"
-                          placeholder="ml"
-                          title="Formato in millilitri. Vuoto = bottiglia standard da 750 ml."
-                          value={f.ml}
-                          onChange={(e) => updateFormato(i, j, "ml", e.target.value)}
-                        />
-                      </div>
-                      {/* la spunta lega il prezzo a QUESTO formato: slegata
-                          vuol dire "lo teniamo, il prezzo si chiede" — che è
-                          il "disponibile anche Magnum" scritto oggi nei nomi */}
+                      {/* la spunta accende il formato di QUESTA riga: spenta
+                          è la bottiglia normale, che nel database non porta
+                          nessun ml — nessuno scrive 750 su cinquecento vini */}
                       <label
                         className={
                           "admin-annata-check" +
-                          (f.conPrezzo ? " admin-annata-check--attiva" : "")
+                          (f.conMl ? " admin-annata-check--attiva" : "")
                         }
                         title={
-                          f.conPrezzo
-                            ? "Prezzo legato a questo formato — togli la spunta per lasciarlo senza prezzo"
-                            : "Formato senza prezzo — spunta per legarcene uno"
+                          f.conMl
+                            ? "Formato fuori misura — togli la spunta per la bottiglia normale"
+                            : "Bottiglia normale — spunta per scegliere un altro formato"
                         }
                       >
                         <input
                           type="checkbox"
-                          checked={f.conPrezzo}
-                          onChange={() => togglePrezzo(i, j)}
+                          checked={f.conMl}
+                          onChange={() => toggleMl(i, j)}
                         />
                         <span className="admin-annata-check-box" aria-hidden="true">
                           ✓
                         </span>
-                        <span className="admin-annata-check-text">Prezzo</span>
+                        <span className="admin-annata-check-text">Formato</span>
                       </label>
+                      {/* il negozio ragiona per nome ("Magnum"), non per
+                          numero, ma nel database va il numero: il menù mostra
+                          i nomi e salva i ml */}
+                      <div className="admin-field">
+                        <select
+                          value={f.ml}
+                          disabled={!f.conMl}
+                          title="Formato della bottiglia. Senza spunta vale la bottiglia normale da 750 ml."
+                          onChange={(e) => updateFormato(i, j, "ml", e.target.value)}
+                        >
+                          {/* si vede solo a spunta spenta, dove il menù è
+                              disabilitato: una riga spuntata parte già sulla
+                              bottiglia normale e non torna mai qui */}
+                          <option value="" disabled>
+                            Formato
+                          </option>
+                          {opzioniMl(f.ml).map((ml) => (
+                            <option key={ml} value={ml}>
+                              {etichettaFormato(ml, { sempre: true })}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="admin-field">
                         <input
                           type="number"
                           step="0.01"
                           /* campo stretto: il segnaposto lungo veniva
-                             tagliato. Che sia senza prezzo lo dice già la
-                             spunta spenta accanto */
-                          placeholder={f.conPrezzo ? "Prezzo €" : "—"}
+                             tagliato. Mai obbligatorio: in bianco vale zero,
+                             cioè "lo teniamo, il prezzo non è ancora qui" */
+                          placeholder="Prezzo €"
                           value={f.prezzo}
-                          disabled={!f.conPrezzo}
                           onChange={(e) => updateFormato(i, j, "prezzo", e.target.value)}
                         />
                       </div>

@@ -6,7 +6,8 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ProductPlaceholder, fotoProdotto } from "../enoteca/Enoteca";
+import { ProductPlaceholder } from "../enoteca/Enoteca";
+import { fotoProdotto } from "../../utils/cloudinary";
 import { formatPrezzo, prezzoProdotto } from "../../utils/prezzo";
 import { getWinesConsigliati } from "../../services/wines";
 import { getAlimentariConsigliati } from "../../services/alimentari";

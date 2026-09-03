@@ -21,7 +21,7 @@ import {
   formatiAnnata,
   etichettaFormato,
 } from "../../utils/prezzo";
-import { trimBorder, bottleFrame } from "../../utils/cloudinary";
+import { fotoProdotto } from "../../utils/cloudinary";
 import { coloreVersata } from "../../utils/coloreCategoria";
 import { vola } from "../../utils/volo";
 import { versa } from "../transition/versa";
@@ -87,20 +87,6 @@ const foodIcon = (item) => {
   const hay = normalize(`${item.sottocategoria || ""} ${item.tipo || ""}`);
   const rule = FOOD_ICON_RULES.find(([re]) => re.test(hay));
   return rule ? rule[1] : Jar; // il vasetto è il contenitore più comune qui
-};
-
-// URL della foto, normalizzata per tipo di prodotto. Le foto arrivano dai
-// fornitori con quantità di vuoto molto diverse intorno al soggetto: senza
-// una trasformazione, dentro lo stesso riquadro un prodotto si vede grande e
-// un altro minuscolo. Vedi utils/cloudinary.js per il perché di ogni ricetta.
-// Birre e distillati restano intatti: le loro foto non sono state misurate.
-// Esportato: lo usa anche la fascia dei consigli in home (Home.jsx), che
-// mostra gli stessi prodotti e deve impaginarli allo stesso modo.
-export const fotoProdotto = (item, type) => {
-  if (!item.img) return item.img;
-  if (type === "alimentari") return trimBorder(item.img);
-  if (type === "vini") return bottleFrame(item.img);
-  return item.img;
 };
 
 // sceglie il segnaposto giusto per il tipo di prodotto: bottiglia per
@@ -617,9 +603,10 @@ export function ProductSheet({ w, category, onClose, type }) {
                                 {nome && (
                                   <span className="product-annate-ml">{nome}</span>
                                 )}
-                                {/* un formato può essere senza prezzo: nel
-                                    pannello la spunta lo slega. È il caso di
-                                    "disponibile anche Magnum" */}
+                                {/* un formato può valere zero: nel pannello è
+                                    il prezzo lasciato in bianco, e in archivio
+                                    sono le schede mai prezzate (56 vini su 533
+                                    al 2026-08-26) */}
                                 <span className="product-annate-price">
                                   {f.prezzo > 0 ? formatPrezzo(f.prezzo) : "—"}
                                 </span>

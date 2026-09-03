@@ -43,3 +43,19 @@ export const trimBorder = (url) => withTransform(url, "e_trim");
 // rettangolo bianco sulle card di vetro.
 export const bottleFrame = (url) =>
   withTransform(url, "e_trim/c_pad,ar_2:3,b_transparent");
+
+// L'unico posto che sceglie la ricetta in base al tipo di prodotto: le due
+// qui sopra dicono COME si trasforma una foto, questa dice QUALE serve.
+// Birre e distillati restano intatti — le loro foto non sono state misurate.
+//
+// Lo chiamano le tre viste che mostrano una foto di prodotto (la card e la
+// scheda in Enoteca.jsx, la fascia dei consigli in Home.jsx), e sta qui e non
+// lì perché un file che esporta componenti non può esportare anche funzioni:
+// il Fast Refresh smetterebbe di funzionare su tutto il file (regola
+// react-refresh). Stessa ragione per cui formatPrezzo vive in utils/prezzo.js.
+export const fotoProdotto = (item, type) => {
+  if (!item.img) return item.img;
+  if (type === "alimentari") return trimBorder(item.img);
+  if (type === "vini") return bottleFrame(item.img);
+  return item.img;
+};

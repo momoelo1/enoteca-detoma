@@ -404,9 +404,11 @@ svg.consiglio-svg.product-food-svg {
 
 .consiglio-name {
   display: block;
-  font-family: "Cormorant Garamond", Georgia, serif;
+  /* stesso font dei nomi in catalogo (.product-name in enoteca.css), a
+     peso 400: Marcellus non ne ha altri */
+  font-family: Marcellus, Georgia, serif;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.15;
   color: #2e3d34;
   overflow-wrap: break-word;

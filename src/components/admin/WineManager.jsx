@@ -63,15 +63,25 @@ function WineManager() {
     setWines((ws) => ws.map((w) => (w.id === wine.id ? wine : w)));
   const handleDeleted = (id) => setWines((ws) => ws.filter((w) => w.id !== id));
 
+  // Regione del vino ripulita dallo spazio finale spurio che sporca il
+  // database ("Lombardia " accanto a "Lombardia"): senza trim il Set ne fa
+  // DUE bottoni identici a vista, e ognuno mostra solo metà dei vini.
+  // Misurato in produzione il 2026-09-01: 24 valori distinti, 17 veri, 57
+  // vini su sette regioni gemelle. Stesso difetto già corretto nella barra
+  // della pagina pubblica (Enoteca.jsx, `filterValue`) — il trim va fatto
+  // su TUTT'E DUE i lati, perché un bottone ripulito non troverebbe più i
+  // vini col valore sporco.
+  const regioneDi = (w) => w.regione?.trim();
+
   // stessa logica di filtro della pagina Enoteca pubblica: regione e
   // ricerca si sommano, la ricerca affina dentro la regione scelta
-  const regionValues = [
-    ...new Set(wines.map((w) => w.regione).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b, "it"));
+  const regionValues = [...new Set(wines.map(regioneDi).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b, "it"),
+  );
 
   const query = normalize(searchText.trim());
   const visibleWines = wines
-    .filter((w) => (regionFilter ? w.regione === regionFilter : true))
+    .filter((w) => (regionFilter ? regioneDi(w) === regionFilter : true))
     .filter((w) => {
       if (!query) return true;
       const hay = normalize(

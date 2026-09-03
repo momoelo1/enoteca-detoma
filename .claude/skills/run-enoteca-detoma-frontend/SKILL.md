@@ -168,6 +168,26 @@ Il sintomo non somiglia a un problema di ambiente: il sito si disegna tutto, ma 
 di prodotti è vuota e la fascia dei consigli in home non compare. Dopo il lancio fai
 sempre il controllo 2 qui sopra.
 
+### E nemmeno la cartella: `Start-Process` parte dalla RADICE del progetto
+
+Stessa famiglia di trappola, altri dieci minuti (2026-08-31). La cartella di lavoro
+dell'agente è `enoteca-detoma/`, **non** `enoteca-detoma/frontend/`: lì `npm run dev` non
+trova nessun `package.json` e il figlio muore subito. `Start-Process` non eredita un `cd`
+fatto in una chiamata precedente, quindi la cartella va detta ogni volta con
+`-WorkingDirectory`, in assoluto.
+
+```powershell
+$fe = "c:\Users\ACER\Desktop\PERSONALE\enoteca-detoma\frontend"
+Start-Process cmd.exe -ArgumentList '/c','set "VITE_API_URL=https://detoma-backend.vercel.app" && npm run dev' `
+  -WorkingDirectory $fe -RedirectStandardOutput "$env:TEMP\vite2.log" -WindowStyle Hidden
+```
+
+**Il sintomo è il silenzio**: il log di redirect resta **vuoto** (zero byte, non un
+messaggio d'errore — quello finisce su stderr, che non stai registrando) e il polling
+scade senza che niente ascolti la porta. Se il log è vuoto non indagare su Vite: hai
+sbagliato cartella. Registrando anche `-RedirectStandardError` si vedrebbe il vero
+`ENOENT`; vuoto contro pieno è comunque il modo più veloce per distinguerlo.
+
 ### Ripulire gli orfani (non basta uccidere la porta)
 
 Uccidere chi ascolta la porta lascia vivo il **padre**: i driver `--hold` del backend e i
@@ -248,7 +268,9 @@ rapido che cercarla dentro il sito vero.
 - `/enoteca` and `/alimentari` both open a **`.mini-cell` grid**, not `.cat-card` — the
   mini-cards are the current entry grid.
 - Product list rows are `.product-list > *`; the bottom sheet is `.sheet-name`,
-  `.sheet-close`, `.sheet-cta`.
+  `.sheet-close`, `.sheet-cta`. Per aprire una scheda usa il `click` del driver
+  (`click .product-list > * >> nth=0`): un `.click()` sull'`<li>` dentro un `eval`
+  **non apre niente**, perché a ricevere l'evento dev'essere il bottone dentro la riga.
 - Deep links work: `nav /enoteca/vini/rossi/<id>` opens straight into the sheet.
 - Body classes observed: `home-no-scroll` (home), `home-no-scroll page-pinned`
   (`/enoteca`, `/alimentari` grids), `home-no-scroll category-open` (a category list),
@@ -364,6 +386,21 @@ PowerShell come qui sopra. Mezz'ora persa così il 2026-08-15.
 Admin landmarks: `#login-username`, `#login-password`, `.admin-topbar`,
 `.admin-topbar-user`, `.admin-topbar-link` (Vini / Birre / Alimentari / Account),
 `.admin-product-grid`, `.admin-content-count`, `.admin-loading`.
+
+Sulla barra dei filtri (`AdminFilterBar`), due cose che costano una corsa buttata:
+
+- **i `.filter-toggle` non sono sempre due.** La lente compare solo da **6 prodotti in
+  su** (`canSearch={wines.length >= 6}`), quindi su un catalogo usa e getta ce n'è **uno
+  solo**, ed è "Regioni": `>> nth=1` va in timeout. Prendilo per testo —
+  `click .admin-filter-actions .filter-toggle >> text=Regioni`.
+- **dopo il login, aspetta `.admin-filter-actions`, non `.admin-product-grid`.** Con i 40 s
+  del login a freddo la griglia a volte arriva oltre il tetto di 20 s del `wait-for`,
+  mentre il conteggio e i nomi ci sono già: sembra rotta e non lo è.
+
+Le voci del filtro si leggono con `eval [...document.querySelectorAll(".admin-filter-bar
+.filter-label")].map(e=>JSON.stringify(e.textContent))` — **con `JSON.stringify`**, o uno
+spazio in coda ("Piemonte " contro "Piemonte") resta invisibile ed è esattamente il difetto
+che stai cercando.
 
 ## Build and preview
 
@@ -548,6 +585,78 @@ misurando qualcosa vicino a `.product-name`, campiona più volte prima di
 concludere, e confronta `offsetTop` (layout) con `rect.top` (visivo): se
 divergono, stai guardando l'animazione.** La prima riga tagliata a metà glifo
 negli screenshot è il marquee che fa il suo lavoro, non un bug.
+
+Dal 2026-08-31 lo stesso meccanismo sta anche in home, su `.consiglio-name` dentro
+`.consiglio-name-wrap` (tre righe invece di due, @keyframes `consiglio-name-marquee`).
+Lì però il marquee parte **solo a scorrimento fermo e a scheda intera in vista**, quindi
+in uno screenshot preso durante uno scroll i nomi sono tutti immobili: è il gate, non una
+regola che non si applica.
+
+### Far scegliere fra più varianti: l'interruttore TEMP in pagina
+
+Quando la domanda è "quale di queste ti piace" (un font, un colore, una
+spaziatura), la risposta non è uno screenshot per volta: è **un pannello di
+prova montato nel sito vero**, che le cambia dal vivo sui dati veri. È la
+forma che l'utente chiede esplicitamente ("try them all"), e si smonta in due
+mosse quando la scelta è fatta. Fatto il 2026-09-03 per il font dei nomi
+prodotto (`src/components/temp/FontNomeTEMP.jsx`, poi cancellato).
+
+La ricetta che ha funzionato:
+
+- il componente scrive una **variabile CSS su `document.documentElement`**
+  (`--font-nome`, `--peso-nome`); le regole interessate la leggono con il
+  valore di oggi come **fallback** — `font-family: var(--font-nome, "Cormorant
+  Garamond", …)`. Così, tolto il pannello, il sito resta esattamente com'era e
+  non c'è niente da srotolare;
+- **tutto lo stile in linea** nel componente: nessun `.css` da ricordarsi di
+  cancellare insieme;
+- la scelta in `localStorage`, o cambiare pagina la azzera e non si riesce a
+  guardare;
+- si chiude scegliendo: a 390px il pannello copre proprio le schede da
+  giudicare;
+- una sola cartella `src/components/temp/` + due righe marcate TEMP in
+  `App.jsx`, elencate in testa al file. Cancellare deve costare dieci secondi.
+
+**La trappola vera: caricare i candidati distrugge il termine di paragone.**
+Mettendo tutti i font in `index.html` si carica anche il peso che oggi NON
+c'è (lì: Cormorant 700), e la voce "com'è adesso" smette di mostrare com'è
+adesso. Il font va caricato **solo quando si sceglie quella voce**, iniettando
+il `<link>` da JS; e quando si apre l'elenco si caricano tutti tranne quello
+sensibile, che altrimenti falsa il confronto appena si guarda.
+
+### Misurare un font che la pagina non sta ancora usando: non si può
+
+Un `<span>` nascosto con `font-family` di un webfont **non ancora usato**
+torna le metriche del ripiego, non del font: i webfont si caricano a richiesta
+e `document.fonts` li elenca `unloaded` finché qualcosa non li disegna. Il
+2026-09-03 la prova "il 700 mancante viene ingrassato dal browser?" è uscita
+inconcludente proprio così — EB Garamond a 600 e a 700 misuravano *identico*
+(255,94px tutti e due) semplicemente perché nessuno dei due era caricato.
+
+Prima di misurare: usarlo davvero in pagina, poi `await document.fonts.load(
+"600 17px 'EB Garamond'")` e solo dopo misurare. Se il numero di due famiglie
+diverse coincide alla seconda cifra decimale, non è una coincidenza: **stai
+misurando il ripiego**.
+
+### Prima di misurare del testo: aspetta il font
+
+Costo di non saperlo: un pomeriggio a inseguire un difetto che non c'era, e poi lo stesso
+difetto vero nel codice appena scritto. Al primo layout i nomi sono ancora disegnati col
+ripiego (Georgia), **più largo** di Cormorant Garamond: qualunque misura di quante righe
+occupa un testo, o di quanto sborda, esce sbagliata per eccesso. In pagina, sui dodici
+consigli della home: col ripiego dodici nomi su dodici "sbordavano", col font vero solo
+tre.
+
+```
+eval document.fonts.status                      # "loading" | "loaded"
+eval document.fonts.ready.then(()=>document.fonts.status)
+```
+
+**`sleep 6000` non basta e non è deterministico**: sul dev server ho visto `loading` dopo
+sei secondi e `loaded` dopo sette. Aspetta `document.fonts.ready` e misura dopo, sempre.
+Vale per il driver **e per il codice del sito**: chi misura del testo in un
+`useLayoutEffect` deve rimisurare su `document.fonts.ready`, altrimenti si porta dietro
+il numero preso col ripiego (è la ragione della seconda misura in `Home.jsx`).
 
 ## Lint
 

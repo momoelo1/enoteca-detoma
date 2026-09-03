@@ -141,6 +141,13 @@ determine cascade order, **a modifier class can silently lose to a base rule dep
 which component imported first** — this has caused real bugs twice. When a rule doesn't
 apply and looks like it should, check the *built* CSS in `dist/assets/`, not the source.
 
+Three webfonts, loaded in `index.html`, each with one job: **Marcellus** for *product
+names* only (`.product-name`, `.sheet-name`, `.consiglio-name`, `.admin-product-name` —
+they change together or they stop matching), **Cormorant Garamond** for every other serif
+text, **Great Vibes** for the signature on the home page. Marcellus ships **only at weight
+400**, so those four rules say `font-weight: 400`: asking for a weight a family doesn't
+have leaves the browser to fake it, which is the defect this replaced (2026-09-03).
+
 Icons are `@phosphor-icons/react` (MIT), and the admin trash icon reuses an existing SVG.
 The region filter bar is **text-only** — every button in it, "Mondo" included, is a bare
 `.filter-label`. It carried a hand-drawn globe until 2026-08-26; don't put an icon back on
