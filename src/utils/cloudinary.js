@@ -41,6 +41,17 @@ export const trimBorder = (url) => withTransform(url, "e_trim");
 // `b_transparent` perché i PNG del negozio sono scontornati davvero
 // (misurato: angoli ad alpha 0): riempire di bianco rimetterebbe il
 // rettangolo bianco sulle card di vetro.
+//
+// Lo SCONTORNO non sta qui. Per un giorno (2026-09-07) questa catena ha
+// avuto `e_background_removal` davanti, e funzionava sul grosso — ma l'AI di
+// Cloudinary lascia una maschera morbida (una fascia larga ad alpha 201-254
+// intorno alla bottiglia, più un alone bianco quasi trasparente) che sulle
+// card si vedeva come un bordo chiaro, peggio su telefono e schermi grandi.
+// Da allora le foto dei vini vengono scontornate E indurite al caricamento,
+// nel backend (`utils/scontorno.js`), e quel che sta su Cloudinary è già
+// pulito, in webp. Rimetterlo qui non farebbe niente sulle foto — misurato:
+// su una foto già trasparente è un non-fare-niente al pixel — e brucerebbe
+// un credito dell'add-on per ogni derivata.
 export const bottleFrame = (url) =>
   withTransform(url, "e_trim/c_pad,ar_2:3,b_transparent");
 
