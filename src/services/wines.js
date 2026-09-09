@@ -69,9 +69,12 @@ export const deleteWine = async (id) => {
   return parse(res);
 };
 
-// rimuove solo la foto (Cloudinary + riferimento), non il vino
-export const deleteWineImage = async (id) => {
-  const res = await fetch(`${API_URL}/api/wines/${id}/image`, {
+// Rimuove le foto (da Cloudinary e dal documento), non il vino.
+// `indice`: quale togliere. Omesso, le toglie tutte — com'è sempre stato
+// quando la foto era una sola.
+export const deleteWineImage = async (id, indice) => {
+  const query = indice === undefined ? "" : `?indice=${indice}`;
+  const res = await fetch(`${API_URL}/api/wines/${id}/image${query}`, {
     method: "DELETE",
     credentials: "include",
     headers: authHeaders(),

@@ -21,7 +21,7 @@ import {
   formatiAnnata,
   etichettaFormato,
 } from "../../utils/prezzo";
-import { fotoProdotto } from "../../utils/cloudinary";
+import { fotoProdotto, fotoProdotti } from "../../utils/cloudinary";
 import { coloreVersata } from "../../utils/coloreCategoria";
 import { vola } from "../../utils/volo";
 import { versa } from "../transition/versa";
@@ -217,16 +217,7 @@ const buildConsigliatiGroups = ({ vini, birre }) =>
     },
   ].filter((g) => g.items.length > 0);
 
-// Card essenziale (vini, birre, alimentari): foto, nome, sottotitolo,
-// badge di specifiche (gradazione/formato quando presenti), prezzo.
-// Tutto il resto vive nel bottom sheet: si apre toccando la card.
-// `type` (es. "vini"/"birre"/"distillati"/"alimentari", da SHOP_GROUPS.id):
-// aggiunge una classe modificatore per-tipo su card e immagine, così si può
-// dare uno stile diverso a un tipo di prodotto senza toccare quelle condivise
-// `scrollSelector`: chi scorre davvero attorno alla card. Dentro una
-// categoria è la lista stessa (.product-list), ma nella tab Consigliati la
-// lista è ferma e scorre il contenitore di pagina — senza saperlo, il
-// marquee del nome non si spegnerebbe mai (vedi l'effect più in basso).
+
 export function ProductCard({
   w,
   accent,
@@ -363,7 +354,11 @@ export function ProductCard({
           className={"product-thumb" + (type ? ` product-thumb--${type}` : "")}
           ref={thumbRef}
         >
-          {w.img ? (
+          {/* la card mostra SEMPRE la prima foto, anche quando il prodotto ne
+              ha diverse: a farle scorrere è la scheda. E si controlla l'URL,
+              non `w.img` — quello è un array e un array vuoto è truthy (vedi
+              elencoFoto in utils/cloudinary.js) */}
+          {fotoProdotto(w, type) ? (
             <img
               src={fotoProdotto(w, type)}
               alt=""
@@ -421,10 +416,22 @@ export function ProductCard({
 export function ProductSheet({ w, category, onClose, type }) {
   const desc = w.description || w.descrizione;
   const annate = w.annate;
+  // La scheda dei VINI ha un'impaginazione sua (bottiglia grande, regione come
+  // occhiello, prezzo accanto al nome), e cambia pure forma con lo schermo:
+  // incolonnata sul telefono, a copertina nella finestra desktop. Il markup è
+  // lo stesso per tutti i tipi — a impaginarlo è il CSS, blocco "SCHEDA
+  // PRODOTTO — VINI" in fondo a enoteca.css. Qui si decide solo COSA esiste.
+  const vini = type === "vini";
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
   const coloreRidondante =
     w.colore &&
     category?.label?.toLowerCase().includes(w.colore.slice(0, 4).toLowerCase());
+  // la provenienza come occhiello sopra il nome: è quello che il cliente
+  // guarda per primo, e lassù non costa la riga di chip che costa qui sotto —
+  // in catalogo è quasi sempre l'unica chip che esiste (misurato il
+  // 2026-09-09: 356 vini su 383 hanno `regione`, e nessuno ha denominazione,
+  // uvaggio, stile, tipo, colore o gradazione).
+  const luogo = vini ? w.regione || w.provenienza : null;
   // ogni voce diventa una chip a sé (si legge a colpo d'occhio, invece
   // di un'unica riga grigia separata da puntini)
   const metaItems = [
@@ -437,9 +444,60 @@ export function ProductSheet({ w, category, onClose, type }) {
     w.regione,
     w.provenienza,
   ].filter(Boolean);
+  // il posto dov'è finito `luogo`: la chip corrispondente porta un
+  // modificatore, così una variante che mostra l'occhiello può spegnere il
+  // doppione senza che il JSX debba sapere quale variante è attiva
+  const chipLuogo = (m) => luogo && (m === w.regione || m === w.provenienza);
+  // prezzo e annata accanto al nome. Oggi il prezzo esiste SOLO in fondo alla
+  // tabella "Annate e prezzi", cioè sotto la piega su un telefono: per vederlo
+  // bisogna scorrere una scheda che sembra già finita.
+  const prezzo = vini ? prezzoProdotto(w) : null;
+  const annoCorrente = annate?.[0]?.anno;
+  // …e allora quella tabella, quando ha una riga sola con un formato solo,
+  // non dice altro che quel prezzo una seconda volta. Oggi è il caso di TUTTO
+  // il catalogo (383 vini su 383, stessa misura), ma il pannello admin
+  // permette più annate e più formati: lì la tabella serve ancora.
+  const annateRidondanti =
+    vini && prezzo != null && annate?.length === 1 && formatiAnnata(annate[0]).length <= 1;
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     `Buongiorno, vorrei informazioni su: ${w.name}`
   )}`;
+
+  // ---- le foto del prodotto ----
+  // Sulla card se ne vede una sola, la prima. Qui si vedono tutte, a turno.
+  const foto = fotoProdotti(w, type);
+  const [iFoto, setIFoto] = useState(0);
+  // la rotazione si spegne al primo tocco su un puntino: chi ha scelto una
+  // foto la sta guardando, e vedersela cambiare sotto gli occhi è una piccola
+  // sconfitta. Non si riaccende più finché la scheda resta aperta.
+  const [autoFoto, setAutoFoto] = useState(true);
+
+  // Aprire un altro prodotto senza smontare il pannello (oggi non capita —
+  // tutti e quattro i punti che montano ProductSheet lo tolgono per chiudere —
+  // ma è una garanzia che costa poco): l'indice tornerebbe puntato sulla terza
+  // foto di un vino che ne ha una. È il modo che React documenta per correggere
+  // uno stato quando cambia una prop, senza passare da un effect.
+  const [idMostrato, setIdMostrato] = useState(w.id);
+  if (w.id !== idMostrato) {
+    setIdMostrato(w.id);
+    setIFoto(0);
+    setAutoFoto(true);
+  }
+
+  // sei secondi: abbastanza per guardare una bottiglia senza che la scheda
+  // sembri un carosello pubblicitario
+  const ATTESA_FOTO = 6000;
+  useEffect(() => {
+    if (foto.length < 2 || !autoFoto) return;
+    // chi ha chiesto meno animazioni al sistema operativo si sfoglia le foto
+    // da sé con i puntini
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(
+      () => setIFoto((i) => (i + 1) % foto.length),
+      ATTESA_FOTO
+    );
+    return () => clearInterval(t);
+  }, [foto.length, autoFoto]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -532,26 +590,82 @@ export function ProductSheet({ w, category, onClose, type }) {
             in giro il resto del pannello — il bottone WhatsApp sotto
             sta sempre fermo nello stesso punto */}
         <div className="sheet-scroll" ref={scrollRef}>
-          <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
-            {w.img ? (
-              <img
-                src={fotoProdotto(w, type)}
-                alt=""
-                className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
-              />
-            ) : (
-              <ProductPlaceholder
-                item={w}
-                type={type}
-                className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")}
-              />
+          {/* .sheet-hero e .sheet-ident sono `display: contents` per tutti i
+              tipi tranne i vini: senza di loro riquadro e nome tornano a
+              essere figli diretti della colonna, impilati come sempre */}
+          <div className="sheet-hero">
+            <div className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}>
+              {/* le foto stanno tutte nel DOM, sovrapposte, e a turno una sola
+                  è opaca: così il cambio è una dissolvenza fra le due e non uno
+                  scatto su un riquadro vuoto mentre la prossima si scarica.
+                  Con una foto sola il ciclo gira a vuoto e si vede quella. */}
+              {foto.length > 0 ? (
+                foto.map((src, i) => (
+                  <span
+                    key={src}
+                    className={
+                      "sheet-foto" + (i === iFoto ? " sheet-foto--attiva" : "")
+                    }
+                    aria-hidden={i === iFoto ? undefined : true}
+                  >
+                    <img
+                      src={src}
+                      alt=""
+                      className={"sheet-img" + (type ? ` sheet-img--${type}` : "")}
+                    />
+                  </span>
+                ))
+              ) : (
+                <ProductPlaceholder
+                  item={w}
+                  type={type}
+                  className={"sheet-svg" + (type ? ` sheet-svg--${type}` : "")}
+                />
+              )}
+            </div>
+            {/* i puntini compaiono solo se c'è davvero qualcosa da sfogliare */}
+            {foto.length > 1 && (
+              <div className="sheet-punti" role="tablist" aria-label="Foto del prodotto">
+                {foto.map((src, i) => (
+                  <button
+                    key={src}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === iFoto}
+                    aria-label={`Foto ${i + 1} di ${foto.length}`}
+                    className={
+                      "sheet-punto" + (i === iFoto ? " sheet-punto--attivo" : "")
+                    }
+                    onClick={() => {
+                      setIFoto(i);
+                      setAutoFoto(false);
+                    }}
+                  />
+                ))}
+              </div>
             )}
+            <div className="sheet-ident">
+              {luogo && <span className="sheet-eyebrow">{luogo}</span>}
+              <h3 className="sheet-name">{w.name}</h3>
+              {prezzo != null && (
+                <p className="sheet-prezzo">
+                  <span className="sheet-prezzo-val">{formatPrezzo(prezzo)}</span>
+                  {annoCorrente && (
+                    <span className="sheet-prezzo-anno">Annata {annoCorrente}</span>
+                  )}
+                </p>
+              )}
+            </div>
           </div>
-          <h3 className="sheet-name">{w.name}</h3>
           {metaItems.length > 0 && (
             <ul className="sheet-meta-chips">
               {metaItems.map((m, i) => (
-                <li key={i} className="sheet-meta-chip">
+                <li
+                  key={i}
+                  className={
+                    "sheet-meta-chip" + (chipLuogo(m) ? " sheet-meta-chip--luogo" : "")
+                  }
+                >
                   {m}
                 </li>
               ))}
@@ -569,7 +683,11 @@ export function ProductSheet({ w, category, onClose, type }) {
             </div>
           )}
           {annate?.length > 0 && (
-            <div className="sheet-annate">
+            <div
+              className={
+                "sheet-annate" + (annateRidondanti ? " sheet-annate--ridondante" : "")
+              }
+            >
               <span className="sheet-label">Annate e prezzi</span>
               {/* la chiave è l'indice e non `a.anno`: lo stesso anno può
                   ripetersi e su champagne l'anno è sempre vuoto, quindi

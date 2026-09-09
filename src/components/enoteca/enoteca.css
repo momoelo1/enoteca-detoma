@@ -1310,6 +1310,27 @@ svg.product-food-svg {
   outline-offset: 2px;
 }
 
+/* ---- .sheet-hero / .sheet-ident: accesi solo per i vini ----
+   ProductSheet emette due contenitori attorno all'intestazione (.sheet-hero
+   tiene riquadro + identità, .sheet-ident tiene occhiello + nome + prezzo) e
+   due pezzi in più, l'occhiello della regione e il prezzo in evidenza. Servono
+   alla scheda dei VINI, che ha un'impaginazione sua (in fondo al file).
+
+   Per birre, distillati e alimentari sono spenti, ed è questo lo stato di
+   partenza: `display: contents` toglie i due contenitori dal layout — riquadro
+   e nome tornano a essere figli diretti di .sheet-scroll, con lo stesso gap di
+   sempre — e i pezzi in più non si vedono. Quelle tre schede restano quindi
+   identiche a com'erano prima che i vini prendessero la loro strada. */
+.sheet-hero,
+.sheet-ident {
+  display: contents;
+}
+
+.sheet-eyebrow,
+.sheet-prezzo {
+  display: none;
+}
+
 .sheet-thumb {
   position: relative;
   /* punto d'arrivo del volo della miniatura (utils/volo.js): la partenza è la
@@ -1338,6 +1359,73 @@ svg.product-food-svg {
     transparent 72%
   );
   pointer-events: none;
+}
+
+/* ---- le foto del prodotto nella scheda ----
+   Un prodotto può averne più d'una (backend: `img` è un array sui vini). Stanno
+   tutte nel DOM, una sopra l'altra dentro il riquadro, e a turno una sola è
+   opaca: il cambio è così una dissolvenza fra due immagini già scaricate,
+   invece di uno scatto su un riquadro vuoto mentre la prossima arriva.
+
+   `position: absolute` e non un flex a scorrimento perché il riquadro è già il
+   punto d'arrivo del volo della miniatura (view-transition-name su
+   .sheet-thumb) e deve restare uno e uno solo. Il centraggio che il riquadro
+   faceva da sé con flexbox lo rifà qui dentro ogni strato, così .sheet-img
+   resta identica a com'era. */
+.sheet-foto {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  pointer-events: none;
+}
+
+.sheet-foto--attiva {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-foto {
+    transition: none;
+  }
+}
+
+/* i puntini sotto il riquadro: dicono quante foto ci sono e permettono di
+   sceglierne una. Toccarne uno spegne la rotazione automatica (vedi
+   ProductSheet in Enoteca.jsx) — chi ha scelto una foto la sta guardando.
+   Fuori da .sheet-thumb di proposito: dentro finirebbero nel ritaglio del
+   riquadro e, peggio, dentro lo scatto del volo della miniatura. */
+.sheet-punti {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: -2px;
+}
+
+.sheet-punto {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #2e5e46) 28%, transparent);
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.sheet-punto--attivo {
+  background: var(--accent, #2e5e46);
+  transform: scale(1.25);
+}
+
+.sheet-punto:focus-visible {
+  outline: 2px solid var(--accent, #2e5e46);
+  outline-offset: 2px;
 }
 
 .sheet-img {
@@ -1745,4 +1833,248 @@ svg.product-food-svg {
    va prima al prezzo "vivo" */
 .product-annate-row:not(.product-annate-row--current) {
   opacity: 0.72;
+}
+
+/* =========================================================================
+   SCHEDA PRODOTTO — VINI
+   =========================================================================
+   Il pannello dei vini ha un'impaginazione sua, che cambia forma con lo
+   schermo: incolonnata sul telefono, a copertina nella finestra desktop.
+   Sta in fondo al file di proposito — tocca .sheet-thumb, .sheet-desc e
+   .sheet-name, che più in alto hanno regole a specificità pari dentro le
+   media query dei 640px: qui la specificità è di due classi e vincerebbe
+   comunque, ma la posizione lo rende leggibile senza doverlo verificare
+   (stessa convenzione di .product-thumb-img--vini).
+
+   Cos'è cambiato rispetto al pannello di prima, e perché (misurato sui 383
+   vini in catalogo il 2026-09-09):
+
+   - il riquadro della foto era alto 130px e largo quanto il pannello: la
+     bottiglia ci stava dentro 86×130 e tutto il resto era alone. Ora il
+     riquadro prende la proporzione 2:3 in cui `bottleFrame` impagina già
+     ogni foto (utils/cloudinary.js), quindi la bottiglia lo riempie e
+     cresce con lui;
+   - l'etichetta "Note di degustazione" e il trattino sotto costavano ~40px
+     per non dire niente che il testo non dicesse da sé: al loro posto un
+     filo sottile;
+   - il prezzo esisteva SOLO in fondo alla tabella "Annate e prezzi", cioè
+     sotto la piega su un telefono. Ora sta accanto al nome;
+   - e quella tabella sparisce quando ripeterebbe solo quel prezzo — una
+     sola annata con un solo formato, che oggi è il caso di tutti e 383 i
+     vini. Torna da sé appena il negozio inserisce una seconda annata o un
+     magnum (vedi `annateRidondanti` in Enoteca.jsx);
+   - la regione sale sopra il nome come occhiello invece di essere una chip:
+     è quasi sempre l'unica chip che esiste (356 vini su 383 hanno
+     `regione`, nessuno ha denominazione, uvaggio, stile, tipo, colore o
+     gradazione), quindi lassù non costa una riga in più. */
+
+.product-sheet--vini .sheet-hero,
+.product-sheet--vini .sheet-ident {
+  display: flex;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.product-sheet--vini .sheet-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #2e5e46);
+}
+
+.product-sheet--vini .sheet-prezzo {
+  display: flex;
+  margin: 0;
+  gap: 2px;
+}
+
+.product-sheet--vini .sheet-prezzo-val {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent, #2e5e46);
+  font-variant-numeric: tabular-nums;
+}
+
+.product-sheet--vini .sheet-prezzo-anno {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #7a7a7a;
+}
+
+/* i pezzi che l'intestazione nuova ha reso doppi o inutili */
+.product-sheet--vini .sheet-desc-label,
+.product-sheet--vini .sheet-divider,
+.product-sheet--vini .sheet-meta-chip--luogo,
+.product-sheet--vini .sheet-annate--ridondante {
+  display: none;
+}
+
+.product-sheet--vini .sheet-thumb {
+  flex: none;
+  align-self: center;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+
+/* il segnaposto (4 vini su 5 non hanno ancora la foto) cresce col riquadro
+   invece di restare i 130px fissi di prima */
+.product-sheet--vini .sheet-svg {
+  height: 74%;
+}
+
+.product-sheet--vini .sheet-desc-block {
+  align-items: stretch;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(46, 94, 70, 0.14);
+}
+
+/* Il `margin: 0 auto` della regola base centrava i suoi 46ch dentro il
+   pannello, e sul desktop il testo partiva rientrato di 70px rispetto al filo
+   e al nome. Il tetto in ch non serve più — a decidere la misura è una
+   percentuale, 100% qui e 80% nella finestra desktop — e il margine a zero
+   appoggia il paragrafo a sinistra come tutto il resto. */
+.product-sheet--vini .sheet-desc {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  font-size: 17px;
+  /* interlinea stretta: sul telefono le righe sono corte, l'occhio ritrova da
+     sé l'inizio della successiva e l'aria in mezzo costa solo altezza */
+  line-height: 1.24;
+}
+
+/* ---- telefono: incolonnata ----
+   Regole senza media query, quindi valgono da qui in giù finché la finestra
+   desktop non le riscrive: è la forma di partenza, mobile-first come il resto
+   del sito. Il pannello qui è il foglio che sale dal basso e occupa tutta la
+   larghezza dello schermo, quindi la bottiglia sta al centro con nome, regione
+   e prezzo incolonnati sotto di lei.
+
+   I corpi crescono in modo continuo fra un telefono piccolo (360px) e il punto
+   in cui il pannello raggiunge il suo massimo di 560px, con la forma
+   `clamp(min, A vw + B px, max)` dove A = (max − min) / (560 − 360) e
+   B = min − A × 360: a 360px vale esattamente il minimo, a 560px il massimo.
+   Serve perché fra quei due estremi ci stanno davvero tutti i telefoni in
+   giro, dal piccolo al Pro Max. */
+.product-sheet--vini .sheet-hero {
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.product-sheet--vini .sheet-thumb {
+  width: 40%;
+}
+
+.product-sheet--vini .sheet-ident {
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.product-sheet--vini .sheet-name {
+  font-size: clamp(19.5px, 1.25vw + 15px, 22px);
+  line-height: 1.2;
+}
+
+/* prezzo e annata sulla stessa riga: incolonnati sarebbero due righe centrate
+   sotto un nome già centrato, e la scheda diventerebbe una pila di titoli */
+.product-sheet--vini .sheet-prezzo {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.product-sheet--vini .sheet-prezzo-val {
+  font-size: clamp(26.5px, 1.25vw + 22px, 29px);
+}
+
+/* ---- finestra desktop: a copertina ----
+   Sopra i 640px il pannello smette di essere un foglio che sale dal basso e
+   diventa una finestra centrata (vedi .sheet-backdrop più in alto), sempre
+   larga 560px: la bottiglia allora si prende tutta quella larghezza come una
+   copertina, e sotto di lei il nome va a sinistra e il prezzo a destra, sulla
+   stessa riga. Niente clamp qui: a 641px il pannello è GIÀ al suo massimo
+   (641 − 48 di backdrop = 593 > 560), quindi da questa soglia in poi non
+   cresce più niente e i valori fissi sono esatti, non approssimati. */
+@media (min-width: 641px) {
+  .product-sheet--vini .sheet-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .product-sheet--vini .sheet-thumb {
+    width: 100%;
+    aspect-ratio: auto;
+    height: 300px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--accent, #2e5e46) 7%, transparent);
+  }
+
+  /* la copertina qui ha un fondo suo che si vede: senza questo margine la
+     bottiglia (alta quanto il suo strato) poggia esattamente sui bordi
+     arrotondati e sembra incastrata. Sul telefono non serve — lì il riquadro
+     è trasparente e non ha bordi da toccare. */
+  .product-sheet--vini .sheet-foto {
+    inset: 16px 0;
+  }
+
+  /* `flex-wrap` con l'occhiello a tutta riga: regione sopra, poi nome e
+     prezzo che si spartiscono la riga sotto */
+  .product-sheet--vini .sheet-ident {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
+    text-align: left;
+  }
+
+  .product-sheet--vini .sheet-eyebrow {
+    flex-basis: 100%;
+    font-size: 12px;
+  }
+
+  .product-sheet--vini .sheet-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 23px;
+    line-height: 1.18;
+    text-align: left;
+  }
+
+  .product-sheet--vini .sheet-prezzo {
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .product-sheet--vini .sheet-prezzo-val {
+    font-size: 30px;
+  }
+
+  /* 80% invece di tutta la larghezza: sui 516px di contenuto del pannello
+     grande una riga piena è troppo lunga da rileggere. E righe lunghe vogliono
+     più aria fra loro di quanta ne serva sul telefono. */
+  .product-sheet--vini .sheet-desc {
+    width: 80%;
+    line-height: 1.34;
+  }
+
+  /* la copertina passa SOTTO il ✕: il tondo si fa più solido per restare
+     leggibile sopra l'alone */
+  .product-sheet--vini .sheet-close {
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  }
+
+  .product-sheet--vini .sheet-meta-chips {
+    justify-content: flex-start;
+  }
 }

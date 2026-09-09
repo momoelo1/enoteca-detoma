@@ -137,7 +137,10 @@ function VetrinaCard({ item, type, onOpen, i }) {
           </span>
         )}
         <span className="consiglio-thumb">
-          {item.img ? (
+          {/* si controlla l'URL e non `item.img`: sui vini quello è un array,
+              e un array vuoto in JS è truthy (vedi elencoFoto in
+              utils/cloudinary.js) */}
+          {fotoProdotto(item, type) ? (
             <img
               src={fotoProdotto(item, type)}
               alt=""

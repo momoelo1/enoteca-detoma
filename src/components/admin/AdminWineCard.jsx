@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
 import { ML_NOTI, etichettaFormato, prezzoProdotto } from "../../utils/prezzo";
+import { elencoFoto } from "../../utils/cloudinary";
 import StellaConsigliato from "./StellaConsigliato";
 
 
@@ -72,7 +73,10 @@ const toForm = (wine) => ({
   name: wine?.name || "",
   regione: wine?.regione || "",
   paese: wine?.paese || "",
-  img: wine?.img || "",
+  // un vino può avere più foto (backend: models/Wine.js). `elencoFoto` regge
+  // sia l'array sia la vecchia stringa singola dei vini non ancora risalvati,
+  // e butta i vuoti — qui dentro `img` è SEMPRE un array.
+  img: elencoFoto(wine),
   description: wine?.description || "",
   annate: toAnnate(wine),
 });
@@ -81,7 +85,7 @@ const EMPTY_FORM = {
   name: "",
   regione: "",
   paese: "",
-  img: "",
+  img: [],
   description: "",
   annate: [annataVuota()],
 };
@@ -198,16 +202,47 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     }, 200);
   };
 
-  // legge il file scelto e lo tiene come data URL: nessun upload separato
-  // da gestire, ma i documenti diventano più pesanti — va bene per ora,
-  // un hosting immagini vero resta un passo futuro
-  const handleImageFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, img: reader.result }));
-    reader.readAsDataURL(file);
+  // Legge i file scelti e li tiene come data URL: nessun upload separato da
+  // gestire, ma i documenti diventano più pesanti — va bene per ora, un
+  // hosting immagini vero resta un passo futuro.
+  //
+  // Se ne possono scegliere più d'uno in un colpo solo, e si AGGIUNGONO a
+  // quelle che già ci sono invece di sostituirle: aggiungere la seconda foto a
+  // un vino fotografato è il gesto normale, e se il campo si svuotasse ogni
+  // volta bisognerebbe ricaricarle tutte insieme ogni volta.
+  //
+  // `Promise.all` e non un `onload` che accoda: due letture in volo che fanno
+  // ognuna `setForm(f => [...f.img, sua])` partono dallo stesso stato e la
+  // seconda cancella la prima. Si aspetta che siano pronte tutte e si accodano
+  // in un aggiornamento solo, nell'ordine in cui sono state scelte.
+  const handleImageFile = async (e) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const letti = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise((risolvi) => {
+            const reader = new FileReader();
+            reader.onload = () => risolvi(reader.result);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+    setForm((f) => ({ ...f, img: [...f.img, ...letti] }));
+    // così riscegliere lo stesso file subito dopo riparte davvero: senza,
+    // l'input non emette `change` perché il valore non è cambiato
+    e.target.value = "";
   };
+
+  // La prima foto è quella che si vede sulla card in catalogo e nella fascia
+  // della home: le altre si vedono solo nella scheda, a turno. Quindi
+  // scegliere la copertina serve, e senza questo bottone l'unico modo sarebbe
+  // cancellare e ricaricare tutto nell'ordine giusto.
+  const portaInTesta = (index) =>
+    setForm((f) => ({
+      ...f,
+      img: [f.img[index], ...f.img.filter((_, i) => i !== index)],
+    }));
 
   const startEdit = () => {
     setForm(toForm(wine));
@@ -321,21 +356,38 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     }
   };
 
-  // rimuove la foto: se è già caricata su Cloudinary (vino salvato) la
-  // cancella davvero anche lato storage, non solo il riferimento; se è
-  // solo un'anteprima locale non ancora salvata basta svuotare il form
-  const handleDeleteImage = async () => {
-    const isUnsavedPreview = form.img.startsWith("data:");
-    if (isNew || isUnsavedPreview || !wine?.img) {
-      setForm((f) => ({ ...f, img: "" }));
+  // Rimuove UNA foto: se è già caricata su Cloudinary (vino salvato) la
+  // cancella davvero anche lato storage, non solo il riferimento; se è solo
+  // un'anteprima locale non ancora salvata basta toglierla dal form.
+  //
+  // L'indice da mandare al backend NON è quello del form: dentro il form
+  // possono esserci anteprime nuove non ancora salvate, e l'ordine può essere
+  // stato cambiato con "Copertina" senza aver ancora salvato. Quello che conta
+  // è la posizione nell'elenco che il server ha ADESSO, e la si ritrova
+  // dall'URL.
+  const handleDeleteImage = async (index) => {
+    const url = form.img[index];
+    const togliDalForm = () =>
+      setForm((f) => ({ ...f, img: f.img.filter((_, i) => i !== index) }));
+
+    if (isNew || url.startsWith("data:")) {
+      togliDalForm();
       return;
     }
+
+    const indiceSulServer = elencoFoto(wine).indexOf(url);
+    if (indiceSulServer === -1) {
+      // in archivio non c'è: non c'è niente da cancellare lato storage
+      togliDalForm();
+      return;
+    }
+
     if (!window.confirm("Eliminare l'immagine in modo permanente?")) return;
     setError("");
     try {
-      const updated = await deleteWineImage(wine.id);
+      const updated = await deleteWineImage(wine.id, indiceSulServer);
       onUpdated(updated);
-      setForm((f) => ({ ...f, img: "" }));
+      togliDalForm();
     } catch (err) {
       setError(err.message);
     }
@@ -514,23 +566,48 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
         </div>
 
         <div className="admin-field">
-          <label>Immagine</label>
-          <input type="file" accept="image/*" onChange={handleImageFile} />
-          {form.img && (
-            <div className="admin-image-preview-wrap">
-              <img src={form.img} alt="" className="admin-image-preview" />
-              <button
-                type="button"
-                className="admin-image-remove"
-                onClick={handleDeleteImage}
-                aria-label="Rimuovi immagine"
-                title="Rimuovi immagine"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13h8l1-13" />
-                </svg>
-              </button>
-            </div>
+          <label>Immagini</label>
+          <input type="file" accept="image/*" multiple onChange={handleImageFile} />
+          {form.img.length > 0 && (
+            <>
+              <ul className="admin-image-list">
+                {form.img.map((src, i) => (
+                  // la chiave è l'URL: gli indici cambiano quando si sposta una
+                  // foto in testa, e React riuserebbe l'anteprima sbagliata
+                  <li key={src} className="admin-image-preview-wrap">
+                    <img src={src} alt="" className="admin-image-preview" />
+                    {i === 0 ? (
+                      <span className="admin-image-copertina">Copertina</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="admin-image-promuovi"
+                        onClick={() => portaInTesta(i)}
+                        title="Usa come copertina"
+                      >
+                        Copertina
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="admin-image-remove"
+                      onClick={() => handleDeleteImage(i)}
+                      aria-label={`Rimuovi immagine ${i + 1}`}
+                      title="Rimuovi immagine"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 7h12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13h8l1-13" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="admin-image-nota">
+                {form.img.length === 1
+                  ? "Una foto sola: si vede sulla card e nella scheda."
+                  : `${form.img.length} foto: sulla card si vede la copertina, nella scheda scorrono tutte.`}
+              </p>
+            </>
           )}
         </div>
         <div className="admin-field">

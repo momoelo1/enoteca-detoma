@@ -646,10 +646,70 @@
 }
 
 /* ---- immagine: file input + anteprima ---- */
+/* le foto di un vino: più d'una, in fila, e scorrono di lato quando non ci
+   stanno — il dialogo è stretto e su telefono è quasi tutto lo schermo */
+.admin-image-list {
+  list-style: none;
+  margin: 8px 0 0;
+  /* in alto e ai lati spazio per la ✕ che sborda dall'angolo, in basso per
+     l'etichetta della copertina che sborda sotto la miniatura */
+  padding: 10px 10px 16px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+/* una bottiglia alta 90px è larga una sessantina: l'etichetta "Copertina" è
+   più larga di così, quindi la casella ha una misura minima sua e la
+   miniatura ci sta dentro centrata. Senza, le etichette di due foto vicine
+   si sovrapponevano. */
 .admin-image-preview-wrap {
   position: relative;
-  display: inline-block;
-  margin-top: 8px;
+  flex: none;
+  min-width: 84px;
+  display: flex;
+  justify-content: center;
+}
+
+/* quale foto va sulla card del catalogo. Sulla prima è un'etichetta e basta,
+   sulle altre è il bottone che la porta al primo posto */
+.admin-image-copertina,
+.admin-image-promuovi {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.admin-image-copertina {
+  color: #fff;
+  background: #2e5e46;
+  border: 1px solid #2e5e46;
+}
+
+.admin-image-promuovi {
+  color: #2e5e46;
+  background: #fff;
+  border: 1px solid rgba(46, 94, 70, 0.35);
+  cursor: pointer;
+}
+
+.admin-image-promuovi:hover {
+  background: rgba(46, 94, 70, 0.1);
+}
+
+.admin-image-nota {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #7a7a7a;
 }
 
 .admin-image-preview {

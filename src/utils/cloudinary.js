@@ -55,18 +55,40 @@ export const trimBorder = (url) => withTransform(url, "e_trim");
 export const bottleFrame = (url) =>
   withTransform(url, "e_trim/c_pad,ar_2:3,b_transparent");
 
+// Le foto di un prodotto, come elenco pulito.
+//
+// `img` sui vini è un array dal 2026-09-09 (backend: models/Wine.js), ma
+// l'archivio non è stato migrato e non ha bisogno di esserlo: Mongoose avvolge
+// da sé la vecchia stringa singola, quindi dall'API può arrivare l'una o
+// l'altra forma. Birre e alimentari hanno ancora la stringa e basta.
+//
+// Il `filter(Boolean)` NON è prudenza generica, serve a un caso reale: una
+// foto cancellata lasciava in archivio la stringa vuota, che riletta da un
+// campo array torna [""] — lungo 1, e in JS pure truthy. Senza il filtro quei
+// prodotti (2 in produzione al 2026-09-09) mostrerebbero una <img> rotta
+// invece del segnaposto disegnato.
+export const elencoFoto = (item) =>
+  (Array.isArray(item?.img) ? item.img : [item?.img]).filter(Boolean);
+
 // L'unico posto che sceglie la ricetta in base al tipo di prodotto: le due
 // qui sopra dicono COME si trasforma una foto, questa dice QUALE serve.
 // Birre e distillati restano intatti — le loro foto non sono state misurate.
-//
-// Lo chiamano le tre viste che mostrano una foto di prodotto (la card e la
-// scheda in Enoteca.jsx, la fascia dei consigli in Home.jsx), e sta qui e non
-// lì perché un file che esporta componenti non può esportare anche funzioni:
-// il Fast Refresh smetterebbe di funzionare su tutto il file (regola
-// react-refresh). Stessa ragione per cui formatPrezzo vive in utils/prezzo.js.
-export const fotoProdotto = (item, type) => {
-  if (!item.img) return item.img;
-  if (type === "alimentari") return trimBorder(item.img);
-  if (type === "vini") return bottleFrame(item.img);
-  return item.img;
+const ricetta = (url, type) => {
+  if (type === "alimentari") return trimBorder(url);
+  if (type === "vini") return bottleFrame(url);
+  return url;
 };
+
+// Tutte le foto già trasformate. La usa la scheda prodotto, che le fa scorrere.
+//
+// Sta qui e non in Enoteca.jsx perché un file che esporta componenti non può
+// esportare anche funzioni: il Fast Refresh smetterebbe di funzionare su tutto
+// il file (regola react-refresh). Stessa ragione per cui formatPrezzo vive in
+// utils/prezzo.js.
+export const fotoProdotti = (item, type) =>
+  elencoFoto(item).map((url) => ricetta(url, type));
+
+// La PRIMA foto: quella che rappresenta il prodotto dove ce n'è posto per una
+// sola — la card del catalogo e la fascia dei consigli in home.
+// Torna `undefined` se non ce ne sono: chi chiama disegna il segnaposto.
+export const fotoProdotto = (item, type) => fotoProdotti(item, type)[0];
