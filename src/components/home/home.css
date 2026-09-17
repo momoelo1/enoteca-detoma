@@ -1,11 +1,44 @@
-/* ---- hero (pagina home) ---- */
+/* ---- hero (pagina home) ----
+   La home usa il meccanismo delle pagine negozio (body.page-pinned +
+   .page-scroll, vedi enoteca.css): `.hero` è la scatola ferma che riempie
+   quel che resta dello schermo, e dentro scorre `.hero-scroll`. Il fondo del
+   contenitore sta SOPRA la tab bar, quindi niente schede tagliate nella
+   fessura fra la barra e il bordo dello schermo.
+   Il padding LATERALE ce l'ha il contenitore che scorre e non `.hero`: da
+   fuori resterebbe escluso dalla corsa. Quello BASSO invece sta su `.hero`
+   apposta — è la riserva per la tab bar, vedi il commento sulla regola. */
 .hero {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* Gli stessi 56px che .shop-section riserva in fondo a Enoteca e Alimentari
+     (enoteca.css), e per la stessa ragione: la tab bar è `position: fixed` e
+     galleggia sopra la pagina, quindi sotto al contenitore che scorre ci vuole
+     una fascia in cui non arriva niente. Senza, la corsa della home finiva a
+     15px dalla barra (misurato sul telefono: fondo dello scorrevole a 568,
+     barra a 583) e l'ultima fila della dispensa le restava appiccicata
+     sotto; le pagine negozio, con la fascia, si fermano 71px più in alto.
+     La riserva sta QUI, fuori dallo scorrevole, com'è di là: dentro
+     allungherebbe soltanto la corsa, lasciando le schede libere di scendere
+     comunque fin sotto la barra.
+     `box-sizing` esplicito perché il progetto non ne ha uno globale: senza,
+     questi 56px si sommerebbero all'altezza del riquadro invece di toglierne
+     — stessa riga che .shop-section ha per lo stesso motivo. */
+  box-sizing: border-box;
+  padding-bottom: 56px;
+  text-align: center;
+}
+
+/* Niente `width: 100%` qui: il progetto non ha un box-sizing globale, quindi
+   larghezza piena PIÙ i 20px di lato facevano sporgere la pagina di 40px e il
+   racconto usciva dallo schermo a destra. Da figlio di una colonna flex si
+   allarga da sé, padding compreso. */
+.hero-scroll {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding: 8px 20px 56px;
-  text-align: center;
+  padding: 8px 20px;
 }
 
 .hero-title {
@@ -25,9 +58,20 @@
    Il taglio parte da destra e si ritira (`inset`), così la parola emerge da
    sinistra come sotto un pennino. Sopra e sotto il taglio è ALLARGATO
    (valori negativi): il corsivo ha svolazzi e code che escono dalla riga di
-   testo, e un ritaglio a filo li decapiterebbe. */
+   testo, e un ritaglio a filo li decapiterebbe.
+   AI LATI serviva la stessa aria, e non c'era: il taglio si fermava a filo
+   della parola (`inset` con 0 a destra e a sinistra) mentre le maiuscole del
+   corsivo — la T di Tre, la P di Passione — hanno svolazzi che escono da quel
+   bordo. Restavano tagliate per SEMPRE, perché l'animazione è `both` e
+   l'ultimo fotogramma non se ne va più. Allargare l'inset non bastava (le
+   percentuali vanno a peso della parola: l'8% di "Una" è un'inezia), quindi
+   si allarga la scatola: mezzo em di respiro per lato, che il margine
+   negativo si riprende subito. Il taglio ha l'aria che gli serve e le parole
+   restano distanti esattamente come prima. */
 .hero-parola {
   display: inline-block;
+  padding-inline: 0.5em;
+  margin-inline: -0.5em;
   animation: hero-scrittura 0.3s cubic-bezier(0.33, 1, 0.68, 1) both;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
@@ -172,20 +216,23 @@
   }
 }
 
-/* 150×206 e non più 116×152: la fascia era una nota a piè di pagina sotto la
-   foto di famiglia, adesso è la cosa che si guarda per prima. Sotto i 150px
-   di larghezza i nomi lunghi finivano tutti sui puntini alla seconda riga. */
+/* Dentro c'è solo la foto: niente nome, niente prezzo. La scheda resta alta
+   quanto prima (la fascia non si sposta) ma il suo contenuto è uno solo, che
+   quindi se la prende tutta — la foto passa da 92px a tutta la scheda.
+   La larghezza scende da 150 a 132px: i 150 servivano ai nomi lunghi, che
+   sotto quella misura finivano sui puntini alla seconda riga, e senza nomi
+   non li deve più reggere nessuno. Così se ne vedono tre per schermata
+   invece di due e mezzo. */
 .consiglio-card {
   position: relative;
   box-sizing: border-box;
-  width: 150px;
+  width: 132px;
   height: 206px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 14px 10px 12px;
+  justify-content: center;
+  padding: 12px 10px;
   overflow: hidden;
   font: inherit;
   color: inherit;
@@ -227,6 +274,25 @@
   }
 }
 
+/* ---- ritorno in home: niente benvenuto daccapo ----
+   Il titolo che si scrive, le schede che entrano in fila e il filo dorato
+   che si tira sono l'apertura della pagina: si guardano la prima volta. La
+   classe la mette Home.jsx dal secondo montaggio della visita in poi (vedi
+   `giaEntrata`), e sparisce da sé quando si ricarica il sito.
+
+   Due classi contro una: queste regole battono quelle qui sopra per
+   SPECIFICITÀ e non per ordine, quindi restano valide anche se un giorno
+   qualcuno sposta il blocco (è la trappola annotata in CLAUDE.md).
+
+   Il riflesso delle schede vuote NON si spegne qui, di proposito: quello
+   non è decorazione, dice che i prodotti stanno ancora arrivando. Nemmeno
+   la deriva dei nomi troppo lunghi, che serve a leggerli. */
+.hero--ferma .hero-parola,
+.hero--ferma .consiglio-cell,
+.hero--ferma .consiglio-card::before {
+  animation: none;
+}
+
 /* solo col puntatore vero: su touch l'hover resta acceso dopo il tocco
    (stesso problema annotato su .product-card-btn) */
 @media (hover: hover) {
@@ -248,8 +314,6 @@
   cursor: default;
   /* la scheda vuota non si tocca: non c'è ancora niente da aprire */
   pointer-events: none;
-  justify-content: flex-start;
-  gap: 10px;
 }
 
 /* niente sollevamento al passaggio del mouse su una scheda che non apre nulla */
@@ -270,7 +334,11 @@
 
 /* il riflesso che attraversa la scheda. Sta sulla scheda e non sui singoli
    blocchi: un'animazione per scheda invece di tre, e il riflesso continuo da
-   un blocco all'altro si legge come un'unica superficie che aspetta. */
+   un blocco all'altro si legge come un'unica superficie che aspetta.
+   La @keyframes `fantasma-riflesso` e il blocco `.fantasma-blocco` stanno in
+   enoteca.css da quando le schede vuote le ha anche il catalogo: quel foglio
+   è caricato prima di questo (Home.jsx importa Enoteca.jsx), quindi qui si
+   trovano sempre. */
 .consiglio-card--fantasma::after {
   content: "";
   position: absolute;
@@ -288,38 +356,15 @@
   animation-delay: calc(var(--i, 0) * 120ms);
 }
 
-@keyframes fantasma-riflesso {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-/* i blocchi al posto di foto, nome e prezzo. Le misure sono quelle del
-   contenuto vero: 96px è l'altezza della miniatura, le due righe sotto
-   stanno dove stanno nome e prezzo. */
-.fantasma-blocco {
-  flex: none;
-  background: rgba(46, 94, 70, 0.09);
-  border-radius: 6px;
-}
-
+/* il blocco al posto della foto, grande quanto lei: la scheda vuota e quella
+   piena hanno lo stesso ingombro, così all'arrivo dei prodotti cambia il
+   contenuto e non il telaio.
+   (Qui c'erano anche `.fantasma-nome` e `.fantasma-prezzo`, tolti insieme al
+   nome e al prezzo delle schede vere.) */
 .fantasma-thumb {
-  width: 74px;
-  height: 96px;
+  width: 100%;
+  height: 100%;
   border-radius: 8px;
-}
-
-.fantasma-nome {
-  width: 88%;
-  height: 11px;
-}
-
-.fantasma-prezzo {
-  width: 46%;
-  height: 11px;
 }
 
 /* mentre carica non c'è niente da raggiungere scorrendo */
@@ -327,28 +372,26 @@
   overflow-x: hidden;
 }
 
-.consiglio-star {
-  position: absolute;
-  top: 7px;
-  right: 8px;
-  font-size: 12px;
-  line-height: 1;
-  color: #c9a227;
-}
+/* Qui c'era `.consiglio-star`, la stelletta dorata in alto a destra. È
+   sparita con nome e prezzo: in una fascia che si chiama "I nostri consigli"
+   segnava come consigliato ogni singola scheda di un elenco di soli
+   consigliati. Nel catalogo la stella resta (lì distingue davvero). */
 
+/* la foto è l'unico contenuto: si prende tutta la scheda, dentro il padding */
 .consiglio-thumb {
-  flex: none;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 92px;
+  width: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .consiglio-img {
   height: 100%;
   width: auto;
-  max-width: 76px;
+  max-width: 100%;
   object-fit: contain;
 }
 
@@ -367,8 +410,11 @@
   max-width: 100%;
 }
 
+/* il segnaposto (prodotto senza foto) riempie la scheda come farebbe la
+   foto: a 84px fissi, in una scheda tutta immagine, sembrava perso in mezzo */
 .consiglio-svg {
-  height: 84px;
+  height: 100%;
+  max-height: 150px;
   width: auto;
   fill: #c9a227;
   color: #c9a227;
@@ -387,62 +433,13 @@ svg.consiglio-svg.product-food-svg {
   opacity: 0.6;
 }
 
-/* Spazio fisso per il nome: se il testo ci sta resta fermo, se ne serve di
-   più deriva in verticale (.consiglio-name--scroll) invece di troncarsi con
-   i puntini. È la stessa logica di .product-name-wrap in enoteca.css, che
-   però di righe ne tiene due: qui tre, perché la scheda è larga 150px e i
-   nomi dei vini alla seconda riga finivano quasi tutti sui puntini.
-   L'altezza è scritta come calcolo e non come numero tondo perché DEVE
-   restare tre righe esatte: cambiando font-size o line-height qui sotto,
-   cambia da sé. */
-.consiglio-name-wrap {
-  flex: none; /* mai schiacciata dal flexbox in una scheda più bassa del contenuto */
-  width: 100%;
-  height: calc(15px * 1.15 * 3);
-  overflow: hidden;
-}
-
-.consiglio-name {
-  display: block;
-  /* stesso font dei nomi in catalogo (.product-name in enoteca.css), a
-     peso 400: Marcellus non ne ha altri */
-  font-family: Marcellus, Georgia, serif;
-  font-size: 15px;
-  font-weight: 400;
-  line-height: 1.15;
-  color: #2e3d34;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  /* quando l'animazione si spegne (si scorre, la scheda esce di scena) il
-     testo torna in cima accompagnato, non con uno scatto */
-  transition: transform 0.3s ease;
-}
-
-/* nome troppo lungo anche su tre righe: deriva su e giù, rallentando ai
-   bordi per via dell'ease-in-out. Parte SEMPRE dall'inizio del ciclo (testo
-   in cima, poi discesa): niente delay negativo di sfasamento, che lo farebbe
-   comparire già a metà corsa, cioè dal basso. La corsa (--marquee-shift-y)
-   la misura Home.jsx sulla singola scheda. */
-.consiglio-name--scroll {
-  animation: consiglio-name-marquee 15s ease-in-out infinite;
-}
-
-@keyframes consiglio-name-marquee {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(var(--marquee-shift-y, 0));
-  }
-}
-
-.consiglio-price {
-  flex: none;
-  font-size: 14px;
-  font-weight: 700;
-  color: #2e5e46;
-}
+/* Qui stavano il nome (`.consiglio-name-wrap`, `.consiglio-name`), la sua
+   deriva verticale per i nomi lunghi (`.consiglio-name--scroll` più la
+   @keyframes `consiglio-name-marquee`) e il prezzo (`.consiglio-price`).
+   Sono spariti tutti insieme quando la fascia è diventata di sole foto: il
+   nome e il prezzo si leggono nella scheda che si apre toccando.
+   Il marquee verticale resta vivo nel catalogo, su `.product-name` in
+   enoteca.css — quello è un altro meccanismo, con la sua misura in Enoteca.jsx. */
 
 /* Chi ha chiesto meno animazioni al sistema vede la home ferma e completa:
    niente titolo che si scrive, niente schede che entrano. Il contenuto è
@@ -452,7 +449,6 @@ svg.consiglio-svg.product-food-svg {
 @media (prefers-reduced-motion: reduce) {
   .hero-parola,
   .consiglio-cell,
-  .consiglio-name--scroll,
   .consiglio-card::before,
   .consiglio-card--fantasma::after {
     animation: none;
@@ -480,16 +476,24 @@ body.home-no-scroll {
    barra è visibile il body resta più alto dello schermo di quei ~60px, e
    min-height batte height. Quell'avanzo era ciò che si riusciva a
    trascinare, portando via testata, "← Enoteca" e filtri.
-   Vale solo per category-open (lista prodotti) e non per tutte le pagine
-   home-no-scroll: sulle pagine indice quei ~60px sono spazio che la
-   griglia usa davvero, e toglierli tagliava le mini-card in fondo.
+   Vale per le LISTE di prodotti e non per tutte le pagine home-no-scroll:
+   sulle pagine indice quei ~60px sono spazio che la griglia usa davvero, e
+   toglierli tagliava le mini-card in fondo.
+   Due classi, perché le liste di prodotti sono di due specie: `category-open`
+   dentro una categoria o un reparto, dove la tab bar si toglie di mezzo, e
+   `consigliati-open` nella tab della selezione della casa, che è una lista
+   come le altre ma tiene la barra — di là si esce dalla categoria col
+   "← Enoteca", qui la barra è il modo di cambiare pagina. Per il resto sono
+   la stessa cosa, ed è per questo che stanno sulla stessa regola.
    DEVE stare dopo la regola qui sopra: stessa specificità, vince l'ordine. */
-html:has(body.category-open) {
+html:has(body.category-open),
+html:has(body.consigliati-open) {
   overflow: hidden;
   overscroll-behavior: none; /* niente rimbalzo elastico ai bordi */
 }
 
-body.category-open {
+body.category-open,
+body.consigliati-open {
   min-height: 0;
   overscroll-behavior: none;
 }
@@ -512,10 +516,10 @@ body.home-no-scroll .hero {
   min-height: 0;
 }
 
-body.home-no-scroll .hero-stories {
-  flex: 1;
-  min-height: 0;
-}
+/* Qui c'era anche `body.home-no-scroll .hero-stories { flex: 1 }`, dei tempi
+   in cui la home non scorreva e il racconto doveva prendersi lo spazio che
+   avanzava. Adesso il racconto sta DENTRO il contenitore che scorre, e quella
+   riga lo stirava spingendo le due fasce fuori dalla prima schermata. */
 
 .hero-cta {
   font-size: 16px;
@@ -544,8 +548,8 @@ body.home-no-scroll .hero-stories {
 
 /* ---- phone: tutto compatto ---- */
 @media (max-width: 640px) {
-  .hero {
-    padding: 0 14px 32px;
+  .hero-scroll {
+    padding: 0 14px;
     gap: 12px;
   }
 
@@ -568,15 +572,11 @@ body.home-no-scroll .hero-stories {
   }
 
   .consiglio-card {
-    width: 138px;
+    width: 122px;
     height: 190px;
   }
 
-  .consiglio-thumb {
-    height: 82px;
-  }
-
   .consiglio-svg {
-    height: 76px;
+    max-height: 138px;
   }
 }

@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ALIMENTARI_CATEGORIES } from "../../data/data";
-import { ProductCard, ProductSheet } from "../enoteca/Enoteca";
+import {
+  ProductCard,
+  ProductSheet,
+  GroupTabs,
+  ListaFantasma,
+  GrigliaFantasma,
+  ORO_CASA,
+} from "../enoteca/Enoteca";
+import Immagine from "../immagine/Immagine";
+import { effettoTocco } from "../effetti/effetti";
 import {
   getAlimentari,
   getAlimentariConsigliati,
 } from "../../services/alimentari";
+import { ricorda, gia, CHIAVI } from "../../services/cache";
 import { normalize } from "../../utils/normalize";
 import { productSlug } from "../../utils/productSlug";
-import { coloreGruppoAlimentari } from "../../utils/coloreCategoria";
-import { versa } from "../transition/versa";
 import { useAccentoSfondo } from "../background/tinta";
 import "./gastronomia.css";
 
@@ -63,9 +71,24 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
   const repartoValido = ALIMENTARI_CATEGORIES.some((c) => c.id === reparto);
   const tab = repartoValido ? reparto : tabState;
 
-  const [items, setItems] = useState([]);
+  // quel che di questo reparto è già stato scaricato in questa visita
+  // (services/cache.js): rientrando negli Alimentari la griglia è già lì
+  const [items, setItems] = useState(() => gia(CHIAVI.reparto(tab)) ?? []);
+  const [loadedFor, setLoadedFor] = useState(() =>
+    gia(CHIAVI.reparto(tab)) ? tab : null,
+  );
 
-  const [loadedFor, setLoadedFor] = useState(null);
+  // Cambio di reparto con il catalogo già in memoria: si mostra subito,
+  // senza passare dalle schede vuote. È il "correggere lo stato durante il
+  // render" che React documenta per reagire a un cambio di prop — lo stesso
+  // modo con cui l'Enoteca azzera i filtri al cambio di categoria — e non un
+  // setState dentro un effect, che il React Compiler non vuole (CLAUDE.md).
+  const repartoInMemoria = gia(CHIAVI.reparto(tab));
+  if (loadedFor !== tab && repartoInMemoria) {
+    setItems(repartoInMemoria);
+    setLoadedFor(tab);
+  }
+
   const loading = loadedFor !== tab;
 
   const activeCategory = ALIMENTARI_CATEGORIES.find((c) => c.id === tab);
@@ -89,7 +112,7 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
     // sulla tab Consigliati il catalogo del reparto non serve a nessuno
     if (consigliatiRoute) return;
     let annullato = false;
-    getAlimentari(tab)
+    ricorda(CHIAVI.reparto(tab), () => getAlimentari(tab))
       .then((data) => {
         if (annullato) return;
         setItems(data || []);
@@ -108,10 +131,14 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
   // selezione della casa: si scarica solo entrando nella tab, e una volta
   // sola. `null` = mai chiesta, ed è da lì che si deriva "sto caricando"
   // (niente setState dentro un effect per segnalarlo — vedi CLAUDE.md)
-  const [consigliati, setConsigliati] = useState(null);
+  // sono gli STESSI della fascia "Dalla dispensa" in home: passando di lì
+  // sono già in memoria e questa tab apre piena
+  const [consigliati, setConsigliati] = useState(
+    () => gia(CHIAVI.alimentariConsigliati) ?? null,
+  );
   useEffect(() => {
     if (!consigliatiRoute || consigliati) return;
-    getAlimentariConsigliati()
+    ricorda(CHIAVI.alimentariConsigliati, getAlimentariConsigliati)
       .then((d) => setConsigliati(d || []))
       // rete giù: elenco vuoto, che la pagina già sa raccontare — meglio
       // di una tab bloccata per sempre su "Caricamento…"
@@ -150,9 +177,7 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
     };
   }, [groupOpen]);
 
-  // La tab Consigliati fa eccezione, come in Enoteca: è una pila di reparti,
-  // non una griglia che sta in una schermata, quindi deve scorrere il
-  // documento intero — niente page-pinned, niente home-no-scroll.
+  // la griglia dei gruppi è una pagina indice: testata ferma e basta
   useEffect(() => {
     if (groupOpen || consigliatiRoute) return;
     document.body.classList.add("home-no-scroll");
@@ -163,23 +188,47 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
     };
   }, [groupOpen, consigliatiRoute]);
 
-  // I gruppi non hanno un accento proprio in data.js (ce l'ha il reparto) e li
-  // inventa l'admin dal pannello: il colore si ricava dalla posizione nella
-  // lista, così Pesto e Miele non versano la stessa identica tinta.
-  const coloreGruppo = (g) =>
-    coloreGruppoAlimentari(tab, gruppi.indexOf(g), gruppi.length);
+  // La tab Consigliati è una lista di prodotti e scorre come un reparto, ma
+  // tiene la tab bar: vedi il commento gemello in Enoteca.jsx.
+  useEffect(() => {
+    if (groupOpen || !consigliatiRoute) return;
+    document.body.classList.add("home-no-scroll");
+    document.body.classList.add("consigliati-open");
+    return () => {
+      document.body.classList.remove("home-no-scroll");
+      document.body.classList.remove("consigliati-open");
+    };
+  }, [groupOpen, consigliatiRoute]);
 
-  // lo sfondo tiene il colore del gruppo aperto, come in Enoteca
-  useAccentoSfondo(gruppoAperto ? coloreGruppo(gruppoAperto) : null);
+  // Gli alimentari NON tingono lo sfondo: qui si resta sui colori di casa
+  // anche a gruppo aperto. È una scelta, non una dimenticanza — tingere resta
+  // dell'Enoteca. Il `null` è esplicito apposta: tiene la casa finché la
+  // pagina è montata, senza dipendere dal fatto che chi arrivava prima abbia
+  // ripulito la sua tinta.
+  //
+  // Per rimettere la tinta serve anche il colore del gruppo, che non esiste
+  // più: i gruppi non hanno un accento proprio in data.js (ce l'ha il
+  // reparto) e li inventa l'admin dal pannello, quindi si ricavava dalla
+  // posizione nella lista con `coloreGruppoAlimentari(tab, gruppi.indexOf(g),
+  // gruppi.length)` (utils/coloreCategoria.js, ancora lì).
+  useAccentoSfondo(null);
 
   // la tab attiva: Consigliati la decide la rotta, i due reparti lo stato
   // locale (restano com'erano — non finiscono nell'URL da soli)
   const activeTab = consigliatiRoute ? "consigliati" : tab;
 
   const openTab = (id) => {
+    if (id === "consigliati") return navigate("/alimentari/consigliati");
     setTabState(id);
     if (consigliatiRoute) navigate("/alimentari"); // si esce dai consigli
   };
+  // le voci delle tab: i due reparti di data.js più la selezione della casa,
+  // nello stesso oro della tab Consigliati dell'Enoteca — vale uguale nei
+  // due reparti del negozio
+  const vociTab = [
+    ...ALIMENTARI_CATEGORIES.map((c) => ({ id: c.id, label: c.label, accent: c.accent })),
+    { id: "consigliati", label: "Consigliati", accent: ORO_CASA },
+  ];
 
   const closeGroup = () => {
     // tornando indietro l'URL perde il reparto: va ricordato nella tab
@@ -205,7 +254,7 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
         </div>
 
         {loading ? (
-          <p className="product-empty">Caricamento…</p>
+          <ListaFantasma type="alimentari" className="product-list--alimentari" />
         ) : !gruppoAperto ? (
           <p className="product-empty">
             Questo gruppo non c'è più — torna agli Alimentari.
@@ -219,6 +268,7 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
                 accent={activeCategory.accent}
                 onOpen={openProduct}
                 type="alimentari"
+                i={i}
               />
             ))}
           </ul>
@@ -242,45 +292,24 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
       <div className="section-sticky">
         <h2 className="section-title">Alimentari</h2>
 
-        {/* tab dei reparti: Gastronomia | Dolceria | Consigliati */}
-        <nav className="group-tabs" aria-label="Reparti">
-          {ALIMENTARI_CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={"group-tab" + (activeTab === c.id ? " is-active" : "")}
-              style={{ "--accent": c.accent }}
-              onClick={() => openTab(c.id)}
-            >
-              {c.label}
-            </button>
-          ))}
-          {/* stesso oro della tab Consigliati dell'Enoteca: la selezione
-              della casa vale uguale nei due reparti del negozio */}
-          <button
-            type="button"
-            className={
-              "group-tab" + (activeTab === "consigliati" ? " is-active" : "")
-            }
-            style={{ "--accent": "#c9a227" }}
-            onClick={() => navigate("/alimentari/consigliati")}
-          >
-            Consigliati
-          </button>
-        </nav>
+        {/* tab dei reparti: Gastronomia | Dolceria | Consigliati (stesso
+            componente dell'Enoteca, con la riga che scorre fra le voci) */}
+        <GroupTabs
+          voci={vociTab}
+          attiva={activeTab}
+          onScegli={openTab}
+          label="Reparti"
+        />
       </div>
 
       {consigliatiRoute ? (
         !consigliati ? (
-          <p className="product-empty">Caricamento…</p>
+          <ListaFantasma type="alimentari" className="product-list--alimentari" />
         ) : consigliatiGroups.length === 0 ? (
           <p className="product-empty">
             I consigli della casa arrivano presto — torna a trovarci.
           </p>
         ) : (
-          /* qui scorre il documento (nessun page-pinned, vedi l'effect
-             sopra): da cui `scrollSelector="window"` sulle card, che
-             altrimenti cercherebbero lo scroll in una lista che non scorre */
           <div className="consigliati-scroll">
             <p className="consigliati-intro">
               Quello che scegliamo noi dalla dispensa.
@@ -294,14 +323,15 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
                   {g.label}
                 </h3>
                 <ul className="product-list product-list--alimentari">
-                  {g.items.map((item) => (
+                  {g.items.map((item, i) => (
                     <ProductCard
                       key={item.id}
                       w={item}
                       accent={g.accent}
                       onOpen={openConsigliato}
                       type="alimentari"
-                      scrollSelector="window"
+                      scrollSelector=".consigliati-scroll"
+                      i={i}
                     />
                   ))}
                 </ul>
@@ -310,29 +340,41 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
           </div>
         )
       ) : loading ? (
-        <p className="product-empty">Caricamento…</p>
+        <GrigliaFantasma />
       ) : items.length === 0 ? (
         <p className="product-empty">
           Il catalogo è in arrivo — torna a trovarci presto.
         </p>
       ) : (
         <ul className="mini-grid page-scroll">
-          {gruppi.map((g) => {
+          {gruppi.map((g, i) => {
             const illustrazione = activeCategory.illustrazioni?.[g.id];
             return (
-              <li className="mini-cell" key={g.id || SENZA_GRUPPO}>
+              /* `--i`: la posizione, per la comparsa in fila (enoteca.css) */
+              <li className="mini-cell" key={g.id || SENZA_GRUPPO} style={{ "--i": i }}>
                 <button
                   type="button"
-                  className="mini-card mini-card--filigrana"
+                  /* `mini-card--gastronomia` / `--dolceria`: la famiglia,
+                     come sulle mini-card dell'Enoteca (vedi <MiniCard>).
+                     Il markup resta a mano e non passa da <MiniCard>, che
+                     metterebbe un'icona in filigrana ai gruppi che
+                     l'illustrazione non ce l'hanno */
+                  className={`mini-card mini-card--filigrana mini-card--${tab}`}
+                  /* il gruppo NON sceglie l'effetto (uno per reparto), ma
+                     effetti.js lo legge per tingere gli strati del colore
+                     di quel che c'è nel barattolo */
+                  data-gruppo={g.id}
                   style={{ "--accent": activeCategory.accent }}
-                  onClick={() =>
-                    versa(coloreGruppo(g), () =>
-                      navigate(`/alimentari/${tab}/${groupHref(g)}`)
+                  onClick={(e) =>
+                    effettoTocco(
+                      e,
+                      () => navigate(`/alimentari/${tab}/${groupHref(g)}`),
+                      tab,
                     )
                   }
                 >
                   {illustrazione && (
-                    <img
+                    <Immagine
                       src={illustrazione}
                       alt=""
                       className="mini-icon-watermark mini-icon-watermark--img"

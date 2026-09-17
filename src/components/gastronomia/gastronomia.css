@@ -9,10 +9,12 @@
 }
 
 
-body.home-no-scroll .product-list.product-list--alimentari {
-  scroll-snap-type: y proximity;
-  padding-bottom: 48px;
-}
+/* Qui c'era l'unica cosa che faceva scorrere una lista di alimentari
+   diversamente da una di vini: `padding-bottom: 48px` contro gli 8px di
+   `body.home-no-scroll .product-list` (enoteca.css), cioè 40px di coda vuota
+   in fondo che i vini non hanno. È stata tolta — le pagine prodotto si
+   comportano tutte come quelle dei vini — e con lei lo `scroll-snap-type`,
+   che ripeteva soltanto quello che la regola condivisa dà già a tutte. */
 
 .mini-count {
   display: block;

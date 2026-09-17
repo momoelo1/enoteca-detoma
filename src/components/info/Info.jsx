@@ -99,8 +99,8 @@ function Info() {
   // Le misure NON sono numeri scritti a mano: l'header è alto quanto il
   // logo e la tab bar quanto le sue icone più la safe area del telefono.
   const [hHeader, setHHeader] = useState(0);
-  // `sopra` = da dove comincia la tab bar, `sotto` = quanto resta scoperto
-  // sotto di lei. null = tab bar non fissa (da 641px in su sta nell'header)
+  // `sopra` = da dove comincia la tab bar, fessura in fondo compresa.
+  // null = tab bar non fissa (da 641px in su sta nell'header)
   const [barra, setBarra] = useState(null);
 
   useEffect(() => {
@@ -128,8 +128,11 @@ function Info() {
       // rect risente della trasformazione — misurata al montaggio la
       // davamo per 85px SOTTO il fondo dello schermo. `offsetHeight` e il
       // `bottom` calcolato sono di layout, quindi immuni all'animazione.
-      const sotto = parseFloat(cs.bottom) || 0;
-      setBarra({ sopra: nav.offsetHeight + sotto, sotto });
+      // `sopra` = quanto la barra occupa in fondo, fessura compresa: serve
+      // sia alla fascia coperta dalla finestra sia al fondo pagina. La
+      // fessura da sola (`sotto`) non serve più a nessuno — copriva solo i
+      // 12px scoperti e il contenuto si leggeva attraverso il vetro.
+      setBarra({ sopra: nav.offsetHeight + (parseFloat(cs.bottom) || 0) });
     };
     const ro = new ResizeObserver(misura);
     ro.observe(nav);
@@ -199,7 +202,14 @@ function Info() {
         aria-hidden="true"
         style={{
           "--h-alto": `${hHeader}px`,
-          "--h-basso": `${barra ? barra.sotto : 0}px`,
+          /* Tutta la tab bar, non solo i 12px scoperti sotto di lei
+             (`barra.sotto`): la barra è vetro translucido, quindi col solo
+             taglio basso il contenuto continuava a leggersi ATTRAVERSO la
+             barra, e la riga degli orari si vedeva sotto ai bottoni. Con la
+             fascia alta quanto barra+fessura il contenuto sparisce prima di
+             arrivarci, e la barra galleggia sullo sfondo come nelle altre
+             pagine, dove il contenuto si ferma sopra di lei. */
+          "--h-basso": `${barra ? barra.sopra : 0}px`,
         }}
       >
         <div className="pagina-finestra-sfondo">

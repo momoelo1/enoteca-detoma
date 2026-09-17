@@ -283,14 +283,20 @@ rapido che cercarla dentro il sito vero.
   Mentre i dati arrivano ogni fascia disegna **sei schede vuote** che portano la stessa
   classe delle vere. Da cui tre regole, tutte misurate il 2026-08-25:
 
+  **Dal 2026-09-16 le schede sono di sola FOTO**: niente nome, niente prezzo, niente
+  stella — il nome è l'`aria-label` del bottone. Quindi `.consiglio-name` **non esiste
+  più**, e chi lo usava come segnale di "dati arrivati" ora aspetta per sempre: il
+  selettore giusto è `.consiglio-card:not(.consiglio-card--fantasma)`.
+
   | vuoi sapere… | usa | NON usare |
   |---|---|---|
-  | quante schede vere ci sono | `count .consiglio-name` | `count .consiglio-card` — conta anche i fantasmi |
-  | se i dati sono arrivati | `wait-for .consiglio-name` | `wait-for .consigli-strip` — il telaio c'è **subito** |
+  | quante schede vere ci sono | `count .consiglio-card:not(.consiglio-card--fantasma)` | `count .consiglio-card` — conta anche i fantasmi |
+  | se i dati sono arrivati | `wait-for .consiglio-card:not(.consiglio-card--fantasma)` | `wait-for .consigli-strip` — il telaio c'è **subito**; `.consiglio-name` non esiste più |
   | se ha finito di caricare **tutto** | `count .consiglio-card--fantasma` = 0 | un `sleep` a caso |
+  | quale prodotto è quella scheda | l'`aria-label` del bottone | il testo dentro la scheda: è vuoto |
 
   Numeri veri di una corsa: appena `.consigli-strip >> nth=1` esiste →
-  `.consiglio-card = 12`, di cui `.consiglio-card--fantasma = 12` e `.consiglio-name = 0`.
+  `.consiglio-card = 12`, tutte e dodici `--fantasma`.
   Cioè: la vecchia attesa consigliata qui sopra ora ritorna **prima che esista un solo
   prodotto**. Le due fasce caricano indipendentemente, quindi a metà strada si vedono
   `7 = 1 vera + 6 fantasma`; a regime `2 / 0 / 2`.
@@ -491,6 +497,64 @@ screenshot vini
 '@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs
 ```
 
+## Foto dei prodotti: cosa è già stato misurato (2026-09-03)
+
+Prima di riproporre "togliamo lo sfondo automaticamente" o "alleggeriamo le
+immagini", questi numeri esistono già:
+
+- **Cloudinary SCONTORNA, su questo account.** *Corregge la riga che stava
+  qui dal 2026-09-03 ("Cloudinary NON scontorna"): era sbagliata.* Rimisurato
+  il **2026-09-07** su foto vere di produzione, non su una simulazione:
+  `e_background_removal` risponde `Content-Type: image/png`, nessun
+  `x-cld-error`, e sulla foto con lo sfondo bianco (Barbera d'Alba, Pio
+  Cesare) porta i pixel trasparenti da **0% a 73,3%** con **0% di buchi
+  interni** — resta la sola bottiglia, etichetta intatta. Sulle 18 foto già
+  scontornate a mano dal negozio è un **non fare niente**: stessa trasparenza
+  e stesso riquadro del soggetto, al pixel. Per questo si applica a tutte
+  senza guardare prima.
+  Perché la misura vecchia sbagliava: era fatta su un PNG trasparente
+  appiattito su bianco con `b_white,f_jpg`, e quel `f_jpg` decide anche il
+  formato **consegnato** — vedi la trappola dell'`f_png` più sotto. Sospetto,
+  non certezza: l'add-on può anche essere stato abilitato nel frattempo.
+  Resta vero invece che **`e_make_transparent` non va bene**: toglie il bianco
+  *ovunque*, quindi aprirebbe buchi nelle etichette chiare in mezzo alla
+  bottiglia.
+- **È a consumo.** Piano **Free**, 25 crediti/mese, al 2026-09-07 usati il
+  2,7%. La voce si legge in `GET /v1_1/<cloud>/usage` →
+  `transformations.breakdown.background_removal` (attenzione: quel breakdown
+  è **in ritardo di un giorno**, `last_updated` lo dice). Cloudinary calcola
+  ogni derivata **una volta sola** e poi la serve dalla cache: il costo è una
+  rimozione per foto, non per visita.
+- **Ma la maschera dell'AI è MORBIDA**, e questo lo si è visto solo sulle
+  card: una fascia larga ad alpha 201-254 intorno alla bottiglia (8-10% della
+  tela sulle tre foto passate dall'AI, contro l'1% di quelle scontornate a
+  mano) più un alone bianco quasi trasparente — su telefono e schermi grandi
+  un bordo chiaro, "lo sfondo non è sparito del tutto". `fineedges_y` non
+  cambia un byte. Per questo **lo scontorno NON sta nella catena di consegna**
+  (`bottleFrame()` è tornata a `e_trim/c_pad,ar_2:3,b_transparent` lo stesso
+  giorno): sta nel **backend, al caricamento** — `utils/scontorno.js` chiama
+  l'AI, indurisce la maschera (fascia 7,7% → 0,5%) e salva su Cloudinary un
+  webp già pulito. Il sito non fa niente di speciale. Le tre foto in
+  produzione sono state rifatte con `scripts/scontornaFotoVini.js`.
+  Per misurare una maschera: conta i pixel per fasce di alpha (0 / 1-40 /
+  41-200 / 201-254 / 255), non solo "trasparente sì/no" — è la fascia
+  201-254 che tradisce l'alone, e una soglia a 16 o a 128 non la vede.
+- **Il flood fill dai bordi** (in `scontorna-illustrazioni.mjs`, stessa
+  cartella) resta la ricetta per le **illustrazioni incise**, che sono file
+  locali e non passano da Cloudinary. Come scontorno delle foto bottiglia è
+  superato: era stato portato nel pannello admin il 2026-09-03, toglieva solo
+  il 70-77% dello sfondo e l'utente lo ha fatto togliere. Quel lavoro è in
+  `stash@{0}` del frontend ed è ormai **da buttare**, non da riprendere.
+- **Le foto in linea sono già leggere**: quelle preparate a mano dal negozio
+  pesano ~7,9 KB. `q_auto` non guadagna niente e `w_400` le fa **più grandi**
+  (10,4 KB: sta ingrandendo una sorgente da 388px). Non c'è niente da
+  spremere lato consegna finché le foto restano queste.
+- **Misure di come vengono disegnate** (telefono, DPR 3): card di catalogo
+  **72×108 CSS** (servono 216×324 pixel veri), fascia in home **55×82** con
+  una sorgente 290×435. Se un giorno arrivassero foto grandi, il rimedio è una
+  `w_` diversa per uso nella ricetta di consegna, non un upload più piccolo:
+  la scheda prodotto è l'unica che ne vuole davvero tanti.
+
 ## Convertire foto e logo (`converti-foto.mjs`)
 
 Stessa cartella, stesso Chromium: ridimensiona a webp le immagini che non sono
@@ -586,11 +650,10 @@ concludere, e confronta `offsetTop` (layout) con `rect.top` (visivo): se
 divergono, stai guardando l'animazione.** La prima riga tagliata a metà glifo
 negli screenshot è il marquee che fa il suo lavoro, non un bug.
 
-Dal 2026-08-31 lo stesso meccanismo sta anche in home, su `.consiglio-name` dentro
-`.consiglio-name-wrap` (tre righe invece di due, @keyframes `consiglio-name-marquee`).
-Lì però il marquee parte **solo a scorrimento fermo e a scheda intera in vista**, quindi
-in uno screenshot preso durante uno scroll i nomi sono tutti immobili: è il gate, non una
-regola che non si applica.
+Dal 2026-08-31 al 2026-09-16 lo stesso meccanismo stava anche in home, su
+`.consiglio-name`. **Non c'è più**: le schede della vetrina sono di sola foto, e con il
+nome se ne sono andati il riquadro, la deriva e il gate "scheda intera in vista". In home
+non c'è più niente di testuale da misurare; il marquee resta solo nel catalogo.
 
 ### Far scegliere fra più varianti: l'interruttore TEMP in pagina
 
@@ -623,6 +686,50 @@ c'è (lì: Cormorant 700), e la voce "com'è adesso" smette di mostrare com'è
 adesso. Il font va caricato **solo quando si sceglie quella voce**, iniettando
 il `<link>` da JS; e quando si apre l'elenco si caricano tutti tranne quello
 sensibile, che altrimenti falsa il confronto appena si guarda.
+
+### Provare un modulo del progetto nel browser vero (senza test runner)
+
+Non c'è un test runner, ma il dev server di Vite serve i moduli **già
+trasformati**: dentro una pagina qualunque del sito si può fare
+
+```
+eval (async()=>{ const m = await import("/src/utils/foto.js"); return await m.preparaFoto(file) })()
+```
+
+e provare la funzione sui dati veri, nel motore vero. Usato il 2026-09-03 per
+misurare uno scontorno di immagini: si costruisce l'ingresso con un canvas
+(`toBlob` → `new File([blob], "x.jpg", {type:"image/jpeg"})`), si chiama la
+funzione e si misurano i pixel del risultato. Vale per qualunque util puro.
+
+### Mettere un file in un `<input type=file>` dal driver
+
+Il driver non ha un comando per l'upload, ma l'input si riempie da `eval` e
+React se ne accorge, perché ascolta l'evento `change` che risale:
+
+```js
+const dt = new DataTransfer(); dt.items.add(file);
+input.files = dt.files;
+input.dispatchEvent(new Event("change", { bubbles: true }));
+```
+
+Verificato il 2026-09-03 sul form dei vini: `onChange` è partito e
+l'anteprima si è aggiornata. È l'unico modo per provare tutto il giro
+"scegli una foto → la si elabora → finisce nel form" senza mani.
+
+### Misurare l'alpha di una trasformazione Cloudinary: forza `f_png` in coda
+
+Trappola che ha invalidato un'intera tornata di misure il 2026-09-03. Per
+simulare la foto di un fornitore si appiattisce un PNG trasparente su bianco
+con `b_white,f_jpg` — ma quel `f_jpg` decide anche il formato **consegnato**,
+anche se l'URL finisce in `.webp`. Il JPEG non ha canale alpha, quindi
+qualunque misura di trasparenza legge **0%** e sembra che la trasformazione
+non abbia fatto niente. Metti sempre `f_png` sull'ultimo componente della
+catena, e prima di concludere controlla il `Content-Type` della risposta.
+
+Il controllo che dice se la misura è sana: la stessa catena su un'immagine
+**già** scontornata deve tornare la sua percentuale vera (lì: 82,1%), e il
+controllo appiattito 0%. Se tutt'e due danno 0, stai misurando il formato,
+non l'immagine.
 
 ### Misurare un font che la pagina non sta ancora usando: non si può
 
@@ -657,6 +764,44 @@ sei secondi e `loaded` dopo sette. Aspetta `document.fonts.ready` e misura dopo,
 Vale per il driver **e per il codice del sito**: chi misura del testo in un
 `useLayoutEffect` deve rimisurare su `document.fonts.ready`, altrimenti si porta dietro
 il numero preso col ripiego (è la ragione della seconda misura in `Home.jsx`).
+
+### Fotografare un effetto che dura meno di un secondo: congela il tempo
+
+**`screenshot` costa 300–400 ms da solo** (telefono, DPR 3). Un effetto da 600 ms — le
+schegge della frantumazione, il vino che riempie la card — è già finito quando la foto
+esce, e la foto mostra o la card intatta o la pagina di destinazione. Il 2026-09-10 ci
+sono volute quattro tornate per capirlo, perché ogni volta il DOM diceva una cosa (le
+schegge esistono, sono spostate, l'originale è nascosta) e il PNG un'altra. **Non era il
+compositor: erano i timer.** La navigazione a 340 ms e la pulizia a 900 ms partivano
+comunque, sotto lo screenshot.
+
+Fermare le animazioni non basta, vanno fermati anche i `setTimeout`. Ricetta che ha
+funzionato (le animazioni si pausano su un giro di rAF perché `setTimeout` è appena
+stato spento):
+
+```
+eval (()=>{ window.__st=window.setTimeout; window.setTimeout=()=>0; let n=0; const tick=()=>{ if(++n<6) return requestAnimationFrame(tick); document.getAnimations().forEach(a=>{a.pause();a.currentTime=260;}); }; document.addEventListener("click",()=>requestAnimationFrame(tick),true); return "congelato" })()
+click .mini-cell >> nth=0
+sleep 700
+screenshot mezzo-volo
+eval (()=>{window.setTimeout=window.__st; return "ripristinato"})()
+```
+
+Due cose che sembrano scorciatoie e non lo sono: `playbackRate=0.25` rallenta le
+animazioni ma non i timer (la pulizia arriva lo stesso); `a.currentTime=230` subito
+dopo il click può leggersi `0` per 60 ms — dodici clone con `backdrop-filter` ci mettono
+più di un frame a nascere in headless. Con il tempo congelato, l'`eval` e il PNG finalmente
+dicono la stessa cosa.
+
+### `text=2 · Frantumazione` va in timeout dopo un riavvio: è il punto mediano
+
+Stesso selettore, stesso pannello aperto nello screenshot del fallimento, ma
+`locator.click: Timeout 15000ms`. Il giorno prima funzionava. Fra una sessione di
+PowerShell e l'altra cambia la codifica della console, e il `·` arriva al driver come
+altri byte: il testo non combacia più. **Nei selettori solo ASCII**: `text=Frantumazione`
+(Playwright prende l'elemento più piccolo che contiene il testo e il click risale al
+bottone). Il secondo sintomo inganna: il `click .mini-cell` subito dopo va in timeout
+"da solo", ma è il pannello rimasto aperto sopra le card, non un secondo problema.
 
 ## Lint
 
@@ -746,7 +891,8 @@ real touch layout.
 - **`count` non aspetta, `wait-for`/`text` sì.** `count .consigliati-gruppo` subito dopo un
   `nav` restituisce 0 mentre la fetch è ancora in volo, e sembra una lista vuota. Preso per
   un bug due volte. Metti sempre un `wait-for` su un elemento che esiste solo a dati
-  arrivati (`.consiglio-name`, `.product-list`) prima di contare.
+  arrivati (`.consiglio-card:not(.consiglio-card--fantasma)`, `.product-list`) prima di
+  contare.
 - **La fascia dei consigli in home non c'è finché non ci sono consigli.** `Home.jsx` rende
   `null` se l'elenco è vuoto o non ancora arrivato: contro un catalogo senza nessun
   prodotto marcato "consigliato" la home è identica a prima. Non è un bug di layout — è il

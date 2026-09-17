@@ -6,6 +6,7 @@ import {
   logout,
   SESSION_EXPIRED_EVENT,
 } from "../../services/auth";
+import { dimentica } from "../../services/cache";
 import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
 import AlimentariManager from "../admin/AlimentariManager";
@@ -46,6 +47,16 @@ function Login({ onBack }) {
     const timer = setTimeout(() => setCardReady(true), 10);
     return () => clearTimeout(timer);
   }, []);
+
+  // Uscendo dal pannello si butta quel che le pagine pubbliche tengono in
+  // memoria (services/cache.js). Senza, il negoziante che cambia un prezzo e
+  // torna sul sito senza ricaricare rivedrebbe il catalogo di prima e
+  // penserebbe di non aver salvato. Non costa niente: al primo ingresso in
+  // una pagina si riscarica, come faceva sempre prima di questa memoria.
+  useEffect(() => {
+    if (!session) return;
+    return () => dimentica();
+  }, [session]);
 
   useEffect(() => {
     if (!isBackendConfigured) return;

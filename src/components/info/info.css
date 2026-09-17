@@ -178,6 +178,10 @@
   /* chiuso: rosso spento, non un allarme */
   background: #e0645c;
   box-shadow: 0 0 0 3px rgba(224, 100, 92, 0.25);
+  /* il cambio di stato arriva da un contatore al minuto (Info.jsx): a chi
+     ha la pagina aperta all'ora di apertura il pallino passa da rosso a
+     verde sfumando, non di scatto. Lento come il respiro qui sotto. */
+  transition: background-color 0.6s ease, box-shadow 0.6s ease;
 }
 
 .info-stato--aperto .info-stato-dot {
@@ -198,6 +202,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .info-stato-dot {
+    transition: none;
+  }
+
   .info-stato--aperto .info-stato-dot {
     animation: none;
   }

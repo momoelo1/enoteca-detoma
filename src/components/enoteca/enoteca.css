@@ -11,9 +11,10 @@
   box-sizing: border-box;
 }
 
-/* Il titolo resta verde anche a sfondo tinto: a seguire il colore della
-   categoria sono i BOTTONI (--tinta-linea, vedi index.css), non i testi.
-   Per farlo cambiare insieme a loro basta rimettere var(--tinta-linea) qui. */
+/* Colore di casa: è quello che vedono le sezioni che NON tingono lo sfondo
+   (Alimentari, Info, che pure usano questa classe). Dentro l'enoteca il
+   titolo segue invece la tinta della categoria — vedi più sotto
+   `.shop-section--enoteca .section-title`. */
 .section-title {
   margin: 0;
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -21,6 +22,21 @@
   font-weight: 600;
   color: #2e5e46;
   text-align: center;
+}
+
+/* Solo l'enoteca: il titolo prende il colore della categoria aperta, lo stesso
+   dei bottoni e della stessa famiglia dello sfondo tinto.
+   NON è l'accento com'è (un titolo paglierino sul paglierino dei bianchi
+   sparirebbe): --tinta-linea è quell'accento con saturazione e luminosità
+   imposte basse, cioè la versione profonda dello stesso colore — vedi
+   `lineaDaAccento` in background/tinta.js. Sul fondo tinto si legge meglio del
+   verde fisso di prima (rossi 4,6 contro 3,1 di rapporto di contrasto), e
+   fuori da una categoria --tinta-linea vale proprio quel verde, quindi
+   l'elenco dei gruppi resta identico.
+   È registrata con @property (index.css): il titolo passa da un colore
+   all'altro con la stessa transizione dello sfondo, non di scatto. */
+.shop-section--enoteca .section-title {
+  color: var(--tinta-linea);
 }
 
 .section-head {
@@ -112,8 +128,23 @@
   }
 }
 
+/* uscita: la stessa strada al contrario, un filo più svelta (chi chiude ha
+   già deciso). `forwards` tiene il campo invisibile finché Enoteca.jsx non lo
+   smonta a fine animazione (onAnimationEnd). Prima spariva di scatto. */
+.search-field--chiude {
+  animation: search-hide 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) forwards;
+}
+
+@keyframes search-hide {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scaleX(0.96);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .search-field {
+  .search-field,
+  .search-field--chiude {
     animation: none;
   }
 }
@@ -384,6 +415,37 @@ body.page-pinned .page-scroll {
   min-width: 0;
 }
 
+/* ---- comparsa in fila: la griglia dei gruppi ----
+   Le mini-card entrano una dopo l'altra invece di apparire tutte insieme,
+   con la stessa comparsa della fascia dei consigli in home (home.css,
+   .consiglio-cell). Il ritardo lo dà `--i`, la posizione nella griglia,
+   tosato all'ottava (`min`): oltre la settima card si è comunque sotto la
+   piega, e l'ultima non deve arrivare mezzo secondo dopo la prima.
+   Qui la scala si può usare: questa griglia scorre (.page-scroll) ma NON ha
+   aggancio allo scorrimento — la lista prodotti sì, e infatti lì l'effetto
+   è un altro (vedi il blocco qui sotto). */
+.mini-cell {
+  animation: griglia-entra 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--i, 0), 7) * 45ms);
+}
+
+@keyframes griglia-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-cell {
+    animation: none;
+  }
+}
+
 .mini-card {
   position: relative;
   width: 100%;
@@ -432,9 +494,33 @@ body.page-pinned .page-scroll {
   background: var(--accent, #2e5e46);
 }
 
-.mini-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+/* solo col puntatore vero: su touch l'hover resta acceso dopo il tocco e la
+   card restava sollevata finché non si toccava altrove */
+@media (hover: hover) {
+  .mini-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Il tocco si sente: la card si abbassa un filo sotto il dito e torna su al
+   rilascio. La pressione ha un RITARDO di 60ms apposta: la griglia scorre,
+   e un dito che parte per scorrere è :active per qualche decina di ms prima
+   che il browser capisca che è uno scroll — senza ritardo ogni scroll
+   partiva con un sussulto della card sotto il dito. Il rilascio usa la
+   transition di riposo (0.18s), senza ritardo.
+   Su iOS :active al tocco vale perché #root ascolta touchstart (lo fa React
+   per i suoi eventi): senza un ascoltatore Safari non lo applica.
+   DOPO :hover, a specificità pari: vince l'ordine, e col mouse la pressione
+   batte il sollevamento. Il lampo grigio di iOS sui bottoni è spento: qui
+   la risposta al tocco è questa. */
+.mini-card:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease 0.06s, box-shadow 0.08s ease 0.06s;
+}
+
+.mini-card {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mini-card:focus-visible {
@@ -473,6 +559,7 @@ body.page-pinned .page-scroll {
 
 /* tab dei gruppi (layout B) */
 .group-tabs {
+  position: relative; /* la riga qui sotto si posa rispetto al nav */
   display: flex;
   gap: 26px;
   justify-content: center;
@@ -497,15 +584,39 @@ body.page-pinned .page-scroll {
   font-weight: 700;
 }
 
-.group-tab.is-active::after {
-  content: "";
+/* La riga d'accento sotto la tab attiva: UN elemento solo che scorre da una
+   tab all'altra, invece di un ::after per tab che si spegneva su una e si
+   accendeva sull'altra di scatto. Dove sta e quanto è larga lo misura
+   GroupTabs (Enoteca.jsx) e lo scrive in --riga-x / --riga-w /
+   --riga-colore sul nav. Senza misura (--riga-w assente) è larga zero:
+   invisibile, non sbagliata. Fuori flusso (absolute), quindi il flex del nav
+   non le fa spazio. */
+.group-tabs-riga {
   position: absolute;
   left: 0;
-  right: 0;
   bottom: -1px;
   height: 3px;
+  width: var(--riga-w, 0px);
   border-radius: 2px;
-  background: var(--accent, #2e5e46);
+  background: var(--riga-colore, var(--tinta-linea));
+  transform: translateX(var(--riga-x, 0px));
+  pointer-events: none;
+}
+
+/* la transizione si accende solo DOPO la prima posa (la classe la mette
+   GroupTabs al giro dopo la misura): altrimenti al montaggio la riga
+   arriverebbe scivolando da sinistra invece di trovarsi già sotto la tab */
+.group-tabs--pronta .group-tabs-riga {
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.32s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-tabs--pronta .group-tabs-riga {
+    transition: none;
+  }
 }
 
 /* ---- barra regioni ----
@@ -690,6 +801,9 @@ body.page-pinned .page-scroll {
   border-radius: 14px;
   cursor: pointer;
   white-space: nowrap;
+  /* la regione scelta si riempie di colore in dissolvenza, come i bottoni
+     sopra la lista (.filter-toggle), non di scatto */
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .filter-btn.is-active {
@@ -740,6 +854,32 @@ body.page-pinned .page-scroll {
   border-radius: 999px;
 }
 
+/* Le voci della barra compaiono in dissolvenza quando vengono montate: con
+   la barra, e soprattutto al cambio Regioni ↔ Mondo, dove prima il set di
+   bottoni veniva sostituito di scatto (le chiavi in Enoteca.jsx fanno sì
+   che cambino davvero elemento). Corta: sta dentro l'entrata della barra
+   sul telefono (0.62s) senza aggiungere attesa. Il suo animationend risale
+   fino alla barra, che lo scarta (onBarAnimEnd guarda solo i suoi). */
+.filter-btn,
+.filter-back,
+.filter-divider {
+  animation: filter-voce-entra 0.22s ease both;
+}
+
+@keyframes filter-voce-entra {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-btn,
+  .filter-back,
+  .filter-divider {
+    animation: none;
+  }
+}
+
 
 
 /* ---- lista prodotti: pagina ferma, scorrono solo i prodotti ----
@@ -754,7 +894,11 @@ body.home-no-scroll .shop-section {
    servivano a scavalcare la tab bar, che qui è nascosta (category-open).
    Restavano come una fascia vuota sotto i prodotti — visibile sempre,
    perché sta FUORI dalla lista che scorre. La barra regioni non ne ha
-   bisogno: è position:fixed e passa sopra comunque. */
+   bisogno: è position:fixed e passa sopra comunque.
+   I 10px restano quelli della categoria, dove la barra non c'è: sono aria
+   fra l'ultima fila e il bordo dello schermo. Dove la barra c'è (indici e
+   Consigliati) la riserva è tutta del body ed è esatta — vedi il blocco
+   telefono più sotto, che qui porta la sezione a zero. */
 body.category-open .shop-section {
   padding-bottom: 10px;
   /* la lista si accorcia insieme alla barra che sale, invece di saltare
@@ -769,6 +913,20 @@ body.category-open .shop-section {
   }
 }
 
+/* Telefono, tab Consigliati: la sezione non mette niente in fondo. Lo spazio
+   per la barra è già riservato dal body, esatto al pixel (App.css), e
+   qualunque cosa si aggiunga qui diventa fascia vuota fra l'ultima fila e la
+   barra — la lista arriva fin sotto la barra e basta.
+   Vale SOLO per i Consigliati: le pagine indice tengono i 56px di
+   `.shop-section` come hanno sempre fatto.
+   Fuori dal telefono la barra è in cima e non galleggia: i 56px restano
+   l'aria in fondo alla pagina anche qui. */
+@media (max-width: 640px) {
+  body.consigliati-open .shop-section {
+    padding-bottom: 0;
+  }
+}
+
 /* con la barra regioni aperta lo spazio torna a servire: .has-filter-bar
    sta sulla sezione ed è attiva per tutta la durata (anche mentre la barra
    rientra), quindi la fascia non collassa a metà animazione.
@@ -780,14 +938,52 @@ body.category-open .shop-section {
   }
 }
 
-body.home-no-scroll .product-list {
+/* `.consigliati-scroll` sta nella stessa regola e non in una sua: nella tab
+   Consigliati a scorrere è quel contenitore (dentro ci sono più liste, una
+   per gruppo) e deve scorrere IDENTICO a una lista di vini — stesso aggancio,
+   stessa coda, stesso rimbalzo. Stessa regola vuol dire identici per
+   costruzione: non c'è un secondo posto che possa prendere valori diversi. */
+body.home-no-scroll .product-list,
+body.home-no-scroll .consigliati-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden; /* solo scroll verticale, mai laterale */
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
   /* aria sotto l'ultima riga: la lista non finisce incollata al bordo */
   padding-bottom: 8px;
+}
+
+/* …ma NON nella tab Consigliati, dove le liste sono più d'una e impilate
+   dentro `.consigliati-scroll`: lì la lista non è il contenitore che scorre,
+   è solo una griglia di card sotto il suo titolo di gruppo. Con la regola
+   qui sopra addosso ognuna diventava un riquadro con scorrimento proprio, e
+   soprattutto si portava dietro il padding di coda: 8px nell'Enoteca, ma 48
+   negli Alimentari, che ha la sua variante (gastronomia.css). Erano quei 40px
+   a rendere il contenitore degli Alimentari più alto di quello dell'Enoteca.
+   La riga degli alimentari è elencata per prima apposta: `.product-list` più
+   il suo modificatore fa una classe in più, e senza di lei questa regola e
+   quella di gastronomia.css avrebbero lo stesso peso — a decidere resterebbe
+   l'ordine degli import, che è il trabocchetto già costato due bug qui. */
+body.home-no-scroll .consigliati-scroll .product-list.product-list--alimentari,
+body.home-no-scroll .consigliati-scroll .product-list {
+  flex: none;
+  min-height: auto;
+  /* `overflow` e non `overflow-y`, ed è quello che fa agganciare lo
+     scorrimento come nei rossi. Basta UN asse diverso da `visible` perché il
+     browser faccia dell'elemento un contenitore di scorrimento a sé: con
+     `overflow-x: hidden` addosso (ce l'ha `.product-list`) queste liste lo
+     diventavano, e i punti d'aggancio delle card — `scroll-snap-align: start`
+     — finivano a quella lista interna invece che a `.consigliati-scroll`, che
+     è l'unica a scorrere davvero. Risultato: nei Consigliati non si agganciava
+     niente. Misurato: portando lo scroll a 90px, nei rossi torna a 0 (aggancio
+     alla riga) e nei Consigliati restava a 90.
+     Il taglio orizzontale non si perde: ce l'ha adesso il contenitore che
+     scorre, con la stessa riga della lista di categoria. */
+  overflow: visible;
+  scroll-snap-type: none;
+  padding-bottom: 0;
 }
 
 /* ---- lista prodotti della categoria ---- */
@@ -903,24 +1099,77 @@ body.category-open .product-empty {
   right: 0;
   height: 3px;
   background: var(--accent, #2e5e46);
+  transform-origin: left center;
 }
 
-.product-card-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+/* ---- comparsa della lista prodotti ----
+   Le card sfumano una dopo l'altra e subito dopo il filo d'accento in cima
+   si tira da sinistra a destra: lo stesso gesto della fascia dei consigli
+   in home, che lì fa sembrare la riga "scritta" invece che caricata.
+
+   ATTENZIONE, è il motivo per cui questo effetto non è quello della griglia
+   qui sopra: sulla CARD si anima SOLO l'opacità. La lista prodotti è un
+   contenitore con aggancio allo scorrimento (`scroll-snap-type` in
+   body.home-no-scroll .product-list) e ogni transform sulla card sposta la
+   sua area d'aggancio: con `scale(0.92)` il browser al primo fotogramma
+   agganciava una card più in basso e la lista si apriva GIÀ SCORSA, senza
+   che nessuno l'avesse toccata. Misurato sulla build di produzione entrando
+   nei rossi a catalogo in memoria: scrollTop 10 al primo fotogramma con la
+   scala, 0 senza, e sul telefono dell'utente lo spostamento era molto più
+   evidente. La scala sul filo invece è innocua: è un ::before assoluto,
+   fuori dal flusso, e non tocca il rettangolo della card. */
+.product-card {
+  animation: card-entra 0.4s ease both;
+  animation-delay: calc(min(var(--i, 0), 7) * 40ms);
 }
 
-/* TEMPORANEO — telefono: niente hover sulle card. Su touch l'hover non si
-   "spegne" dopo il tocco e la card resta sollevata finché non si tocca
-   altrove. Va rifatto diversamente (probabilmente @media (hover: hover),
-   che distingue il puntatore vero dal touch invece di andare a larghezza).
-   DEVE stare dopo la regola :hover qui sopra: stessa specificità, vince
-   l'ordine. */
-@media (max-width: 640px) {
-  .product-card-btn:hover {
-    transform: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+@keyframes card-entra {
+  from {
+    opacity: 0;
   }
+}
+
+.product-card-btn::before {
+  animation: card-filo 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* dopo la card, non insieme: il filo si tira su una card che c'è già */
+  animation-delay: calc(min(var(--i, 0), 7) * 40ms + 0.12s);
+}
+
+@keyframes card-filo {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card-btn::before {
+    animation: none;
+  }
+}
+
+/* Solo col puntatore vero: su touch l'hover non si "spegne" dopo il tocco e
+   la card restava sollevata finché non si toccava altrove. Qui c'era una
+   media query a larghezza (≤640px) che spegneva l'hover per tutti i
+   telefoni — e con loro il mouse su una finestra stretta; `hover: hover`
+   distingue il puntatore vero dal touch, che era la strada annotata come
+   "da rifare" (2026-08-05). */
+@media (hover: hover) {
+  .product-card-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* il tocco si sente: stessa ricetta di .mini-card (ritardo di 60ms sulla
+   pressione perché la lista scorre; rilascio con la transition di riposo) */
+.product-card-btn:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease 0.06s, box-shadow 0.08s ease 0.06s;
+}
+
+.product-card-btn {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* miniatura bottiglia sul fronte (solo se l'item ha un'immagine) */
@@ -1201,7 +1450,125 @@ svg.product-food-svg {
   white-space: nowrap;
 }
 
+/* ---- schede vuote: il catalogo mentre i prodotti arrivano ----
+   Al posto del "Caricamento…" in Cormorant in mezzo a una pagina vuota, la
+   griglia c'è già, con la scatola delle card vere e i blocchi al posto di
+   foto, nome e prezzo (FantasmaProdotto / FantasmaMiniCard in Enoteca.jsx).
+   Quando i prodotti arrivano cambia il contenuto, non il telaio.
+
+   I mattoni (.fantasma-blocco, il riflesso) sono nati in home.css per la
+   fascia dei consigli e stanno QUI da quando li usa anche il catalogo:
+   questo foglio è caricato prima di tutti gli altri (Enoteca.jsx è la
+   libreria condivisa, Home.jsx la importa), quindi home.css li trova
+   sempre. Lì restano solo le misure delle sue schede. */
+.fantasma-blocco {
+  flex: none;
+  background: rgba(46, 94, 70, 0.09);
+  border-radius: 6px;
+}
+
+/* Il riflesso che attraversa la scheda, sfalsato di scheda in scheda con
+   `--i` (insieme sembrerebbe una barra sola che scorre sulla griglia).
+   Un elemento suo e non un ::after: .mini-card::after è già preso dagli
+   effetti al tocco. La scatola che lo ospita ha overflow: hidden. */
+.fantasma-riflesso {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: fantasma-riflesso 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+
+@keyframes fantasma-riflesso {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* la card prodotto vuota: stessa scatola di .product-card-btn (è la stessa
+   classe, quindi anche le altezze per tipo e per schermo), senza mano e
+   senza risposta al tocco; il filo in cima è neutro e fermo — l'accento
+   arriva col prodotto vero. DOPO .product-card-btn, a specificità pari. */
+.product-card-btn--fantasma {
+  cursor: default;
+  pointer-events: none;
+  justify-content: flex-start;
+  gap: 14px;
+  padding-top: 22px;
+}
+
+.product-card-btn--fantasma::before {
+  background: rgba(46, 94, 70, 0.14);
+}
+
+/* le misure sono quelle del contenuto vero: la miniatura (90px, 108 sul
+   telefono, come .product-thumb), due righe di nome, il prezzo */
+.fantasma-prodotto-thumb {
+  width: 60px;
+  height: 90px;
+  border-radius: 8px;
+}
+
+.fantasma-prodotto-riga {
+  width: 82%;
+  height: 12px;
+}
+
+.fantasma-prodotto-riga--corta {
+  width: 56%;
+  margin-top: -6px;
+}
+
+.fantasma-prodotto-prezzo {
+  width: 34%;
+  height: 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+  .fantasma-prodotto-thumb {
+    width: 72px;
+    height: 108px;
+  }
+}
+
+/* la mini-card vuota (griglia dei gruppi degli Alimentari, che arrivano
+   dall'API): solo la riga del nome, al centro come il nome vero */
+.mini-card--fantasma {
+  cursor: default;
+  pointer-events: none;
+  justify-content: center;
+}
+
+.mini-card--fantasma::before {
+  background: rgba(46, 94, 70, 0.14);
+}
+
+.fantasma-mini-nome {
+  width: 58%;
+  height: 13px;
+}
+
+/* senza riflesso il gradiente resterebbe fermo a metà scheda, come una
+   macchia chiara: meglio toglierlo del tutto (stessa scelta di home.css) */
+@media (prefers-reduced-motion: reduce) {
+  .fantasma-riflesso {
+    display: none;
+  }
+}
+
 /* ---- bottom sheet: dettagli prodotto ---- */
+
 .sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -1213,6 +1580,17 @@ svg.product-food-svg {
   align-items: flex-end;
   justify-content: center;
   animation: sheet-fade-in 0.25s ease;
+  transition: opacity 0.25s ease;
+}
+
+/* Chiusura: lo sfondo si schiarisce mentre il pannello scivola giù (il
+   pannello lo muove ProductSheet con un transform in linea, sulla transition
+   di .product-sheet qui sotto). Una transition e non una @keyframes: dopo il
+   volo della miniatura utils/volo.js lascia `animation: none` in linea su
+   sfondo e pannello, e una keyframes qui non partirebbe mai. */
+.sheet-backdrop--chiude {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .product-sheet {
@@ -1558,10 +1936,15 @@ svg.product-food-svg {
 }
 
 /* ---- tab Consigliati ----
-   a differenza delle altre tab qui non scorre una griglia sola ma una pila
-   di gruppi (Rossi, Bianchi, Birre…), e a scorrere è il documento intero
-   (niente page-pinned: vedi Enoteca.jsx). Una colonna semplice, quindi —
-   nessun contenitore con overflow proprio */
+   Qui non scorre una griglia sola ma una pila di gruppi (Rossi, Bianchi,
+   Birre…). Scorreva per questo il documento intero, ed era l'unica pagina a
+   farlo: i prodotti passavano dietro alla tab bar — che è `position: fixed`,
+   sollevata di 12px dal fondo — e si vedevano nella fessura sotto di lei.
+   Adesso fa come tutte le altre: la pagina sta ferma (body.page-pinned) e
+   scorre QUESTO contenitore, che porta anche `page-scroll` ed eredita da lì
+   flex, overflow e padding. La fascia in fondo, quella che tiene la barra
+   fuori dai piedi, la mette `.shop-section` (padding-bottom: 56px) come su
+   ogni pagina negozio. */
 .consigliati-scroll {
   display: flex;
   flex-direction: column;
@@ -1569,8 +1952,27 @@ svg.product-food-svg {
   width: 100%;
 }
 
+/* `scroll-snap-align` sull'intro e sul gruppo, e non è un vezzo: senza, quel
+   testo NON SI VEDEVA PIÙ. In un contenitore con aggancio allo scorrimento
+   tutto ciò che sta prima del primo punto d'aggancio è irraggiungibile — il
+   primo punto erano le card, a 82px, e il contenitore ci si posava da solo
+   appena aperto, lasciando l'intro a -82 e il titolo del gruppo a -33, cioè
+   sopra il bordo. Riportandolo a mano si riagganciava subito a 82.
+   Adesso i punti d'aggancio sono tre: il testo d'apertura (quindi la cima
+   della lista è una posizione buona in cui fermarsi), il titolo di ogni
+   gruppo (così scorrendo ci si posa su "Vini Rossi", non appena sotto) e le
+   card come prima. Nei rossi non serviva niente di tutto questo: lì la prima
+   cosa nel contenitore è già la prima fila di card.
+   Il punto d'aggancio del gruppo sta sul TITOLO e non su `.consigliati-gruppo`,
+   che pure comincia allo stesso pixel: il gruppo è alto quanto tutte le sue
+   card (~1400px contro i ~300 della finestra), e un'area d'aggancio più
+   grande della finestra spegne l'aggancio di quelle dentro — misurato, lo
+   scorrimento si posava a 342, che non è né una fila di card (82, 356, 630)
+   né l'inizio di un gruppo (49). Il titolo è alto una riga e non dà fastidio
+   a nessuno. */
 .consigliati-intro {
   margin: 0;
+  scroll-snap-align: start;
   font-family: "Cormorant Garamond", Georgia, serif;
   font-size: 17px;
   line-height: 1.35;
@@ -1588,6 +1990,7 @@ svg.product-food-svg {
    così separa senza pesare come un secondo titolo di pagina */
 .consigliati-titolo {
   margin: 0;
+  scroll-snap-align: start;
   padding-left: 10px;
   border-left: 3px solid var(--accent, #2e5e46);
   font-family: "Cormorant Garamond", Georgia, serif;
@@ -1659,9 +2062,24 @@ svg.product-food-svg {
   fill: currentColor;
 }
 
-.sheet-cta:hover {
-  background: #24493a;
-  transform: translateY(-1px);
+/* solo col puntatore vero: su touch l'hover restava acceso dopo il tocco, e
+   tornando da WhatsApp il bottone era ancora sollevato */
+@media (hover: hover) {
+  .sheet-cta:hover {
+    background: #24493a;
+    transform: translateY(-1px);
+  }
+}
+
+/* il tocco si sente, come sulle card (.mini-card): prima il bottone
+   principale del pannello non rispondeva in nessun modo al dito */
+.sheet-cta:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease 0.06s, background 0.08s ease 0.06s;
+}
+
+.sheet-cta {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* su telefono il pannello si solleva un po' dal bordo inferiore:

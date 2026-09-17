@@ -1,0 +1,302 @@
+/* ==========================================================================
+   Gli effetti al tocco delle mini-card.
+   Ogni famiglia di prodotti ha il suo, ed è fatto della materia di quello che
+   vende — è la regola che ha fatto scegliere questi fra i tanti provati in
+   pagina: succede SULLA card, AL tocco, ed è del prodotto.
+
+     vini        → la macchia di vino che si allarga dal dito
+     birre       → le bollicine che salgono con la schiuma
+     distillati  → la goccia che cade e allarga la sua pozza
+     gastronomia → gli strati, il barattolo che si invasa a fasce
+     dolceria    → la colatura del miele che scende
+
+   Negli alimentari l'effetto è **uno per REPARTO**, uguale per tutte le sue
+   card, e non uno per gruppo: un gesto diverso per ognuno dei quattordici
+   gruppi era una collezione, non un sito. Chi assegna cosa è `effettoPer`
+   in effetti.js.
+
+   IL COLORE NON È L'ACCENTO DELLA CARD, ed è una regola che vale per tutti:
+   negli alimentari l'accento è del REPARTO (tutta la Dolceria è rosa, tutta
+   la Gastronomia arancio) e nelle birre è del singolo birrificio (la
+   Brasserie du Mont Blanc è azzurra). Usarlo dava bollicine azzurre e miele
+   rosa confetto. Ogni effetto porta quindi il suo colore, che effetti.js
+   scrive in `--fx-colore`.
+
+   Le classi `effetto-*` le mette a mano effetti.js sulla card toccata, e se
+   ne vanno con la card quando la pagina nuova entra.
+
+   Queste regole battono quelle di enoteca.css e mini-switcher.css per
+   SPECIFICITÀ (due classi contro una), non per ordine di caricamento: questo
+   foglio arriva prima degli altri due e affidarsi all'ordine sarebbe la
+   trappola annotata in CLAUDE.md.
+   ========================================================================== */
+
+/* ---- vini: la macchia --------------------------------------------------- */
+/* Il disco parte dal dito (--px/--py, in percentuale sulla card, li scrive
+   effetti.js) e cresce 9,5 volte: raggio ~210px, quanto basta a coprire
+   l'angolo più lontano da un dito messo dove capita.
+   Il pseudo-elemento nasce INSIEME alla classe: `content` sta qui dentro e
+   non su `.mini-card::after`, così a riposo non esiste — un `filter: url()`
+   su ogni card della griglia costringerebbe il browser a tenere un livello
+   di composizione per ciascuna, per niente.
+   La card ha già `overflow: hidden` (enoteca.css): la macchia resta dentro
+   il suo rettangolo. */
+.mini-card.effetto-macchia::after {
+  content: "";
+  position: absolute;
+  left: var(--px, 50%);
+  top: var(--py, 50%);
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--accent, #7b2d3b) 55%,
+    color-mix(in srgb, var(--accent, #7b2d3b) 72%, #1a0508) 100%
+  );
+  opacity: 0.93;
+  /* il filtro di spostamento (l'SVG in pagina, vedi FiltroMacchia) sbrindella
+     il bordo del disco; siccome lavora PRIMA della scala, lo sbrindellamento
+     cresce insieme alla macchia invece di restare una frangia fine */
+  filter: url(#macchia-bordo);
+  pointer-events: none;
+  /* lenta e quasi lineare: con una curva che scatta all'inizio la macchia
+     copriva la card in 200ms e il bordo sbrindellato finiva FUORI dalla card
+     prima che si riuscisse a vederlo */
+  animation: macchia 1100ms cubic-bezier(0.4, 0.2, 0.6, 1) forwards;
+}
+
+@keyframes macchia {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(9.5);
+  }
+}
+
+/* ---- birre: le bollicine ------------------------------------------------ */
+/* La velatura sale dal fondo e il bordo alto, più chiaro, è la schiuma. Le
+   bolle vere sono elementi a sé, in uno strato sopra la card, perché devono
+   uscire dal bordo alto e la card ritaglia. */
+.mini-card.effetto-bollicine::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.75) 0,
+    rgba(255, 255, 255, 0.45) 5px,
+    color-mix(in srgb, var(--fx-colore, #c78a2b) 72%, transparent) 14px,
+    color-mix(in srgb, var(--fx-colore, #c78a2b) 88%, transparent) 100%
+  );
+  pointer-events: none;
+  animation: bollicine-sale 620ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+}
+
+@keyframes bollicine-sale {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.effetto-bolla {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+/* ---- distillati: la goccia ---------------------------------------------- */
+/* La goccia cade da sopra la card (sta nello strato, che non ritaglia), si
+   schiaccia sull'impatto e da lì si allarga la pozza lucida. I due tempi si
+   tengono allineati a mano: la caduta dura 340ms, la pozza parte a 300. */
+.effetto-goccia-corpo {
+  position: absolute;
+  width: 16px;
+  height: 20px;
+  margin-left: -8px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: radial-gradient(
+    circle at 36% 28%,
+    color-mix(in srgb, var(--fx-colore, #a8661f) 55%, white) 0%,
+    var(--fx-colore, #a8661f) 55%,
+    color-mix(in srgb, var(--fx-colore, #a8661f) 72%, black) 100%
+  );
+}
+
+.mini-card.effetto-goccia::after {
+  content: "";
+  position: absolute;
+  left: var(--px, 50%);
+  top: 58%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 30%,
+    color-mix(in srgb, var(--fx-colore, #a8661f) 58%, white) 0%,
+    var(--fx-colore, #a8661f) 48%,
+    color-mix(in srgb, var(--fx-colore, #a8661f) 76%, black) 100%
+  );
+  opacity: 0;
+  transform: scale(0);
+  pointer-events: none;
+  animation: goccia-pozza 580ms cubic-bezier(0.2, 0.8, 0.3, 1) 300ms forwards;
+}
+
+@keyframes goccia-pozza {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  14% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.93;
+    transform: scale(9);
+  }
+}
+
+/* l'anello dello spruzzo: basso e veloce, è quel che resta dell'impatto */
+.effetto-spruzzo {
+  position: absolute;
+  width: 34px;
+  height: 12px;
+  margin: -6px 0 0 -17px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  animation: goccia-spruzzo 420ms ease-out 300ms forwards;
+}
+
+@keyframes goccia-spruzzo {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* il nome aspetta che la pozza lo raggiunga */
+.mini-card.effetto-goccia .mini-name {
+  transition-delay: 480ms;
+}
+
+/* ---- gastronomia: gli strati -------------------------------------------- */
+/* Quattro fasce salgono dal basso una dopo l'altra e si fermano ciascuna al
+   suo piano (le crea e le anima effetti.js). Il colore è del prodotto, dalle
+   parole del gruppo; dove nessuna parola corrisponde resta l'accento della
+   card. */
+.effetto-fascia {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 26%;
+  background: var(--fx-colore, var(--accent, #8f8f2b));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+/* il nome sta a metà card: lo copre la seconda fascia */
+.mini-card.effetto-strati .mini-name {
+  transition-delay: 380ms;
+}
+
+/* ---- dolceria: la colatura ---------------------------------------------- */
+/* Tre colate dense scendono dal bordo alto a velocità diverse, poi il colore
+   chiude. Ogni colata è una striscia con la punta tonda: il raggio è in
+   PIXEL e non in percentuale, così resta una goccia mentre l'altezza cresce.
+   Stanno dentro la card, che le ritaglia sul bordo basso. */
+.effetto-colata {
+  position: absolute;
+  top: 0;
+  height: 0;
+  border-radius: 0 0 14px 14px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--fx-colore, #c8901c) 92%, black) 0%,
+    var(--fx-colore, #c8901c) 45%
+  );
+  box-shadow: inset -2px 0 3px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.mini-card.effetto-colatura::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--fx-colore, #c8901c);
+  opacity: 0;
+  pointer-events: none;
+  animation: colatura-velo 320ms ease 420ms forwards;
+}
+
+@keyframes colatura-velo {
+  to {
+    opacity: 0.9;
+  }
+}
+
+/* la colatura ci mette più delle altre ad arrivare sul nome */
+.mini-card.effetto-colatura .mini-name {
+  transition-delay: 430ms;
+}
+
+/* ---- quel che vale per tutti -------------------------------------------- */
+/* Il nome resta leggibile quando il colore gli passa sotto: crema sul pieno.
+   QUANDO cambia lo decide `transition-delay`, che ogni effetto riscrive qui
+   sopra se il suo colore arriva più tardi — il nome non deve schiarirsi
+   prima che qualcosa lo copra. */
+.mini-card.effetto-attivo .mini-name {
+  color: #f6f1e7;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition:
+    color 200ms ease 320ms,
+    text-shadow 200ms ease 320ms;
+}
+
+/* l'illustrazione incisa si attenua: a piena opacità sopra il colore sembrava
+   una figurina appiccicata */
+.mini-card.effetto-attivo .mini-icon-watermark {
+  opacity: 0.15;
+  transition: opacity 300ms ease 250ms;
+}
+
+/* Chi ha chiesto meno animazioni al sistema non vede niente e va dritto alla
+   lista (effetti.js non aggiunge nemmeno la classe). Le regole qui sotto sono
+   la rete di sicurezza per il caso in cui l'impostazione cambi a effetto già
+   partito. */
+@media (prefers-reduced-motion: reduce) {
+  .mini-card.effetto-attivo,
+  .mini-card.effetto-attivo::after,
+  .effetto-bolla,
+  .effetto-fascia,
+  .effetto-colata,
+  .effetto-goccia-corpo,
+  .effetto-spruzzo {
+    animation: none !important;
+    display: revert;
+  }
+
+  .mini-card.effetto-attivo::after {
+    display: none;
+  }
+
+  .mini-card.effetto-attivo .mini-name,
+  .mini-card.effetto-attivo .mini-icon-watermark {
+    transition: none;
+  }
+}

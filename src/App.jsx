@@ -13,6 +13,7 @@ import logo from "./images/enoteca-detoma-logo.webp";
 import Grainient from "./components/background/Grainient";
 import { TINTA_BASE } from "./components/background/tinta";
 import Versata from "./components/transition/Versata";
+import FiltroMacchia from "./components/effetti/FiltroMacchia";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
@@ -154,6 +155,10 @@ function AppShell() {
       {/* l'onda colorata delle transizioni di categoria: un solo pannello per
           tutta l'app, lo comandano le pagine con versa() */}
       <Versata />
+
+      {/* il filtro SVG della macchia di vino delle mini-card: sta qui perché
+          ne basta uno per tutta l'app, e il CSS lo chiama per id */}
+      <FiltroMacchia />
     </>
   );
 }

@@ -1,18 +1,12 @@
-import {
-  Fragment,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProductPlaceholder } from "../enoteca/Enoteca";
+import Immagine from "../immagine/Immagine";
 import { fotoProdotto } from "../../utils/cloudinary";
-import { formatPrezzo, prezzoProdotto } from "../../utils/prezzo";
 import { getWinesConsigliati } from "../../services/wines";
 import { getAlimentariConsigliati } from "../../services/alimentari";
+import { ricorda, gia, CHIAVI } from "../../services/cache";
 import { productSlug } from "../../utils/productSlug";
-import { normalize } from "../../utils/normalize";
 import "./home.css";
 
 // Il titolo si scrive da sé all'apertura, parola per parola, come se una
@@ -23,15 +17,24 @@ import "./home.css";
 // margine, altrimenti il titolo non andrebbe più a capo dove deve.
 const TITOLO = "Tre Generazioni, Una Passione per il Vino";
 
-// Dove porta una scheda della vetrina: al SUO posto nel catalogo, con la
-// scheda prodotto già aperta. Non alla tab Consigliati: l'indirizzo che si
-// vede nella barra deve dire la verità su dove sta quel prodotto.
+// Il racconto di famiglia sotto il titolo. Parla in prima persona come parla
+// il resto del sito ("Le bottiglie che scegliamo noi", "torna a trovarci"):
+// prima era l'unico punto che raccontava la famiglia in terza persona, come
+// una targa. E dice subito la cosa che la versione vecchia lasciava cadere —
+// che il nipote porta il nome del nonno che ha aperto l'enoteca.
+const RACCONTO =
+  "Siamo Nicola e Sabrina, terza generazione dietro a questo banco. L'enoteca l'ha aperta nostro nonno Nicola, arrivato a Lodi da Trani agli inizi del '900, e dopo di lui Domenica e Bartolomeo. Il vino, in casa, non ha mai smesso di essere una cosa di famiglia.";
+
+// Dove porta una scheda della vetrina: nella SELEZIONE DELLA CASA della sua
+// sezione, con la scheda prodotto già aperta. Un consiglio della home si apre
+// dove stanno gli altri consigli, non in mezzo alla sua categoria: chi chiude
+// la scheda si ritrova fra i consigliati e continua a guardare quelli.
+// (Prima portava al posto del prodotto nel catalogo — `/enoteca/vini/<cat>/…`
+// e `/alimentari/<reparto>/<gruppo>/…`.)
 const stradaProdotto = (item, type) =>
   type === "alimentari"
-    ? `/alimentari/${item.category}/${encodeURIComponent(
-        normalize((item.sottocategoria || "").trim())
-      )}/${productSlug(item)}`
-    : `/enoteca/vini/${item.category}/${productSlug(item)}`;
+    ? `/alimentari/consigliati/${productSlug(item)}`
+    : `/enoteca/consigliati/${productSlug(item)}`;
 
 // `i`: la posizione nella fascia, che il CSS usa come ritardo — le schede
 // non compaiono tutte insieme ma una dopo l'altra. A freddo su Vercel la
@@ -39,132 +42,38 @@ const stradaProdotto = (item, type) =>
 // arrivano, così l'attesa si chiude con una comparsa invece che con uno
 // scatto (il ritardo è tosato a poche schede, vedi home.css).
 function VetrinaCard({ item, type, onOpen, i }) {
-  // null anche quando il prezzo è 0: la riga sparisce invece di annunciare
-  // "€ 0,00" (vedi prezzoProdotto in utils/prezzo.js). Gli alimentari spesso
-  // il campo non ce l'hanno proprio, quindi per loro non compare mai.
-  const prezzo = prezzoProdotto(item);
-
-  // Nome più lungo delle tre righe: invece dei puntini deriva in verticale,
-  // come sulle card del catalogo (.product-name in Enoteca.jsx/enoteca.css).
-  // Quanto sborda dal riquadro diventa la corsa dell'animazione.
-  const nameRef = useRef(null);
-  const [nameScroll, setNameScroll] = useState(false);
-  useLayoutEffect(() => {
-    const el = nameRef.current;
-    if (!el) return;
-    let vivo = true;
-    const misura = () => {
-      if (!vivo) return;
-      const overflow = el.scrollHeight - el.parentElement.clientHeight;
-      if (overflow > 0) {
-        el.style.setProperty("--marquee-shift-y", `-${overflow + 4}px`);
-        setNameScroll(true);
-      } else {
-        el.style.removeProperty("--marquee-shift-y");
-        setNameScroll(false);
-      }
-    };
-    misura();
-    // Rimisura quando il font vero è arrivato. Al primo layout il nome è
-    // ancora disegnato col ripiego (Georgia), più largo: sborda di più, e
-    // la corsa che ne usciva restava lì anche dopo — misurato in pagina,
-    // quattro nomi su dodici derivavano pur stando comodi in tre righe, e
-    // gli altri scorrevano più del dovuto lasciando una riga vuota in fondo.
-    document.fonts?.ready.then(misura);
-    return () => {
-      vivo = false;
-    };
-  }, [item.name]);
-
-  // Un nome deriva solo quando la sua scheda si vede DAVVERO tutta, ferma.
-  // Qui gli scorrimenti da tenere d'occhio sono due, non uno come nel
-  // catalogo: la fascia scorre di lato (.consigli-row) e la home scorre in
-  // su e in giù — quindi la scheda dev'essere intera dentro la fascia in
-  // orizzontale e dentro la finestra in verticale.
-  //
-  // Niente IntersectionObserver (sul catalogo è stato provato due volte e su
-  // telefono vero faceva partire la scheda "che sbircia"): misura diretta dei
-  // rettangoli, a scorrimento fermo — 120ms dopo l'ultimo evento, quando lo
-  // scroll-snap si è assestato. Mentre si scorre l'animazione è spenta e
-  // riparte da capo appena la scheda si posa.
-  const cardRef = useRef(null);
-  const [nameInView, setNameInView] = useState(false);
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el || !nameScroll) return;
-    const row = el.closest(".consigli-row");
-    let timer = 0;
-    const check = () => {
-      const cr = el.getBoundingClientRect();
-      const rr = row
-        ? row.getBoundingClientRect()
-        : { left: 0, right: window.innerWidth };
-      setNameInView(
-        cr.left >= rr.left - 2 &&
-          cr.right <= rr.right + 2 &&
-          cr.top >= -2 &&
-          cr.bottom <= window.innerHeight + 2
-      );
-    };
-    const onScroll = () => {
-      setNameInView(false);
-      clearTimeout(timer);
-      timer = setTimeout(check, 120);
-    };
-    check();
-    row?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      clearTimeout(timer);
-      row?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [nameScroll]);
-
   return (
     <li className="consiglio-cell" style={{ "--i": i }}>
+      {/* Solo la foto: niente nome, niente prezzo, niente stella. La fascia
+          si guarda, non si legge — il nome e il prezzo stanno nella scheda
+          che si apre toccando, a un dito di distanza.
+          Il nome resta però l'ETICHETTA del bottone (aria-label): senza, chi
+          naviga con lo screen reader si troverebbe una fila di bottoni muti. */}
       <button
         type="button"
         className="consiglio-card"
         onClick={() => onOpen(item, type)}
-        ref={cardRef}
+        aria-label={item.name}
       >
-        {item.consigliato && (
-          <span className="consiglio-star" aria-hidden="true">
-            ★
-          </span>
-        )}
         <span className="consiglio-thumb">
           {/* si controlla l'URL e non `item.img`: sui vini quello è un array,
               e un array vuoto in JS è truthy (vedi elencoFoto in
               utils/cloudinary.js) */}
           {fotoProdotto(item, type) ? (
-            <img
+            <Immagine
               src={fotoProdotto(item, type)}
               alt=""
               className={"consiglio-img consiglio-img--" + type}
               loading="lazy"
             />
           ) : (
-            <ProductPlaceholder item={item} type={type} className="consiglio-svg" />
+            <ProductPlaceholder
+              item={item}
+              type={type}
+              className="consiglio-svg"
+            />
           )}
         </span>
-        <span className="consiglio-name-wrap">
-          <span
-            className={
-              "consiglio-name" +
-              (nameScroll && nameInView ? " consiglio-name--scroll" : "")
-            }
-            ref={nameRef}
-          >
-            {item.name}
-          </span>
-        </span>
-        {prezzo != null && (
-          <span className="consiglio-price">{formatPrezzo(prezzo)}</span>
-        )}
       </button>
     </li>
   );
@@ -182,7 +91,10 @@ const QUANTI_FANTASMI = 6;
 // definiti dentro altri componenti (vedi CLAUDE.md).
 function FantasmaCard({ i }) {
   return (
-    <li className="consiglio-cell consiglio-cell--fantasma" style={{ "--i": i }}>
+    <li
+      className="consiglio-cell consiglio-cell--fantasma"
+      style={{ "--i": i }}
+    >
       <div className="consiglio-card consiglio-card--fantasma">
         <span className="fantasma-blocco fantasma-thumb" />
         <span className="fantasma-blocco fantasma-nome" />
@@ -192,23 +104,15 @@ function FantasmaCard({ i }) {
   );
 }
 
-// Una fascia della vetrina: titolo, link "vedi tutti" e la riga di schede che
-// scorre di lato. Ce ne sono due identiche (vini e alimentari) — quello che
-// cambia è solo cosa ci finisce dentro.
-//
-// Tre stati, e la differenza fra i primi due è tutta in `items`:
-// - `null`  = ancora in arrivo → la fascia c'è già, con le schede vuote. Il
-//   telaio (titolo, link, altezza della riga) è quello definitivo, così
-//   quando i prodotti arrivano non si sposta niente e l'attesa sembra voluta
-//   invece che un pezzo di pagina mancante.
-// - `[]`    = arrivata e vuota (rete giù, o nessun prodotto) → niente fascia:
-//   meglio una home più corta che un telaio che non si riempirà mai.
-// - piena   = le schede vere.
 function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
   const inArrivo = items === null;
   if (!inArrivo && !items.length) return null;
   return (
-    <section className="consigli-strip" aria-label={titolo} aria-busy={inArrivo}>
+    <section
+      className="consigli-strip"
+      aria-label={titolo}
+      aria-busy={inArrivo}
+    >
       <div className="consigli-strip-head">
         <h2 className="consigli-strip-title">{titolo}</h2>
         <Link className="consigli-strip-all" to={tutti}>
@@ -253,8 +157,14 @@ function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
 // e quanti mostrarne lo decide il negozio marcandoli.
 function Vetrina() {
   const navigate = useNavigate();
-  const [vini, setVini] = useState(null);
-  const [alimentari, setAlimentari] = useState(null);
+  // Tornando in home nella stessa visita le due fasce sono già piene: quel
+  // che era stato scaricato è rimasto in memoria (services/cache.js) e si
+  // legge SUBITO, al primo render, senza ripassare dalle schede vuote.
+  // `undefined` = mai chiesto → si resta su `null`, che è "in arrivo".
+  const [vini, setVini] = useState(() => gia(CHIAVI.viniConsigliati) ?? null);
+  const [alimentari, setAlimentari] = useState(
+    () => gia(CHIAVI.alimentariConsigliati) ?? null,
+  );
 
   useEffect(() => {
     let annullato = false;
@@ -265,8 +175,13 @@ function Vetrina() {
     const vuoto = (set) => () => {
       if (!annullato) set([]);
     };
-    getWinesConsigliati().then(metti(setVini)).catch(vuoto(setVini));
-    getAlimentariConsigliati()
+    // `ricorda` non richiama il server se il dato c'è già, e se la stessa
+    // richiesta è ancora in volo (l'Enoteca vuole gli stessi vini
+    // consigliati) ci si attacca invece di farne una seconda
+    ricorda(CHIAVI.viniConsigliati, getWinesConsigliati)
+      .then(metti(setVini))
+      .catch(vuoto(setVini));
+    ricorda(CHIAVI.alimentariConsigliati, getAlimentariConsigliati)
       .then(metti(setAlimentari))
       .catch(vuoto(setAlimentari));
     return () => {
@@ -278,11 +193,15 @@ function Vetrina() {
 
   return (
     <div className="vetrina">
+      {/* `tutti` porta alla tab "Consigliati" della pagina, non al suo indice:
+          la fascia mostra i consigli del negozio, e il link è il seguito
+          naturale di quella riga — gli altri consigli, non i gruppi del
+          catalogo. */}
       <FasciaVetrina
         titolo="I nostri consigli"
         items={vini}
         type="vini"
-        tutti="/enoteca"
+        tutti="/enoteca/consigliati"
         etichettaTutti="Tutta l'enoteca"
         onOpen={apri}
       />
@@ -290,7 +209,7 @@ function Vetrina() {
         titolo="Dalla dispensa"
         items={alimentari}
         type="alimentari"
-        tutti="/alimentari"
+        tutti="/alimentari/consigliati"
         etichettaTutti="Tutti gli alimentari"
         onOpen={apri}
       />
@@ -298,34 +217,67 @@ function Vetrina() {
   );
 }
 
+// Il benvenuto si fa una volta sola per visita.
+//
+// Il titolo che si scrive parola per parola e le schede dei consigli che
+// entrano in fila sono un'APERTURA: la prima volta raccontano qualcosa, ma
+// alla home con la barra in basso ci si torna di continuo, e rivedere lo
+// stesso numero a ogni giro lo trasforma in un tic — la pagina sembra
+// ricaricarsi invece che tornare dov'era.
+//
+// Una variabile di modulo e non uno state: deve sopravvivere allo
+// smontaggio della pagina (che è proprio quello che succede cambiando
+// sezione) e morire al ricaricamento, esattamente come la memoria delle
+// chiamate al server (services/cache.js). Le due cose vanno insieme: da
+// quando i dati non si riscaricano, al ritorno le schede sarebbero lì
+// istantanee E rianimate, che è il caso peggiore.
+let giaEntrata = false;
+
 function Home() {
-  // La home SCORRE (niente `home-no-scroll`, che invece usano ancora
-  // Enoteca, Gastronomia e Login): il racconto più due fasce di schede non
-  // stanno in una schermata sola, e a comprimerli si perderebbe l'uno o le
-  // altre.
+  // Si legge PRIMA di segnare, e dentro l'inizializzatore di useState: al
+  // primo montaggio vale `true` e resta quello per tutta la vita della
+  // pagina, dal secondo in poi vale `false`. Leggerla nel corpo del render
+  // sarebbe impuro (il React Compiler può riusare un render già fatto).
+  const [anima] = useState(() => !giaEntrata);
+  useEffect(() => {
+    giaEntrata = true;
+  }, []);
+
+  // Stesso meccanismo delle pagine negozio (vedi enoteca.css, "testata
+  // ferma"): la PAGINA non scorre, scorre un contenitore interno che finisce
+  // sopra la tab bar. Prima scorreva il documento intero, e le schede della
+  // dispensa passavano sotto la barra fissa e si vedevano tagliate nei 12px
+  // fra la barra e il bordo dello schermo.
+  useEffect(() => {
+    document.body.classList.add("home-no-scroll");
+    document.body.classList.add("page-pinned");
+    return () => {
+      document.body.classList.remove("home-no-scroll");
+      document.body.classList.remove("page-pinned");
+    };
+  }, []);
+
   return (
-    <section className="hero">
-      <h1 className="hero-title">
-        {TITOLO.split(" ").map((parola, i) => (
-          <Fragment key={i}>
-            {i > 0 && " "}
-            <span className="hero-parola" style={{ "--i": i }}>
-              {parola}
-            </span>
-          </Fragment>
-        ))}
-      </h1>
-      <div className="hero-stories">
-        <p className="hero-story">
-          L&apos;amore della famiglia De Toma per il vino nasce agli inizi del
-          &apos;900, quando Nicola De Toma lascia Trani per approdare a Lodi e
-          aprire un emporio vinicolo. Da lui, attraverso Domenica e Bartolomeo
-          (Nino), l&apos;attività arriva oggi a Nicola e Sabrina, che guidano
-          l&apos;enoteca.
-        </p>
-        <span className="hero-divider" aria-hidden="true" />
+    <section className={"hero" + (anima ? "" : " hero--ferma")}>
+      {/* tutto dentro il contenitore che scorre: in home non c'è una testata
+          da tenere ferma — il logo ce l'ha già l'header del sito */}
+      <div className="page-scroll hero-scroll">
+        <h1 className="hero-title">
+          {TITOLO.split(" ").map((parola, i) => (
+            <Fragment key={i}>
+              {i > 0 && " "}
+              <span className="hero-parola" style={{ "--i": i }}>
+                {parola}
+              </span>
+            </Fragment>
+          ))}
+        </h1>
+        <div className="hero-stories">
+          <p className="hero-story">{RACCONTO}</p>
+          <span className="hero-divider" aria-hidden="true" />
+        </div>
+        <Vetrina />
       </div>
-      <Vetrina />
     </section>
   );
 }
