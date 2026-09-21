@@ -739,6 +739,21 @@ export function ProductSheet({ w, category, onClose, type }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Finché il pannello è aperto, quello che scorre sotto sta fermo: vedi
+  // body.sheet-open in enoteca.css. Serve al trascinamento — il dito parte
+  // quasi sempre da `.sheet-scroll`, che ha `touch-action: pan-y` perché la
+  // descrizione lunga si deve poter scorrere; quando invece non c'è niente da
+  // scorrere lì dentro, il browser considera il gesto uno scorrimento e lo
+  // passa al primo contenitore che può scorrere, cioè la lista dietro. Così
+  // la lista scivolava via mentre si cercava di chiudere la scheda.
+  // Sta qui dentro, sul componente condiviso, perché vale per OGNI scheda:
+  // vini, birre, alimentari, reparti e Consigliati si comportano uguale senza
+  // che nessuna pagina debba ricordarsene.
+  useEffect(() => {
+    document.body.classList.add("sheet-open");
+    return () => document.body.classList.remove("sheet-open");
+  }, []);
+
   // trascinamento verso il basso per chiudere (come i pannelli commenti
   // di Instagram): segue il dito 1:1 mentre si trascina, poi scatta via
   // se si supera la soglia oppure torna su elastica altrimenti. Parte
@@ -1263,6 +1278,18 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
 
   const handleBack = () => {
     const phoneBar = window.matchMedia("(max-width: 640px)").matches;
+    // Dalla vista Mondo si torna PRIMA alle regioni: la freccia in cima fa
+    // quello che fa la ← dentro la barra, e non chiude niente. Chi sta
+    // scegliendo un paese è sceso di un livello dentro il filtro, e la
+    // freccia deve risalire quel livello — non saltare fuori da tutto.
+    // Un secondo tocco, ormai sulle regioni, fa quel che ha sempre fatto:
+    // sul telefono la barra rientra e poi si esce dalla categoria
+    // (`closing` → onBarAnimEnd → closeCategory), sul desktop si esce
+    // e basta. Quel pezzo non è cambiato.
+    if (barOpen && barView === "mondo") {
+      setBarView("regioni");
+      return;
+    }
     if (barOpen && phoneBar) setClosing(true);
     else closeCategory();
   };

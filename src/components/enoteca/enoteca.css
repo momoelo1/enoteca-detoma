@@ -1569,6 +1569,24 @@ svg.product-food-svg {
 
 /* ---- bottom sheet: dettagli prodotto ---- */
 
+/* Con una scheda aperta, il contenitore che scorre sotto si ferma. La classe
+   la mette ProductSheet finché è montato (Enoteca.jsx), quindi vale per ogni
+   scheda del sito: lista di categoria, reparto, tab Consigliati.
+   Il perché sta nel trascinamento per chiudere: il dito parte da
+   `.sheet-scroll`, che ha `touch-action: pan-y` per poter scorrere le
+   descrizioni lunghe. Quando lì dentro non c'è niente da scorrere — ed è il
+   caso di quasi tutte le schede degli alimentari — il browser tratta il gesto
+   come uno scorrimento e lo gira al primo contenitore capace di scorrere: la
+   lista dietro il pannello. Risultato, la lista scivolava mentre si tirava
+   giù la scheda, e la chiusura "non prendeva".
+   `overflow: hidden` non perde la posizione: la lista resta dov'era e torna
+   a scorrere alla chiusura. Niente `position: fixed` o azzeramenti. */
+body.sheet-open .product-list,
+body.sheet-open .consigliati-scroll,
+body.sheet-open .page-scroll {
+  overflow: hidden;
+}
+
 .sheet-backdrop {
   position: fixed;
   inset: 0;
