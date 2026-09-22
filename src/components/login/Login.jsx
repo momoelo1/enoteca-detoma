@@ -9,6 +9,7 @@ import {
 import { dimentica } from "../../services/cache";
 import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
+import DistillatiManager from "../admin/DistillatiManager";
 import AlimentariManager from "../admin/AlimentariManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
@@ -32,7 +33,7 @@ function Login({ onBack }) {
   const [cardReady, setCardReady] = useState(false);
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
-  const [adminView, setAdminView] = useState("wines"); // "wines" | "beers" | "alimentari" | "account"
+  const [adminView, setAdminView] = useState("wines"); // "wines" | "distillati" | "beers" | "alimentari" | "account"
 
   useEffect(() => {
     if (session) {
@@ -119,6 +120,15 @@ function Login({ onBack }) {
             <button
               type="button"
               className={
+                "admin-topbar-link" + (adminView === "distillati" ? " admin-topbar-link--active" : "")
+              }
+              onClick={() => setAdminView("distillati")}
+            >
+              Distillati
+            </button>
+            <button
+              type="button"
+              className={
                 "admin-topbar-link" + (adminView === "beers" ? " admin-topbar-link--active" : "")
               }
               onClick={() => setAdminView("beers")}
@@ -157,6 +167,8 @@ function Login({ onBack }) {
           <AlimentariManager />
         ) : adminView === "beers" ? (
           <BeerManager />
+        ) : adminView === "distillati" ? (
+          <DistillatiManager />
         ) : (
           <WineManager />
         )}

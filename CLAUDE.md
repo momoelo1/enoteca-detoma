@@ -49,7 +49,7 @@ Two consequences worth holding onto:
   `config.js` defaults `PORT` to **3002** while its local `.env` sets `PORT=3001`; if
   local API calls 404, check that first.
 
-The fallback lives in five copies, one per file in `src/services/` — change them together.
+The fallback lives in six copies, one per file in `src/services/` — change them together.
 
 ## Architecture
 
