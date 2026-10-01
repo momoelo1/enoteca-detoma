@@ -9,18 +9,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import { SHOP_GROUPS, COUNTRY_GROUPS, WHATSAPP_NUMBER } from "../../data/data";
 import { getWines, getWinesConsigliati } from "../../services/wines";
 import { getBeers, getBeersConsigliate } from "../../services/beers";
+import { getDistillati } from "../../services/distillati";
 import { ricorda, gia, CHIAVI } from "../../services/cache";
 import { CategoryIcon } from "../icons/CategoryIcon";
-import { productSlug } from "../../utils/productSlug";
+import { productSlug, vicini } from "../../utils/productSlug";
 import {
   formatPrezzo,
   prezzoProdotto,
   formatiAnnata,
+  comboFormati,
   etichettaFormato,
 } from "../../utils/prezzo";
 import { fotoProdotto, fotoProdotti } from "../../utils/cloudinary";
 import { coloreVersata } from "../../utils/coloreCategoria";
-import { useAccentoSfondo } from "../background/tinta";
+import { useAccentoSfondo, ctaDaAccento } from "../background/tinta";
 import Immagine from "../immagine/Immagine";
 import { effettoTocco } from "../effetti/effetti";
 import {
@@ -33,6 +35,8 @@ import {
   Carrot,
   CookingPot,
   Cherries,
+  CaretLeft,
+  CaretRight,
 } from "@phosphor-icons/react";
 import "./enoteca.css";
 
@@ -329,11 +333,13 @@ export function GrigliaFantasma() {
   );
 }
 
-// una fetch per gruppo (vini → getWines, birre → getBeers): ogni gruppo
-// "remote" ha il suo endpoint, non tutti i prodotti sono vini
+// una fetch per gruppo (vini → getWines, birre → getBeers, distillati →
+// getDistillati): ogni gruppo "remote" ha il suo endpoint, non tutti i
+// prodotti sono vini
 const REMOTE_FETCHERS = {
   vini: getWines,
   birre: getBeers,
+  distillati: getDistillati,
 };
 
 // categorie "remote: true" (es. rossi, tutte le birre): calcolate una
@@ -612,11 +618,31 @@ export function ProductCard({
   );
 }
 
+// Sotto questo corpo il nome smette di leggersi come il titolo della scheda e
+// comincia a somigliare a una didascalia: lì si preferisce mandarlo a capo.
+// A 15px stanno su una riga 386 vini su 547; a 13 sarebbero 449, ma accanto a
+// un prezzo di 29px un nome di 13 non è più la cosa più importante del
+// pannello.
+const CORPO_NOME_MIN = 15;
+
 // Bottom sheet: pannello che sale dal basso (pattern familiare tipo social /
 // delivery) con foto grande, descrizione completa e tabella annate/prezzi.
 // Si chiude con ✕, tocco sullo sfondo, Esc o trascinandolo giù — e in tutti
 // e quattro i casi scivola via prima di smontarsi (vedi `chiudi` più sotto).
-export function ProductSheet({ w, category, onClose, type }) {
+//
+// `prec` / `succ`: i prodotti accanto a questo nella lista da cui è stato
+// aperto (null ai capi), e `onVai(prodotto)` porta la scheda su uno di loro.
+// Sul telefono ci si passa scorrendo di lato, sul desktop con le due frecce
+// ai fianchi del pannello.
+export function ProductSheet({
+  w,
+  category,
+  onClose,
+  type,
+  prec = null,
+  succ = null,
+  onVai,
+}) {
   const desc = w.description || w.descrizione;
   const annate = w.annate;
   // La scheda dei VINI ha un'impaginazione sua (bottiglia grande, regione come
@@ -651,23 +677,111 @@ export function ProductSheet({ w, category, onClose, type }) {
   // modificatore, così una variante che mostra l'occhiello può spegnere il
   // doppione senza che il JSX debba sapere quale variante è attiva
   const chipLuogo = (m) => luogo && (m === w.regione || m === w.provenienza);
-  // prezzo e annata accanto al nome. Oggi il prezzo esiste SOLO in fondo alla
-  // tabella "Annate e prezzi", cioè sotto la piega su un telefono: per vederlo
-  // bisogna scorrere una scheda che sembra già finita.
-  const prezzo = vini ? prezzoProdotto(w) : null;
-  const annoCorrente = annate?.[0]?.anno;
-  // …e allora quella tabella, quando ha una riga sola con un formato solo,
-  // non dice altro che quel prezzo una seconda volta. Oggi è il caso di TUTTO
-  // il catalogo (383 vini su 383, stessa misura), ma il pannello admin
-  // permette più annate e più formati: lì la tabella serve ancora.
-  const annateRidondanti =
-    vini &&
-    prezzo != null &&
-    annate?.length === 1 &&
-    formatiAnnata(annate[0]).length <= 1;
+  // ---- la bottiglia scelta ----
+  // Annate e formati appiattiti in un elenco solo (utils/prezzo.js): il
+  // cliente ne sceglie uno, e il prezzo grande accanto al nome è il suo. Prima
+  // il numero là in cima era sempre il primo formato prezzato e gli altri
+  // vivevano solo nella tabella in fondo alla scheda — sotto la piega su un
+  // telefono, cioè invisibili a chi non scorre una scheda che sembra finita.
+  //
+  // Solo i vini: sono gli unici ad avere il prezzo in testata, e senza quello
+  // il selettore non avrebbe niente da muovere.
+  const combo = vini ? comboFormati(annate) : [];
+  const [iSceltaGrezza, setIScelta] = useState(0);
+  // aprire un altro prodotto riparte dalla prima bottiglia (stesso modo in cui
+  // più sotto si rimette a posto l'indice delle foto)
+  const [idScelta, setIdScelta] = useState(w.id);
+  if (w.id !== idScelta) {
+    setIdScelta(w.id);
+    setIScelta(0);
+  }
+  const iScelta = combo.length ? Math.min(iSceltaGrezza, combo.length - 1) : 0;
+  const scelta = combo[iScelta] ?? null;
+  // gli anni sono la riga di chip a destra del prezzo, i formati quella sotto.
+  // `filter(Boolean)`: gli spumanti non hanno annata (models/Wine.js la rende
+  // facoltativa proprio per loro) e lì la riga degli anni non esiste.
+  const anni = [...new Set(combo.map((c) => c.anno).filter(Boolean))];
+  const formatiScelta = anni.length
+    ? combo.filter((c) => c.anno === scelta?.anno)
+    : combo;
+  // con una bottiglia sola non c'è niente da scegliere: la scheda resta quella
+  // di sempre, senza pastiglie
+  const sceglibile = combo.length > 1;
+
+  const prezzo = vini
+    ? sceglibile
+      ? scelta?.prezzo
+      : prezzoProdotto(w)
+    : null;
+  // la tabella "Annate e prezzi" in fondo non dice altro che quel prezzo una
+  // seconda volta quando c'è una riga sola con un formato solo — e quando
+  // invece ce n'è più d'una lo dice adesso il selettore, sopra la piega.
+  // Resta viva per i tipi che il selettore non tocca (birre, alimentari).
+  const annateRidondanti = vini && (prezzo != null || sceglibile);
+  // il formato scelto finisce nel messaggio: chi scrive al negozio chiede il
+  // magnum del 2022, non "quel vino lì"
+  const dettaglio =
+    sceglibile && scelta
+      ? ` (${[scelta.anno, etichettaFormato(scelta.ml, { sempre: true })]
+          .filter(Boolean)
+          .join(" ")})`
+      : "";
+  // Il bottone WhatsApp dei vini, più chiaro dei bottoni della pagina (vedi
+  // ctaDaAccento in background/tinta.js). I Rossi restano com'erano: il loro
+  // bordeaux è quello giusto. `category.id` c'è solo aprendo la scheda dalla
+  // pagina di una categoria: i gruppi dei Consigliati non ne hanno uno, e lì il
+  // bottone resta del verde di casa come tutta la pagina.
+  const ctaTinta =
+    vini && category?.id && category.id !== "rossi"
+      ? ctaDaAccento(coloreVersata(category))
+      : null;
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Buongiorno, vorrei informazioni su: ${w.name}`,
+    `Buongiorno, vorrei informazioni su: ${w.name}${dettaglio}`,
   )}`;
+
+  // ---- il nome su una riga sola ----
+  // Il nome è il pezzo più variabile della scheda, ed è quello che la fa
+  // scorrere. Misurati i 547 vini in catalogo su un telefono da 390px, con
+  // Marcellus vero: a 19,5px ne stanno su una riga 225, gli altri 322 vanno a
+  // due righe (296), tre (21) o quattro (5).
+  //
+  // Nessun corpo UNICO li mette tutti su una riga — a 12px, illeggibile per un
+  // titolo, 67 andrebbero ancora a capo ("Valdobbiadene Prosecco Superiore DOCG
+  // Cuvé…" non ci sta a nessuna misura sensata). Quindi il corpo lo decide il
+  // nome: si scende di mezzo punto per volta finché sta su una riga, e ci si
+  // ferma a CORPO_MIN. Sotto quella soglia il nome va a capo come prima — due
+  // righe sono meglio di un titolo illeggibile, e tagliarlo non si può: la
+  // scheda è aperta proprio per leggere quel nome per intero.
+  //
+  // Si rimisura dopo `document.fonts.ready`: prima che Marcellus arrivi il
+  // browser impagina in Georgia, che è più stretta, e il corpo scelto sarebbe
+  // troppo grande. È lo stesso errore che in ProductCard accendeva il marquee
+  // a sproposito.
+  const nomeRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!vini) return;
+    let vivo = true;
+    const adatta = () => {
+      const n = nomeRef.current;
+      if (!vivo || !n) return;
+      n.style.fontSize = ""; // si riparte sempre dal corpo del CSS
+      const righe = () => {
+        const s = getComputedStyle(n);
+        const lh = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.2;
+        return Math.round(n.getBoundingClientRect().height / lh);
+      };
+      let corpo = parseFloat(getComputedStyle(n).fontSize);
+      while (corpo > CORPO_NOME_MIN && righe() > 1) {
+        corpo = Math.max(CORPO_NOME_MIN, corpo - 0.5);
+        n.style.fontSize = `${corpo}px`;
+      }
+    };
+    adatta();
+    document.fonts?.ready.then(adatta);
+    return () => {
+      vivo = false;
+    };
+  }, [vini, w.id, w.name]);
 
   // ---- le foto del prodotto ----
   // Sulla card se ne vede una sola, la prima. Qui si vedono tutte, a turno.
@@ -754,47 +868,186 @@ export function ProductSheet({ w, category, onClose, type }) {
     return () => document.body.classList.remove("sheet-open");
   }, []);
 
-  // trascinamento verso il basso per chiudere (come i pannelli commenti
-  // di Instagram): segue il dito 1:1 mentre si trascina, poi scatta via
-  // se si supera la soglia oppure torna su elastica altrimenti. Parte
-  // solo dal bordo/contenuto non interattivo e solo quando il contenuto
-  // interno è già in cima — così non ruba lo scroll della descrizione.
+  // ---- il passaggio al prodotto accanto ----
+  // Il pannello esce da un lato (fase "esce"), la rotta cambia sul vicino,
+  // e il pannello — lo stesso, non smontato — rientra dall'altro lato (fase
+  // "entra": messo di là senza transizione, poi lasciato tornare al centro).
+  // `corto` sono le frecce del desktop: lì la finestra sta in mezzo allo
+  // schermo e attraversarlo tutto sarebbe un viaggio, quindi si sposta di
+  // poco e sfuma. Lo scorrimento del telefono invece porta il pannello fuori
+  // per intero, come una carta spinta via dal dito.
   const scrollRef = useRef(null);
-  const draggingRef = useRef(false);
-  const startYRef = useRef(0);
-  const startDragYRef = useRef(0);
+  const gestoRef = useRef(null); // il gesto del dito in corso (vedi più sotto)
   const [dragY, setDragY] = useState(0);
+  const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [passo, setPasso] = useState(null); // null | { dir, fase, corto }
+  const destRef = useRef(null);
+  const uscitaFattaRef = useRef(false);
 
+  const vai = (dir, corto) => {
+    const dest = dir > 0 ? succ : prec;
+    if (!dest || !onVai || passo || closing) return;
+    // Chi ha chiesto meno movimento cambia scheda e basta. Niente attese di
+    // transitionend: è lo stesso tranello per cui la barra delle regioni non
+    // si chiude più con "riduci movimento" (aspetta un animationend che quella
+    // regola sopprime).
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDragX(0);
+      onVai(dest);
+      return;
+    }
+    destRef.current = dest;
+    uscitaFattaRef.current = false;
+    setPasso({ dir, fase: "esce", corto });
+  };
+  // `onVai` una volta sola, come `onClose`: dal transitionend del pannello o
+  // dalla rete di sicurezza qui sotto
+  const fineUscita = () => {
+    if (uscitaFattaRef.current) return;
+    uscitaFattaRef.current = true;
+    onVai(destRef.current);
+  };
+  useEffect(() => {
+    if (passo?.fase !== "esce") return;
+    // poco più della corsa d'uscita (0.22s in enoteca.css)
+    const t = setTimeout(() => {
+      if (uscitaFattaRef.current) return;
+      uscitaFattaRef.current = true;
+      onVai(destRef.current);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [passo, onVai]);
+  // Il vicino è arrivato: di qui il pannello si rimette in piedi. Il resto
+  // della scheda (foto, bottiglia scelta, corpo del nome) si riallinea da sé
+  // nei blocchi più sopra, che già guardavano il cambio di prodotto. Lo slug e
+  // non `w.id`: i prodotti statici un id non ce l'hanno.
+  const slug = productSlug(w);
+  const [slugMostrato, setSlugMostrato] = useState(slug);
+  if (slug !== slugMostrato) {
+    setSlugMostrato(slug);
+    setDragX(0);
+    setDragY(0);
+    if (passo) setPasso({ ...passo, fase: "entra" });
+  }
+  // due fotogrammi: il primo dipinge il pannello di là, fermo; solo dal
+  // secondo la transizione ha un punto di partenza da cui muoversi
+  useEffect(() => {
+    if (passo?.fase !== "entra") return;
+    let r2;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setPasso(null));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [passo]);
+  // la scheda nuova si legge dall'inizio, non dal punto in cui si era
+  // arrivati scorrendo la descrizione di quella prima
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [slug]);
+  // La prima foto dei due vicini si scarica già adesso: quando il pannello
+  // rientra la bottiglia c'è, invece di comparire a metà corsa.
+  useEffect(() => {
+    for (const x of [prec, succ]) {
+      const src = x && fotoProdotti(x, type)[0];
+      if (src) new Image().src = src;
+    }
+  }, [prec, succ, type]);
+
+  // ---- i gesti del dito ----
+  // Un gesto solo, deciso nei primi 6px: di lato è il passaggio al vicino,
+  // in giù è la chiusura.
+  //
+  // In giù (come i pannelli commenti di Instagram): segue il dito 1:1 mentre
+  // si trascina, poi scatta via se si supera la soglia oppure torna su
+  // elastica altrimenti. Parte solo dal bordo/contenuto non interattivo e solo
+  // quando il contenuto interno è già in cima — così non ruba lo scroll della
+  // descrizione.
+  //
+  // Di lato: solo col dito (o la penna). Col mouse trascinare di lato vuol
+  // dire selezionare il testo, e sul desktop ci sono le frecce. Può partire
+  // anche da una pastiglia o dal bottone WhatsApp: il pannello si prende il
+  // puntatore appena il gesto è deciso, e da lì il tocco non arriva più al
+  // bottone sotto il dito. Verso un lato senza vicino il pannello si muove lo
+  // stesso, frenato, e torna indietro: dice "qui finisce" senza parole.
   const onDragStart = (e) => {
-    if (closing) return;
-    if (e.target.closest("a, button")) return; // pulsanti/link intatti
-    if ((scrollRef.current?.scrollTop ?? 0) > 0) return; // sta scorrendo il contenuto
-    draggingRef.current = true;
-    startYRef.current = e.clientY;
-    startDragYRef.current = dragY;
-    setDragging(true);
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    if (closing || passo) return;
+    gestoRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      t: e.timeStamp,
+      dy0: dragY,
+      asse: null,
+      verticale:
+        !e.target.closest("a, button") && // pulsanti/link intatti
+        (scrollRef.current?.scrollTop ?? 0) <= 0, // sta scorrendo il contenuto
+      laterale: e.pointerType !== "mouse" && Boolean(onVai && (prec || succ)),
+    };
   };
   const onDragMove = (e) => {
-    if (!draggingRef.current) return;
-    const next = Math.max(
-      0,
-      startDragYRef.current + (e.clientY - startYRef.current),
-    );
-    setDragY(next);
+    const g = gestoRef.current;
+    if (!g) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (!g.asse) {
+      if (Math.hypot(dx, dy) < 6) return;
+      if (g.laterale && Math.abs(dx) > Math.abs(dy)) g.asse = "x";
+      else if (g.verticale) g.asse = "y";
+      else {
+        gestoRef.current = null;
+        return;
+      }
+      setDragging(true);
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    if (g.asse === "x") setDragX((dx < 0 ? succ : prec) ? dx : dx * 0.3);
+    else setDragY(Math.max(0, g.dy0 + dy));
   };
   const onDragEnd = (e) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
+    const g = gestoRef.current;
+    gestoRef.current = null;
+    if (!g?.asse) return;
     setDragging(false);
-    const sheetHeight = e.currentTarget.offsetHeight || 400;
-    if (dragY > sheetHeight * 0.28) {
-      chiudi(); // scivola via, poi onClose al termine (vedi onTransitionEnd)
-    } else {
-      setDragY(0); // sotto soglia: torna su
+    if (g.asse === "y") {
+      const sheetHeight = e.currentTarget.offsetHeight || 400;
+      if (dragY > sheetHeight * 0.28) {
+        chiudi(); // scivola via, poi onClose al termine (vedi onTransitionEnd)
+      } else {
+        setDragY(0); // sotto soglia: torna su
+      }
+      return;
     }
+    // di lato: basta un quarto di pannello, oppure un colpo secco anche
+    // corto — chi sfoglia in fretta non trascina fino a metà schermo.
+    // Interrotto dal browser (pointercancel) si torna sempre al centro.
+    const larghezza = e.currentTarget.offsetWidth || 360;
+    const velocita = Math.abs(dragX) / Math.max(1, e.timeStamp - g.t);
+    const dir = dragX < 0 ? 1 : -1;
+    const deciso =
+      e.type !== "pointercancel" &&
+      (dir > 0 ? succ : prec) &&
+      (Math.abs(dragX) > larghezza * 0.25 ||
+        (Math.abs(dragX) > 40 && velocita > 0.5));
+    if (deciso) vai(dir, false);
+    else setDragX(0);
   };
+
+  // la posizione del pannello: la chiusura vince su tutto, poi il passaggio
+  // al vicino, poi il dito
+  const spostamento = (() => {
+    if (closing) return "translateY(100%)";
+    if (passo) {
+      // "esce" va dal lato opposto al vicino, "entra" arriva dal suo
+      const verso = passo.fase === "esce" ? -passo.dir : passo.dir;
+      return `translateX(${verso * (passo.corto ? 48 : 110)}${passo.corto ? "px" : "%"})`;
+    }
+    if (dragX) return `translateX(${dragX}px)`;
+    if (dragY) return `translateY(${dragY}px)`;
+    return undefined;
+  })();
 
   return (
     <div
@@ -805,15 +1058,18 @@ export function ProductSheet({ w, category, onClose, type }) {
         className={
           "product-sheet" +
           (type ? ` product-sheet--${type}` : "") +
-          (dragging ? " product-sheet--dragging" : "")
+          // "entra" è il pannello messo di là da fermo: niente transizione,
+          // come mentre lo tiene il dito
+          (dragging || passo?.fase === "entra"
+            ? " product-sheet--dragging"
+            : "") +
+          (passo?.fase === "esce" ? " product-sheet--esce" : "")
         }
         style={{
           "--accent": category?.accent,
-          transform: closing
-            ? "translateY(100%)"
-            : dragY
-              ? `translateY(${dragY}px)`
-              : undefined,
+          "--cta-tinta": ctaTinta ?? undefined,
+          transform: spostamento,
+          opacity: passo?.corto ? 0 : undefined,
         }}
         role="dialog"
         aria-modal="true"
@@ -823,8 +1079,10 @@ export function ProductSheet({ w, category, onClose, type }) {
           // solo la corsa del pannello stesso: transitionend risale anche
           // dai figli (i puntini delle foto, il bottone WhatsApp) e pure
           // quelli transitano `transform`
-          if (!closing || e.target !== e.currentTarget) return;
-          if (e.propertyName !== "transform" || chiusoRef.current) return;
+          if (e.target !== e.currentTarget) return;
+          if (e.propertyName !== "transform") return;
+          if (passo?.fase === "esce") return fineUscita();
+          if (!closing || chiusoRef.current) return;
           chiusoRef.current = true;
           onClose();
         }}
@@ -913,18 +1171,81 @@ export function ProductSheet({ w, category, onClose, type }) {
             )}
             <div className="sheet-ident">
               {luogo && <span className="sheet-eyebrow">{luogo}</span>}
-              <h3 className="sheet-name">{w.name}</h3>
+              <h3 className="sheet-name" ref={nomeRef}>
+                {w.name}
+              </h3>
               {prezzo != null && (
                 <p className="sheet-prezzo">
                   <span className="sheet-prezzo-val">
                     {formatPrezzo(prezzo)}
                   </span>
-                  {annoCorrente && (
-                    <span className="sheet-prezzo-anno">
-                      Annata {annoCorrente}
+                  {/* Le annate, a destra del prezzo — dove fino a ieri c'era
+                      la scritta "Annata 2024". Sono pastiglie SEMPRE, anche
+                      quando l'annata è una sola (oggi tutti e 547 i vini in
+                      catalogo): quella resta accesa e non si spegne, ed è il
+                      modo di dire "questa è l'annata che vendiamo" con la
+                      stessa forma che avrà quando ce ne sarà più d'una. Gli
+                      spumanti senza anno non hanno niente: `anni` è vuoto.
+                      Il gruppo si annuncia comunque come scelta dell'annata,
+                      così chi legge con lo screen reader sente "Annata, 2024
+                      selezionato" invece di un anno sospeso. */}
+                  {anni.length > 0 && (
+                    <span
+                      className="sheet-anni"
+                      role="group"
+                      aria-label="Annata"
+                    >
+                      {anni.map((a) => (
+                        <button
+                          key={a}
+                          type="button"
+                          className={
+                            "sheet-anno-chip" +
+                            (a === scelta?.anno ? " sheet-anno-chip--on" : "")
+                          }
+                          aria-pressed={a === scelta?.anno}
+                          onClick={() =>
+                            setIScelta(combo.findIndex((c) => c.anno === a))
+                          }
+                        >
+                          {a}
+                        </button>
+                      ))}
                     </span>
                   )}
                 </p>
+              )}
+              {/* I formati dell'annata scelta. Il prezzo è scritto su ognuno:
+                  quanto costa il magnum si legge senza toccare niente, e il
+                  tocco serve solo a decidere. La riga c'è per tutta la durata
+                  della scheda anche quando l'annata scelta ha un formato solo,
+                  altrimenti cambiando annata il pannello si accorcerebbe sotto
+                  le dita. */}
+              {sceglibile && formatiScelta.length > 0 && (
+                <div className="sheet-formati" role="group" aria-label="Formato">
+                  {formatiScelta.map((c) => {
+                    const i = combo.indexOf(c);
+                    return (
+                      <button
+                        key={c.chiave}
+                        type="button"
+                        className={
+                          "sheet-formato" +
+                          (i === iScelta ? " sheet-formato--on" : "")
+                        }
+                        aria-pressed={i === iScelta}
+                        onClick={() => setIScelta(i)}
+                      >
+                        <span className="sheet-formato-nome">
+                          {etichettaFormato(c.ml, { sempre: true })}
+                        </span>
+                        <span className="sheet-formato-prezzo">
+                          {c.prezzo != null ? formatPrezzo(c.prezzo) : "—"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
@@ -1033,6 +1354,40 @@ export function ProductSheet({ w, category, onClose, type }) {
           </a>
         )}
       </div>
+      {/* Le frecce per il vicino, solo sul desktop (sul telefono le spegne il
+          CSS: lì si scorre di lato). Stanno fuori dal pannello, ai suoi
+          fianchi, e non si muovono con lui: il pannello va e viene, le
+          frecce restano dove il mouse le ha trovate — si può cliccare di
+          seguito senza inseguirle. Ai capi della lista la freccia non c'è.
+          `title` col nome del vicino: passandoci sopra si sa dove si va. */}
+      {onVai && prec && (
+        <button
+          type="button"
+          className="sheet-passo sheet-passo--prec"
+          onClick={(e) => {
+            e.stopPropagation(); // lo sfondo chiuderebbe la scheda
+            vai(-1, true);
+          }}
+          aria-label={`Prodotto precedente: ${prec.name}`}
+          title={prec.name}
+        >
+          <CaretLeft weight="bold" aria-hidden="true" />
+        </button>
+      )}
+      {onVai && succ && (
+        <button
+          type="button"
+          className="sheet-passo sheet-passo--succ"
+          onClick={(e) => {
+            e.stopPropagation();
+            vai(1, true);
+          }}
+          aria-label={`Prodotto successivo: ${succ.name}`}
+          title={succ.name}
+        >
+          <CaretRight weight="bold" aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }
@@ -1202,6 +1557,13 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
     groupId && categoryId ? `/enoteca/${groupId}/${categoryId}` : "/enoteca";
   const openProduct = (w) => navigate(`${categoryPath}/${productSlug(w)}`);
   const closeProduct = () => navigate(categoryPath);
+  // i vicini della scheda aperta sono quelli della lista a video, filtri
+  // compresi. `replace`: passare da un vino all'altro non riempie la
+  // cronologia — il tasto indietro chiude la scheda, non ripercorre i
+  // quindici vini sfogliati.
+  const viciniScheda = vicini(visibleItems, productId);
+  const vaiAlProdotto = (w) =>
+    navigate(`${categoryPath}/${productSlug(w)}`, { replace: true });
 
   // ogni cambio di livello riparte dall'inizio della pagina
   useEffect(() => {
@@ -1554,6 +1916,9 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
             category={activeCategory}
             onClose={closeProduct}
             type={activeGroup.id}
+            prec={viciniScheda.prec}
+            succ={viciniScheda.succ}
+            onVai={vaiAlProdotto}
           />
         )}
       </section>
@@ -1585,6 +1950,15 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
   const openConsigliato = (item) =>
     navigate(`/enoteca/consigliati/${productSlug(item)}`);
   const closeConsigliato = () => navigate("/enoteca/consigliati");
+  // i vicini di un consigliato: la fila intera, un gruppo dopo l'altro, come
+  // la si legge scorrendo — dall'ultimo dei Rossi si passa al primo dei
+  // Bianchi. `replace` per la stessa ragione della lista di categoria.
+  const viciniConsigliato = vicini(
+    consigliatiGroups.flatMap((g) => g.items),
+    productId,
+  );
+  const vaiAlConsigliato = (item) =>
+    navigate(`/enoteca/consigliati/${productSlug(item)}`, { replace: true });
 
   return (
     <section className="shop-section shop-section--enoteca">
@@ -1651,6 +2025,9 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
           category={consigliatoAperto.group}
           onClose={closeConsigliato}
           type={consigliatoAperto.group.type}
+          prec={viciniConsigliato.prec}
+          succ={viciniConsigliato.succ}
+          onVai={vaiAlConsigliato}
         />
       )}
     </section>

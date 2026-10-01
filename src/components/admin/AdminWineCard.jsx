@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
-import { ML_NOTI, etichettaFormato, prezzoProdotto } from "../../utils/prezzo";
+import { FORMATI_VINO, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
 import StellaConsigliato from "./StellaConsigliato";
+import BottoneArchivio from "./BottoneArchivio";
 
 
 const FOREIGN_COUNTRIES = Object.keys(COUNTRY_GROUPS);
@@ -40,15 +41,15 @@ const annataVuota = () => ({ anno: "", formati: [formatoVuoto()] });
 // sul niente costringeva a una scelta in più per il caso più comune.
 const ML_BOTTIGLIA = 750;
 
-// le voci del menù dei formati: quelle note (ML_NOTI in utils/prezzo.js) più
-// — se c'è — il valore già salvato sul vino ma fuori elenco. Il campo prima
-// era libero: un menù che non contiene il valore corrente lo cambierebbe di
-// nascosto al primo salvataggio.
+// le voci del menù dei formati: quelle del vino (FORMATI_VINO in
+// utils/prezzo.js) più — se c'è — il valore già salvato sul vino ma fuori
+// elenco. Il campo prima era libero: un menù che non contiene il valore
+// corrente lo cambierebbe di nascosto al primo salvataggio.
 const opzioniMl = (ml) => {
   const n = Number(ml);
-  return ml !== "" && Number.isFinite(n) && !ML_NOTI.includes(n)
-    ? [...ML_NOTI, n].sort((a, b) => a - b)
-    : ML_NOTI;
+  return ml !== "" && Number.isFinite(n) && !FORMATI_VINO.includes(n)
+    ? [...FORMATI_VINO, n].sort((a, b) => a - b)
+    : FORMATI_VINO;
 };
 
 // un'annata non ancora migrata non ha `formati` ma il vecchio `prezzo`
@@ -112,6 +113,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const [error, setError] = useState("");
   const [removingIndex, setRemovingIndex] = useState(null);
   const [flagging, setFlagging] = useState(false);
+  const [archiviando, setArchiviando] = useState(false);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -356,6 +358,24 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     }
   };
 
+  // Archivia: il vino esce dal sito e da questa griglia ma resta nel
+  // database, e si ripristina dalla sezione Archivio del pannello. Niente
+  // conferma, a differenza di Elimina: si torna indietro con un tocco.
+  // Come la stella manda SOLO il suo campo, il resto del vino non si tocca.
+  // Stessa funzione in AdminDistillatoCard, AdminBeerCard e AdminAlimentareCard.
+  const handleArchivia = async () => {
+    setArchiviando(true);
+    setError("");
+    try {
+      await updateWine(wine.id, { archiviato: true });
+      // per la griglia è come eliminato: qui non deve più comparire
+      onDeleted(wine.id);
+    } catch (err) {
+      setError(err.message);
+      setArchiviando(false);
+    }
+  };
+
   // Rimuove UNA foto: se è già caricata su Cloudinary (vino salvato) la
   // cancella davvero anche lato storage, non solo il riferimento; se è solo
   // un'anteprima locale non ancora salvata basta toglierla dal form.
@@ -438,9 +458,8 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           <p className="admin-hint">
             Un prezzo per riga. Senza spunta la riga è la{" "}
             <strong>bottiglia normale</strong>; metti la spunta{" "}
-            <strong>Formato</strong> per mezze bottiglie e magnum e scegli
-            quale. Il prezzo lasciato in bianco vale zero e sul sito non
-            compare.
+            <strong>Formato</strong> per magnum e jéroboam e scegli quale. Il
+            prezzo lasciato in bianco vale zero e sul sito non compare.
           </p>
 
           <div className="admin-annate-list">
@@ -501,14 +520,13 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                         </span>
                         <span className="admin-annata-check-text">Formato</span>
                       </label>
-                      {/* il negozio ragiona per nome ("Magnum"), non per
-                          numero, ma nel database va il numero: il menù mostra
-                          i nomi e salva i ml */}
+                      {/* il menù mostra i litri ("1,5 L") e nel database va
+                          il numero in ml */}
                       <div className="admin-field">
                         <select
                           value={f.ml}
                           disabled={!f.conMl}
-                          title="Formato della bottiglia. Senza spunta vale la bottiglia normale da 750 ml."
+                          title="Formato della bottiglia. Senza spunta vale la bottiglia normale da 0,75 L."
                           onChange={(e) => updateFormato(i, j, "ml", e.target.value)}
                         >
                           {/* si vede solo a spunta spenta, dove il menù è
@@ -519,7 +537,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                           </option>
                           {opzioniMl(f.ml).map((ml) => (
                             <option key={ml} value={ml}>
-                              {etichettaFormato(ml, { sempre: true })}
+                              {etichettaLitri(ml)}
                             </option>
                           ))}
                         </select>
@@ -697,6 +715,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
               <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z" />
             </svg>
           </button>
+          <BottoneArchivio inCorso={archiviando} onClick={handleArchivia} />
           <button
             type="button"
             className="admin-icon-btn admin-icon-btn--danger"

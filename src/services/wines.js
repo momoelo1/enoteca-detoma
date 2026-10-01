@@ -40,6 +40,14 @@ export const getWinesConsigliati = async () => {
   return parse(res);
 };
 
+// solo i vini messi in archivio (sezione Archivio del pannello): tutti gli
+// altri elenchi li escludono già dal backend. Stessa funzione anche in
+// services/distillati.js, beers.js e alimentari.js.
+export const getWinesArchiviati = async () => {
+  const res = await fetch(`${API_URL}/api/wines?archiviato=true`);
+  return parse(res);
+};
+
 export const createWine = async (wine) => {
   const res = await fetch(`${API_URL}/api/wines`, {
     method: "POST",

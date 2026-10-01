@@ -11,6 +11,7 @@ import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
 import DistillatiManager from "../admin/DistillatiManager";
 import AlimentariManager from "../admin/AlimentariManager";
+import ArchivioManager from "../admin/ArchivioManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
 
@@ -33,7 +34,7 @@ function Login({ onBack }) {
   const [cardReady, setCardReady] = useState(false);
   const [session, setSession] = useState(null);
   const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
-  const [adminView, setAdminView] = useState("wines"); // "wines" | "distillati" | "beers" | "alimentari" | "account"
+  const [adminView, setAdminView] = useState("wines"); // "wines" | "distillati" | "beers" | "alimentari" | "archivio" | "account"
 
   useEffect(() => {
     if (session) {
@@ -107,62 +108,79 @@ function Login({ onBack }) {
             <span className="admin-topbar-eyebrow">Pannello di gestione</span>
             <span className="admin-topbar-user">{session.username}</span>
           </div>
+          {/* due gruppi: a sinistra i prodotti in negozio, a destra quel che
+              non è catalogo — l'archivio, l'account e l'uscita */}
           <div className="admin-topbar-actions">
-            <button
-              type="button"
-              className={
-                "admin-topbar-link" + (adminView === "wines" ? " admin-topbar-link--active" : "")
-              }
-              onClick={() => setAdminView("wines")}
-            >
-              Vini
-            </button>
-            <button
-              type="button"
-              className={
-                "admin-topbar-link" + (adminView === "distillati" ? " admin-topbar-link--active" : "")
-              }
-              onClick={() => setAdminView("distillati")}
-            >
-              Distillati
-            </button>
-            <button
-              type="button"
-              className={
-                "admin-topbar-link" + (adminView === "beers" ? " admin-topbar-link--active" : "")
-              }
-              onClick={() => setAdminView("beers")}
-            >
-              Birre
-            </button>
-            <button
-              type="button"
-              className={
-                "admin-topbar-link" + (adminView === "alimentari" ? " admin-topbar-link--active" : "")
-              }
-              onClick={() => setAdminView("alimentari")}
-            >
-              Alimentari
-            </button>
-            <button
-              type="button"
-              className={
-                "admin-topbar-link" + (adminView === "account" ? " admin-topbar-link--active" : "")
-              }
-              onClick={() => setAdminView("account")}
-            >
-              Account
-            </button>
-            {/* niente "Torna al sito" qui: l'intestazione del sito, con il
-                logo e la voce Home, è renderizzata fuori dalle Routes
-                (App.jsx) e resta visibile anche dentro il pannello */}
-            <button type="button" className="admin-logout-btn" onClick={handleLogout}>
-              Esci
-            </button>
+            <div className="admin-topbar-gruppo">
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "wines" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("wines")}
+              >
+                Vini
+              </button>
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "distillati" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("distillati")}
+              >
+                Distillati
+              </button>
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "beers" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("beers")}
+              >
+                Birre
+              </button>
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "alimentari" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("alimentari")}
+              >
+                Alimentari
+              </button>
+            </div>
+            <div className="admin-topbar-gruppo admin-topbar-gruppo--servizio">
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "archivio" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("archivio")}
+              >
+                Archivio
+              </button>
+              <button
+                type="button"
+                className={
+                  "admin-topbar-link" + (adminView === "account" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("account")}
+              >
+                Account
+              </button>
+              {/* niente "Torna al sito" qui: l'intestazione del sito, con il
+                  logo e la voce Home, è renderizzata fuori dalle Routes
+                  (App.jsx) e resta visibile anche dentro il pannello */}
+              <button type="button" className="admin-logout-btn" onClick={handleLogout}>
+                Esci
+              </button>
+            </div>
           </div>
         </header>
         {adminView === "account" ? (
           <UserSettings session={session} onUpdated={setSession} />
+        ) : adminView === "archivio" ? (
+          <ArchivioManager />
         ) : adminView === "alimentari" ? (
           <AlimentariManager />
         ) : adminView === "beers" ? (

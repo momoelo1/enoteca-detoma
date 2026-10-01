@@ -17,7 +17,7 @@ import {
 } from "../../services/alimentari";
 import { ricorda, gia, CHIAVI } from "../../services/cache";
 import { normalize } from "../../utils/normalize";
-import { productSlug } from "../../utils/productSlug";
+import { productSlug, vicini } from "../../utils/productSlug";
 import { useAccentoSfondo } from "../background/tinta";
 import "./gastronomia.css";
 
@@ -160,6 +160,13 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
   const openConsigliato = (item) =>
     navigate(`/alimentari/consigliati/${productSlug(item)}`);
   const closeConsigliato = () => navigate("/alimentari/consigliati");
+  // prodotto prima e dopo nella scheda aperta: vedi il gemello in Enoteca.jsx
+  const viciniConsigliato = vicini(
+    consigliatiGroups.flatMap((g) => g.items),
+    productId,
+  );
+  const vaiAlConsigliato = (item) =>
+    navigate(`/alimentari/consigliati/${productSlug(item)}`, { replace: true });
 
   // ogni cambio di livello riparte dall'inizio
   useEffect(() => {
@@ -238,6 +245,9 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
   };
   const openProduct = (p) => navigate(`${groupPath}/${productSlug(p)}`);
   const closeProduct = () => navigate(groupPath);
+  const viciniScheda = vicini(gruppoAperto?.items ?? [], productId);
+  const vaiAlProdotto = (p) =>
+    navigate(`${groupPath}/${productSlug(p)}`, { replace: true });
 
   // dentro un gruppo: solo ritorno e nome del gruppo in cima, esattamente
   // come una categoria dell'Enoteca
@@ -280,6 +290,9 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
             category={activeCategory}
             onClose={closeProduct}
             type="alimentari"
+            prec={viciniScheda.prec}
+            succ={viciniScheda.succ}
+            onVai={vaiAlProdotto}
           />
         )}
       </section>
@@ -394,6 +407,9 @@ function Gastronomia({ consigliati: consigliatiRoute = false }) {
           category={consigliatoAperto.group}
           onClose={closeConsigliato}
           type="alimentari"
+          prec={viciniConsigliato.prec}
+          succ={viciniConsigliato.succ}
+          onVai={vaiAlConsigliato}
         />
       )}
     </section>

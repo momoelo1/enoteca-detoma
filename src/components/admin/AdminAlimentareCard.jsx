@@ -6,6 +6,7 @@ import {
   deleteAlimentareImage,
 } from "../../services/alimentari";
 import StellaConsigliato from "./StellaConsigliato";
+import BottoneArchivio from "./BottoneArchivio";
 
 // niente annate qui: il cibo ha un prezzo unico, come le birre.
 // `formato` è un numero di grammi come per le birre lo è di centilitri
@@ -44,6 +45,7 @@ function AdminAlimentareCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [flagging, setFlagging] = useState(false);
+  const [archiviando, setArchiviando] = useState(false);
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -143,6 +145,20 @@ function AdminAlimentareCard({
       onDeleted(item.id);
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  // vedi AdminWineCard: fuori dal sito e dalla griglia, ripristinabile
+  // dalla sezione Archivio
+  const handleArchivia = async () => {
+    setArchiviando(true);
+    setError("");
+    try {
+      await updateAlimentare(item.id, { archiviato: true });
+      onDeleted(item.id);
+    } catch (err) {
+      setError(err.message);
+      setArchiviando(false);
     }
   };
 
@@ -331,6 +347,7 @@ function AdminAlimentareCard({
               <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z" />
             </svg>
           </button>
+          <BottoneArchivio inCorso={archiviando} onClick={handleArchivia} />
           <button
             type="button"
             className="admin-icon-btn admin-icon-btn--danger"

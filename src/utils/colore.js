@@ -32,6 +32,23 @@ export const esaDaHsl = (h, s, l) => {
   return aEsa([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
 };
 
+// Contrasto WCAG fra due colori (da 1 a 21): quanto si legge un testo
+// dell'uno sopra l'altro. 4.5 è la soglia AA per il testo normale — e un
+// testo di 16px in grassetto, come quello dei bottoni, per la norma è ancora
+// "normale": il "grande" comincia a 18,66px.
+const lineare = (v) => {
+  const c = v / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+const luminanza = (esa) => {
+  const [r, g, b] = aByte(esa).map(lineare);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+export const contrasto = (a, b) => {
+  const [chiaro, scuro] = [luminanza(a), luminanza(b)].sort((x, y) => y - x);
+  return (chiaro + 0.05) / (scuro + 0.05);
+};
+
 // solo la tinta (0-360) di un colore: serve a ricavarne una versione più
 // scura o più chiara restando nella stessa famiglia
 export const tonoDiEsa = (esa) => {

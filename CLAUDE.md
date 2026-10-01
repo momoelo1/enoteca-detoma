@@ -153,6 +153,40 @@ The region filter bar is **text-only** — every button in it, "Mondo" included,
 `.filter-label`. It carried a hand-drawn globe until 2026-08-26; don't put an icon back on
 one button without doing the same to the regions beside it.
 
+### iOS Safari versions: check old AND new before calling a layout change done
+
+Shop customers are on a mix of iOS versions, and Safari updates change how the bottom of the
+screen behaves. On 2026-09-30 two identical iPhone 15s rendered the home differently: the
+newer iOS Safari navigation bar pushed content past the tab bar, while the older iOS was
+fine. Any change touching page height, bottom spacing, scroll containers or fixed elements
+(the `.site-nav` tab bar, the region filter bar, the bottom sheet) must be reasoned about on
+both.
+
+- **The `100vh` trap.** `index.css` gives every body `min-height: 100vh`, which on iOS is the
+  screen *with Safari's bars hidden*. It beats `height: 100dvh`, so the body ends up taller
+  than what's visible and any bottom reserve is counted from an off-screen edge. A body
+  `padding-bottom` reserved for the tab bar must **always** come with `min-height: 0` — the
+  recipe is `body.consigliati-open` in `App.css`: `min-height: 0` +
+  `padding-bottom: calc(81px + env(safe-area-inset-bottom))` (81 = the bar's 69px height +
+  its 12px offset).
+- **Fixing only the new Safari.** When old iOS already looks right, scope the fix with the
+  detector in `enoteca.css` ("pagine indice sul Safari nuovo"):
+  `@supports (-webkit-touch-callout: none) and ((anchor-name: --a) or (animation-timeline: scroll()))`.
+  `-webkit-touch-callout` exists only on iOS (every iOS browser is WebKit); anchor positioning
+  and scroll-driven animations both shipped in Safari 26.0 and neither was in Safari 18. If a
+  future Safari breaks something again, pick a feature from *that* version's release notes on
+  webkit.org — don't guess.
+- **"Fine on one iPhone, broken on an identical one"** means iOS/Safari version or Safari
+  settings (address bar top/bottom), not screen size. Width media queries can't fix it.
+- **Check the built CSS.** The build rewrites every media query to range syntax
+  (`width<=640px`) — so the phone layout already needs Safari 16.4+ — and merges adjacent
+  blocks. After adding an `@supports`, confirm in `dist/assets/` that it survived and is still
+  nested where you put it.
+
+Current state: the home uses its own width-based version of the fix (391–640px, home.css);
+the Enoteca and Alimentari index pages use the new-Safari detector; category pages hide the
+tab bar and are unaffected.
+
 ## Language
 
 UI text, user-facing error messages and code comments are all in **Italian**. Match it —

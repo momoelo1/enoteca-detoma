@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { WINE_CATEGORIES } from "../../data/data";
+import { WINE_CATEGORIES, COUNTRY_GROUPS } from "../../data/data";
 import { getWines } from "../../services/wines";
 import { normalize } from "../../utils/normalize";
 import CategoryPicker from "./CategoryPicker";
@@ -14,6 +14,9 @@ const WINE_CATEGORY_OPTIONS = WINE_CATEGORIES.map((c) => ({
   label: c.label,
   accent: c.accent,
 }));
+
+// stessi paesi esteri della barra della pagina Enoteca (COUNTRY_GROUPS)
+const isPaeseMondo = (v) => Boolean(COUNTRY_GROUPS[v]);
 
 function WineManager() {
   const [categoryId, setCategoryId] = useState(WINE_CATEGORY_OPTIONS[0].id);
@@ -71,7 +74,12 @@ function WineManager() {
   // della pagina pubblica (Enoteca.jsx, `filterValue`) — il trim va fatto
   // su TUTT'E DUE i lati, perché un bottone ripulito non troverebbe più i
   // vini col valore sporco.
-  const regioneDi = (w) => w.regione?.trim();
+  //
+  // Il paese viene PRIMA della regione, come in `filterValue` di Enoteca.jsx:
+  // un vino estero ha il paese e non la regione, e leggendo solo la regione
+  // dalla barra non si poteva raggiungere nessuno di loro. I paesi finiscono
+  // dietro il bottone "Mondo" (vedi `isMondo` in AdminFilterBar).
+  const regioneDi = (w) => w.paese?.trim() || w.regione?.trim();
 
   // stessa logica di filtro della pagina Enoteca pubblica: regione e
   // ricerca si sommano, la ricerca affina dentro la regione scelta
@@ -118,6 +126,7 @@ function WineManager() {
               filterLabel="Regioni"
               activeFilter={regionFilter}
               onFilterChange={setRegionFilter}
+              isMondo={isPaeseMondo}
             />
           )}
         </div>

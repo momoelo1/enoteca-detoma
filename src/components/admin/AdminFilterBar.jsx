@@ -15,12 +15,20 @@ function AdminFilterBar({
   filterLabel = "Regioni",
   activeFilter,
   onFilterChange,
+  // facoltativo: dice quali valori sono paesi esteri. Se c'è, la barra fa
+  // come quella della pagina Enoteca — le regioni in riga e i paesi dietro un
+  // bottone "Mondo", con la ← per tornare indietro. Senza, una riga sola
+  // (birre, alimentari, distillati).
+  isMondo,
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [barView, setBarView] = useState("regioni"); // regioni | mondo
   const searchRef = useRef(null);
 
   const hasFilter = Boolean(filterValues && filterValues.length >= 2);
+  const paesiMondo = isMondo ? (filterValues ?? []).filter(isMondo) : [];
+  const regioni = isMondo ? (filterValues ?? []).filter((v) => !isMondo(v)) : filterValues;
 
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
@@ -94,23 +102,63 @@ function AdminFilterBar({
 
       {filterOpen && hasFilter && (
         <nav className="filter-bar admin-filter-bar" aria-label={`Filtra per ${filterLabel.toLowerCase()}`}>
-          <button
-            type="button"
-            className={"filter-btn" + (!activeFilter ? " is-active" : "")}
-            onClick={() => onFilterChange(null)}
-          >
-            <span className="filter-label">Tutti</span>
-          </button>
-          {filterValues.map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={"filter-btn" + (activeFilter === v ? " is-active" : "")}
-              onClick={() => onFilterChange(v)}
-            >
-              <span className="filter-label">{v}</span>
-            </button>
-          ))}
+          {barView === "mondo" && paesiMondo.length > 0 ? (
+            <>
+              <button
+                key="m-indietro"
+                type="button"
+                className="filter-back"
+                onClick={() => setBarView("regioni")}
+                aria-label="Torna alle regioni"
+              >
+                ←
+              </button>
+              <span key="m-divisorio" className="filter-divider" aria-hidden="true" />
+              {paesiMondo.map((v) => (
+                <button
+                  key={"m-" + v}
+                  type="button"
+                  className={"filter-btn" + (activeFilter === v ? " is-active" : "")}
+                  onClick={() => onFilterChange(v)}
+                >
+                  <span className="filter-label">{v}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              <button
+                key="r-tutti"
+                type="button"
+                className={"filter-btn" + (!activeFilter ? " is-active" : "")}
+                onClick={() => onFilterChange(null)}
+              >
+                <span className="filter-label">Tutti</span>
+              </button>
+              {paesiMondo.length > 0 && (
+                <button
+                  key="r-mondo"
+                  type="button"
+                  className={
+                    "filter-btn" + (paesiMondo.includes(activeFilter) ? " is-active" : "")
+                  }
+                  onClick={() => setBarView("mondo")}
+                >
+                  <span className="filter-label">Mondo</span>
+                </button>
+              )}
+              {regioni.map((v) => (
+                <button
+                  key={"r-" + v}
+                  type="button"
+                  className={"filter-btn" + (activeFilter === v ? " is-active" : "")}
+                  onClick={() => onFilterChange(v)}
+                >
+                  <span className="filter-label">{v}</span>
+                </button>
+              ))}
+            </>
+          )}
         </nav>
       )}
     </>

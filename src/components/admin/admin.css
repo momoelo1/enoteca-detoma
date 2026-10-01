@@ -46,10 +46,33 @@
   color: #2e3d34;
 }
 
+/* `flex-wrap`: su telefono le voci vanno a capo invece di allargare la
+   pagina. Misurato il 2026-09-25 a 390px: 350px di spazio, e le voci ne
+   chiedevano già 371 prima dell'Archivio (439 dopo) — la pagina intera
+   diventava larga 459 e "Esci" finiva fuori schermo */
 .admin-topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 22px;
+}
+
+/* i due gruppi della barra (Login.jsx): prodotti | archivio, account, esci.
+   Su telefono non stanno su una riga e ognuno va sulla sua */
+.admin-topbar-gruppo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+/* affiancati, un filo li separa: lo spazio da solo non basta a dire che
+   Archivio non è una categoria di prodotti come le altre */
+@media (min-width: 720px) {
+  .admin-topbar-gruppo--servizio {
+    padding-left: 22px;
+    border-left: 1px solid rgba(46, 94, 70, 0.2);
+  }
 }
 
 .admin-topbar-link {
@@ -272,6 +295,52 @@
 
   .filter-bar.admin-filter-bar .filter-btn {
     flex: none;
+  }
+
+  /* Su telefono il conteggio scende sotto il titolo, così Cerca e Regioni
+     restano sulla riga del titolo. Misurato il 2026-09-26 a 390px: 350px di
+     spazio, i due bottoni ne prendono ~175, e con titolo e conteggio in fila
+     33 casi su 63 (categorie vere × filtro) mandavano i bottoni a capo —
+     "Vini Bianchi", "Champagne", "Gastronomia", ogni regione lunga scelta.
+     Un titolo lunghissimo ("Armagnac e Cognac") va a capo DENTRO la sua
+     colonna, i bottoni restano dove sono. Ricerca e barra dei filtri, quando
+     si aprono, prendono tutta la larghezza sotto. Vale per tutti i pannelli:
+     è la stessa testata ovunque (vini, distillati, birre, alimentari, archivio). */
+  .admin-content-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 0;
+    align-items: center;
+  }
+
+  .admin-content-header > .admin-content-title {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .admin-content-header > .admin-content-count {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 2px;
+  }
+
+  .admin-content-header > .admin-filter-actions {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+  }
+
+  .admin-content-header .search-field {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 10px;
+  }
+
+  .admin-content-header .filter-bar.admin-filter-bar {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    margin-top: 6px;
   }
 }
 
@@ -969,6 +1038,69 @@
 
 .admin-icon-btn--danger:hover {
   background: rgba(179, 38, 30, 0.16);
+}
+
+/* il bottone Archivia mentre il PUT è in volo: come la stella, non si
+   ritocca finché non ha risposto */
+.admin-icon-btn:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   Archivio (ArchivioManager): i prodotti tolti dal negozio senza cancellarli
+   ========================================================================== */
+/* in archivio la tessera è spenta: si deve capire a colpo d'occhio che
+   quello che si guarda non è in vendita */
+.admin-product-card--archiviato {
+  background: rgba(255, 255, 255, 0.4);
+  border-style: dashed;
+}
+
+.admin-product-card--archiviato .admin-product-name {
+  /* niente stella qui, quindi niente spazio da tenerle */
+  padding-right: 0;
+  color: #52605a;
+}
+
+/* "Ripristina": l'unica azione della tessera, per questo scritta per intero
+   e non un'icona sola come Modifica / Archivia / Elimina */
+.admin-ripristina-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(46, 94, 70, 0.08);
+  border: none;
+  border-radius: 999px;
+  color: #2e5e46;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.admin-ripristina-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (hover: hover) {
+  .admin-ripristina-btn:hover {
+    background: rgba(46, 94, 70, 0.16);
+  }
+}
+
+.admin-ripristina-btn:disabled {
+  cursor: progress;
+  opacity: 0.5;
 }
 
 /* ---- tessera "aggiungi vino" ---- */

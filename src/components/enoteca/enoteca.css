@@ -927,6 +927,46 @@ body.category-open .shop-section {
   }
 }
 
+/* ---- pagine indice sul Safari nuovo (iOS 26 in poi) ----
+   Le griglie di mini-card di Enoteca e Alimentari (body.page-pinned) tengono
+   la riserva larga di sempre: 96px del body (App.css) + 56 della sezione, e
+   il `min-height: 100vh` di index.css. Sui Safari vecchi va bene così, e lì
+   NON si tocca (verificato dal negoziante su due iPhone 15, 2026-09-30).
+   Sul Safari nuovo la barra di navigazione di Safari cambia i conti: 100vh è
+   lo schermo a barre nascoste, il body resta più alto di quel che si vede e
+   la griglia finisce oltre la tab bar. Stessa ricetta che ha sistemato la
+   home (home.css, "fondo della home a filo della tab bar"): body alto
+   esattamente quel che si vede, riserva uguale all'ingombro della barra,
+   niente riserva sulla sezione, 20px d'aria in fondo alla griglia e 16px di
+   sfumatura sul bordo basso.
+   Come si riconosce il Safari nuovo: `-webkit-touch-callout` esiste solo su
+   iOS (tutti i browser di iOS sono WebKit), e anchor positioning e
+   animazioni legate allo scorrimento sono arrivate entrambe con Safari 26.0
+   (webkit.org, "WebKit Features in Safari 26.0") — Safari 18 non aveva né
+   l'una né l'altra. L'`or` è una cintura in più: basta una delle due.
+   `:has(.shop-section)` tiene fuori la home, che è page-pinned ma ha la sua
+   regola; Info usa .shop-section ma non è page-pinned. Categorie e reparti
+   (category-open) non c'entrano: lì la tab bar è nascosta. */
+@media (max-width: 640px) {
+  @supports (-webkit-touch-callout: none) and ((anchor-name: --a) or (animation-timeline: scroll())) {
+    body.page-pinned:has(.shop-section) {
+      min-height: 0;
+      padding-bottom: calc(81px + env(safe-area-inset-bottom));
+    }
+
+    body.page-pinned .shop-section {
+      padding-bottom: 0;
+    }
+
+    /* tre classi: `body.page-pinned .page-scroll` (0,2,1) dà 12px a tutti */
+    body.page-pinned .mini-grid.page-scroll {
+      padding-bottom: 20px;
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+      mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+    }
+  }
+}
+
 /* con la barra regioni aperta lo spazio torna a servire: .has-filter-bar
    sta sulla sezione ed è attiva per tutta la durata (anche mentre la barra
    rientra), quindi la fascia non collassa a metà animazione.
@@ -1634,12 +1674,87 @@ body.sheet-open .page-scroll {
      è morbido; durante il trascinamento niente transition, il pannello
      deve seguire il dito 1:1 senza ritardo */
   touch-action: none;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  /* l'opacità la muovono solo le frecce del desktop (ProductSheet, `passo`
+     corto): il pannello sfuma mentre scivola di poco verso il vicino */
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
   will-change: transform;
 }
 
 .product-sheet--dragging {
   transition: none;
+}
+
+/* Il pannello che se ne va verso il vicino: più svelto del rientro e in
+   accelerazione, come una carta lanciata. Il rientro invece usa la curva di
+   sempre, qui sopra, che frena arrivando: la scheda nuova si posa. */
+.product-sheet--esce {
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0, 1, 1),
+    opacity 0.18s ease;
+}
+
+/* ---- le frecce per il prodotto accanto (solo desktop) ----
+   Figlie dello sfondo e non del pannello: restano ferme mentre il pannello
+   va e viene. Si mettono a fianco della finestra (560px, vedi sotto), e
+   quando lo schermo è appena più largo di lei si fermano a 7px dal bordo —
+   a 641px lo spazio di lato è 40px, e ci stanno lo stesso senza toccarla.
+   Sul telefono non esistono: lì si passa scorrendo il pannello di lato. */
+.sheet-passo {
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .sheet-passo {
+    position: absolute;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-top: -16px;
+    padding: 0;
+    font-size: 15px;
+    color: var(--tinta-linea);
+    background: rgba(255, 255, 255, 0.82);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition:
+      background 0.16s ease,
+      transform 0.16s ease;
+  }
+
+  .sheet-passo--prec {
+    left: max(7px, calc(50% - 280px - 48px));
+  }
+
+  .sheet-passo--succ {
+    right: max(7px, calc(50% - 280px - 48px));
+  }
+
+  .sheet-passo:focus {
+    outline: none;
+  }
+
+  .sheet-passo:focus-visible {
+    outline: 2px solid var(--tinta-linea);
+    outline-offset: 2px;
+  }
+
+  .sheet-passo:active {
+    transform: scale(0.92);
+  }
+}
+
+@media (min-width: 641px) and (hover: hover) {
+  .sheet-passo:hover {
+    background: #fff;
+    transform: scale(1.08);
+  }
 }
 
 /* area che scorre dentro al pannello: foto, nome, chip, descrizione,
@@ -2067,10 +2182,27 @@ body.sheet-open .page-scroll {
   text-align: center;
   text-decoration: none;
   color: #fff;
-  background: var(--tinta-linea);
+  /* --cta-tinta la mette ProductSheet sulle schede dei vini (tranne i Rossi):
+     la stessa tinta dei bottoni della pagina, ma più chiara. Dove non c'è, il
+     bottone è del colore della pagina come tutti gli altri. */
+  background: var(--cta-tinta, var(--tinta-linea));
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(46, 94, 70, 0.35);
-  transition: background 0.18s ease, transform 0.18s ease;
+  /* il riflesso d'arrivo (::after) passa DENTRO il bottone: senza il taglio
+     la striscia di luce attraverserebbe il pannello. L'ombra non è toccata:
+     overflow ritaglia il contenuto, non l'ombra dell'elemento stesso. */
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  /* Il movimento torna indietro con una molla: la curva va oltre 1 (1.56),
+     quindi rilasciando il dito il bottone rimbalza un filo oltre la sua
+     misura e ci si riassesta. Prima tutto andava in `ease` a 0.18s — dentro
+     e fuori alla stessa velocità, uguale per ogni cosa: è quello che lo
+     faceva sembrare meccanico. Il colore invece resta in `ease`: un colore
+     che "rimbalza" si legge come uno sfarfallio, non come elasticità. */
+  transition:
+    background 0.18s ease,
+    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .sheet-cta-icon {
@@ -2078,45 +2210,163 @@ body.sheet-open .page-scroll {
   width: 18px;
   height: 18px;
   fill: currentColor;
+  /* un piccolo squillo quando la scheda arriva, come un telefono che suona:
+     è un bottone per scrivere, e si fa notare con il gesto del suo mestiere.
+     Aspetta che il pannello sia salito (0.32s, sheet-up) e parte insieme al
+     riflesso. Una volta sola: un'icona che continua a vibrare è un banner. */
+  transform-origin: 50% 60%;
+  animation: cta-squillo 0.75s ease-in-out 0.6s both;
+}
+
+/* Lo squillo del passaggio del mouse sta sul `path` e non sull'svg: se fosse
+   sullo stesso elemento di quello d'arrivo, a ogni uscita del mouse il
+   browser rimetterebbe l'animazione d'arrivo e la farebbe ripartire — il
+   bottone squillerebbe da solo ogni volta che ci si allontana. Due elementi,
+   due animazioni che si sommano senza pestarsi i piedi. `fill-box`: senza,
+   un path ruota attorno all'angolo dell'svg e non al proprio centro. */
+.sheet-cta-icon path {
+  transform-box: fill-box;
+  transform-origin: 50% 60%;
+}
+
+@keyframes cta-squillo {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  12% {
+    transform: rotate(-16deg);
+  }
+  26% {
+    transform: rotate(13deg);
+  }
+  40% {
+    transform: rotate(-9deg);
+  }
+  54% {
+    transform: rotate(6deg);
+  }
+  68% {
+    transform: rotate(-3deg);
+  }
+  82% {
+    transform: rotate(1deg);
+  }
+}
+
+/* più piccolo di quello d'arrivo: lì deve farsi notare, qui risponde e basta */
+@keyframes cta-squillo-breve {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-10deg);
+  }
+  45% {
+    transform: rotate(7deg);
+  }
+  70% {
+    transform: rotate(-3deg);
+  }
+}
+
+/* Una striscia di luce che attraversa il bottone una volta, all'arrivo della
+   scheda: stessa luce del riflesso sui segnaposto (.fantasma-riflesso), un
+   po' più tenue perché qui passa su un colore pieno e non su un grigio. */
+.sheet-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.34) 50%,
+    transparent 75%
+  );
+  transform: translateX(-110%);
+  /* `both` qui è innocuo: l'ultimo fotogramma è fuori dal bottone, e il
+     bottone lo taglia */
+  animation: cta-riflesso 1.1s cubic-bezier(0.45, 0, 0.25, 1) 0.55s both;
+}
+
+@keyframes cta-riflesso {
+  to {
+    transform: translateX(110%);
+  }
 }
 
 /* solo col puntatore vero: su touch l'hover restava acceso dopo il tocco, e
-   tornando da WhatsApp il bottone era ancora sollevato */
+   tornando da WhatsApp il bottone era ancora sollevato.
+   Il colore dell'hover è la tinta della categoria SCURITA, non un colore suo:
+   prima era un verde fisso (#24493a), e su un rosso il bottone tornava verde
+   appena ci si passava sopra. Con color-mix resta del suo colore e scende
+   solo di tono, qualunque sia la categoria. */
 @media (hover: hover) {
   .sheet-cta:hover {
-    background: #24493a;
-    transform: translateY(-1px);
+    background: color-mix(
+      in srgb,
+      var(--cta-tinta, var(--tinta-linea)) 84%,
+      #000
+    );
+    transform: translateY(-2px);
+  }
+
+  .sheet-cta:hover .sheet-cta-icon path {
+    animation: cta-squillo-breve 0.55s ease-in-out;
   }
 }
 
 /* il tocco si sente, come sulle card (.mini-card): prima il bottone
-   principale del pannello non rispondeva in nessun modo al dito */
+   principale del pannello non rispondeva in nessun modo al dito. Un filo più
+   scuro dell'hover, così anche il colore dice "premuto" e non solo la scala.
+   Si schiaccia in fretta (80ms, dopo 60ms per non accendersi su chi sta solo
+   scorrendo) e al rilascio torna su con la molla di .sheet-cta. */
 .sheet-cta:active {
-  transform: scale(0.97);
-  transition: transform 0.08s ease 0.06s, background 0.08s ease 0.06s;
+  background: color-mix(
+    in srgb,
+    var(--cta-tinta, var(--tinta-linea)) 74%,
+    #000
+  );
+  transform: scale(0.96);
+  transition:
+    transform 0.08s ease-out 0.06s,
+    background 0.08s ease 0.06s;
 }
 
-.sheet-cta {
-  -webkit-tap-highlight-color: transparent;
+/* Chi ha chiesto meno movimento al sistema tiene il colore e la pressione,
+   senza squilli, riflessi né rimbalzi. Il selettore dell'icona ripete
+   `:hover` di proposito: `.sheet-cta-icon path` da solo è meno specifico
+   della regola d'hover qui sopra e perderebbe, lasciando lo squillo acceso. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet-cta-icon,
+  .sheet-cta:hover .sheet-cta-icon path,
+  .sheet-cta::after {
+    animation: none;
+  }
+
+  .sheet-cta {
+    transition: background 0.18s ease;
+  }
 }
 
-/* su telefono il pannello si solleva un po' dal bordo inferiore:
-   card flottante con tutti gli angoli arrotondati */
+
 @media (max-width: 640px) {
   .product-sheet {
-    margin-bottom: 12px; /* fallback per browser senza env() */
+    margin-bottom: 12px;
     margin-bottom: calc(12px + env(safe-area-inset-bottom));
-    /* un po' più alto: prima si fermava a 82dvh e con una descrizione
-       lunga tagliava il contenuto (o spostava il bottone WhatsApp in
-       giro). Ora .sheet-scroll scorre internamente, quindi il pannello
-       può stare più grande senza mai avere aria vuota in fondo */
     max-height: 88dvh;
     border-radius: 22px;
     padding-bottom: 22px; /* la safe-area ora la copre il margine */
   }
 
-  /* altezza fissa anche qui: niente più "si restringe lei" — era
-     questo a tagliare la bottiglia in alto quando lo spazio scarseggiava */
+  
+  .product-sheet--vini {
+    max-height: 94dvh;
+  }
+
+  
   .sheet-thumb {
     flex: none;
     height: 130px;
@@ -2334,11 +2584,88 @@ body.sheet-open .page-scroll {
   font-variant-numeric: tabular-nums;
 }
 
-.product-sheet--vini .sheet-prezzo-anno {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+/* ---- scegliere la bottiglia: annate a destra del prezzo, formati sotto ----
+   Le pastiglie portano il prezzo scritto sopra di proposito: la domanda di chi
+   guarda un vino con due formati è "quanto costa il magnum", e con il prezzo
+   solo in testata bisognerebbe toccarli a turno per confrontarli. Il tocco
+   così decide, non scopre. */
+.sheet-anni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.sheet-anno-chip {
+  padding: 3px 9px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   color: #7a7a7a;
+  background: transparent;
+  border: 1px solid rgba(46, 94, 70, 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.sheet-anno-chip--on {
+  color: #2e3d34;
+  border-color: var(--accent, #2e5e46);
+  background: color-mix(in srgb, var(--accent, #2e5e46) 10%, #fff);
+}
+
+.sheet-formati {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  /* dentro .sheet-ident, che sul telefono è una colonna e nella finestra
+     desktop una riga che va a capo: la base al 100% gli dà una riga sua in
+     tutti e due i casi */
+  flex-basis: 100%;
+  width: 100%;
+}
+
+.sheet-formato {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 11px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #2e3d34;
+  background: #fff;
+  border: 1px solid rgba(46, 94, 70, 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.sheet-formato--on {
+  border-color: var(--accent, #2e5e46);
+  background: color-mix(in srgb, var(--accent, #2e5e46) 9%, #fff);
+}
+
+.sheet-formato-nome {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #7a7a7a;
+}
+
+.sheet-formato--on .sheet-formato-nome {
+  color: #2e3d34;
+}
+
+.sheet-formato-prezzo {
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--accent, #2e5e46);
+  font-variant-numeric: tabular-nums;
 }
 
 /* i pezzi che l'intestazione nuova ha reso doppi o inutili */
@@ -2354,6 +2681,15 @@ body.sheet-open .page-scroll {
   align-self: center;
   height: auto;
   aspect-ratio: 2 / 3;
+}
+
+/* La riga dei formati è un blocco in più da far stare nel pannello, che è
+   alto al massimo 88dvh. Misurato il 2026-09-24 sul vino con due formati
+   (Edda Bianco): con 12px di distacco il contenuto sforava di 1px e la scheda
+   diventava scorrevole per quell'unico pixel. Due punti in meno fra i blocchi
+   non si vedono e riportano il margine a 5px. */
+.product-sheet--vini .sheet-scroll {
+  gap: 10px;
 }
 
 /* il segnaposto (4 vini su 5 non hanno ancora la foto) cresce col riquadro
@@ -2461,13 +2797,20 @@ body.sheet-open .page-scroll {
     inset: 16px 0;
   }
 
-  /* `flex-wrap` con l'occhiello a tutta riga: regione sopra, poi nome e
-     prezzo che si spartiscono la riga sotto */
+  /* `flex-wrap` con l'occhiello a tutta riga: regione sopra, nome sotto, e
+     in fondo UNA riga sola con prezzo, annate e formati.
+     Prima il nome e il prezzo si spartivano una riga e i formati ne
+     prendevano una terza, sotto il nome — cioè all'altro capo del pannello
+     rispetto al numero che comanda. Metterli in fila col prezzo toglie una
+     riga all'intestazione e rimette insieme le tre cose che parlano della
+     stessa bottiglia. Il nome si prende tutta la larghezza: gliene serve,
+     e con 516px invece di 414 sta su una riga sola molto più spesso (vedi
+     CORPO_NOME_MIN in Enoteca.jsx). */
   .product-sheet--vini .sheet-ident {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 4px 12px;
     text-align: left;
   }
@@ -2478,17 +2821,20 @@ body.sheet-open .page-scroll {
   }
 
   .product-sheet--vini .sheet-name {
-    flex: 1;
+    flex-basis: 100%;
     min-width: 0;
     font-size: 23px;
     line-height: 1.18;
     text-align: left;
   }
 
+  /* in riga, non più incolonnato a destra: le annate tornano di fianco al
+     numero come sul telefono */
   .product-sheet--vini .sheet-prezzo {
     flex: none;
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 9px;
   }
 
   .product-sheet--vini .sheet-prezzo-val {
@@ -2512,5 +2858,33 @@ body.sheet-open .page-scroll {
 
   .product-sheet--vini .sheet-meta-chips {
     justify-content: flex-start;
+  }
+
+  /* I formati smettono di prendersi una riga loro (`flex-basis: 100%` è la
+     regola del telefono) e si accodano al prezzo. `flex: 1` con
+     `min-width: 0` li lascia stringere: quando non ci stanno vanno a capo
+     da soli invece di allargare il pannello. */
+  .product-sheet--vini .sheet-formati {
+    flex: 1;
+    flex-basis: auto;
+    width: auto;
+    min-width: 0;
+    justify-content: flex-start;
+    align-items: baseline;
+  }
+
+  /* il trattino fra le annate e i formati: senza, sulla stessa riga le
+     pastiglie si leggono tutte come una fila sola di cose fra cui scegliere,
+     mentre sono due scelte diverse. Sta qui e non nel JSX perché esiste solo
+     in questa impaginazione — sul telefono le due file sono già separate dal
+     fatto di essere su righe diverse. */
+  .product-sheet--vini .sheet-formati::before {
+    content: "";
+    flex: none;
+    align-self: center;
+    width: 1px;
+    height: 17px;
+    margin-right: 3px;
+    background: rgba(46, 94, 70, 0.28);
   }
 }

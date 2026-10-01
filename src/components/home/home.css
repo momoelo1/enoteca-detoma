@@ -143,6 +143,9 @@
   flex-direction: column;
   gap: 8px;
   text-align: left;
+  /* le schede si misurano sulla larghezza della fascia (vedi in fondo al
+     file, "schede su misura della fascia") */
+  container: consigli / inline-size;
 }
 
 .consigli-strip-head {
@@ -578,5 +581,111 @@ body.home-no-scroll .hero {
 
   .consiglio-svg {
     max-height: 138px;
+  }
+}
+
+/* ---- telefoni dai 391px in su: fondo della home a filo della tab bar ----
+   Le riserve per la barra sono DUE e si sommano: i 96px del body (App.css)
+   più i 56px di `.hero` qui sopra, 152px in tutto, contro gli 81px che la
+   barra occupa davvero (69 di altezza + 12 di stacco dal bordo, più la zona
+   dell'indicatore home degli iPhone). Il contenitore che scorre finisce così
+   37-71px SOPRA la barra, e le fasce si troncano a mezz'aria con una fascia
+   vuota sotto: su un iPhone 15 vero il taglio si vede (segnalato il
+   2026-09-30).
+   Da 391px e non da tutti i telefoni: sull'iPhone 13 del negoziante (390px)
+   la home così com'era va bene, e deve restare identica — deciso da lui.
+   È la LARGHEZZA a separare i due telefoni e non l'altezza: 390 contro 393
+   (iPhone 15, 14 Pro, 16) è un numero fisso, mentre l'altezza visibile
+   cambia con le barre di Safari più degli 8px che li separano.
+   Qui la riserva è esattamente l'ingombro della barra, come fa già la tab
+   Consigliati (`body.consigliati-open` in App.css): il contenitore arriva al
+   bordo della barra. `:has(.hero)` perché `.hero` c'è solo in home, e le
+   classi del body (home-no-scroll, page-pinned) le condividono anche Enoteca
+   e Alimentari, che qui non cambiano.
+   `min-height: 0` è metà della correzione, come in `body.consigliati-open`:
+   index.css dà a ogni body `min-height: 100vh`, e su iOS 100vh è lo schermo
+   a barre di Safari NASCOSTE. Batteva il `height: 100dvh` della home, il body
+   restava più alto di quel che si vede e la riserva si contava da un fondo
+   fuori schermo: il contenuto passava sotto la barra di tanto quanto la
+   barra di Safari. Due iPhone 15 identici lo facevano uno sì e uno no,
+   secondo come ciascuno tiene Safari (indirizzo in basso o in alto, barra
+   aperta o ristretta). Senza, il body è alto esattamente quel che si vede. */
+@media (min-width: 391px) and (max-width: 640px) {
+  body:has(.hero) {
+    min-height: 0;
+    padding-bottom: calc(81px + env(safe-area-inset-bottom));
+  }
+
+  .hero {
+    padding-bottom: 0;
+  }
+
+  /* L'aria in fondo sta DENTRO lo scorrimento: si vede solo arrivati in
+     fondo, dove l'ultima fascia si ferma sopra la barra invece di toccarla —
+     il difetto per cui c'erano i 56px. E il bordo basso sfuma per 16px
+     invece di tagliare netto: scorrendo, le schede passano sotto la barra
+     invece di finire contro una riga.
+     Tre classi: `body.page-pinned .page-scroll` (enoteca.css, 0,2,1) mette
+     12px di fondo a tutti gli scorrevoli, e con una classe sola vincerebbe.
+     20px, scelto dal negoziante a vista dopo 24, 40, 32 e 28: la sfumatura
+     occupa gli ultimi 16, quindi sotto "Dalla dispensa" restano 4px netti
+     prima che cominci a sfumare. */
+  .hero .hero-scroll.page-scroll {
+    padding-bottom: 20px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  }
+}
+
+/* ---- schede su misura della fascia ----
+   Con la larghezza fissa (122/132px qui sopra) quanto si vedeva dell'ultima
+   scheda dipendeva dallo schermo: misurato il 2026-09-30, a 360px ne usciva
+   il 56%, a 390 l'80%, a 412 il 98% (una scheda "tagliata" di 2px), a 414
+   niente — nessun segno che la fila continua — e a 430 o su un tablet una
+   striscia di 6-18px che sembra un difetto.
+   Qui la scheda si ricava dalla larghezza della fascia: sempre un numero
+   intero di schede più MEZZA, su ogni schermo. Quante intere dipende da
+   quanto è larga la fascia, così la scheda resta fra ~110 e ~155px e l'altezza
+   la segue nella stessa proporzione di prima (122 × 190).
+   `cqi` = 1% della larghezza della fascia (il contenitore `consigli`).
+   Dentro `@supports`: chi non conosce le container query (iOS 15 e prima)
+   tiene le misure fisse qui sopra, che funzionavano già. Sta in FONDO al
+   file apposta: stessa specificità della regola del telefono, vince l'ordine. */
+.consigli-row {
+  --consigli-intere: 2;
+}
+
+@container consigli (min-width: 410px) {
+  .consigli-row {
+    --consigli-intere: 3;
+  }
+}
+
+@container consigli (min-width: 560px) {
+  .consigli-row {
+    --consigli-intere: 4;
+  }
+}
+
+@container consigli (min-width: 720px) {
+  .consigli-row {
+    --consigli-intere: 5;
+  }
+}
+
+@container consigli (min-width: 880px) {
+  .consigli-row {
+    --consigli-intere: 6;
+  }
+}
+
+@supports (width: 1cqi) {
+  .consiglio-card {
+    /* intere + mezza = la fascia, tolti i 10px di spazio fra una e l'altra */
+    --consiglio-w: calc(
+      (100cqi - var(--consigli-intere) * 10px) / (var(--consigli-intere) + 0.5)
+    );
+    width: var(--consiglio-w);
+    height: calc(var(--consiglio-w) * 190 / 122);
   }
 }

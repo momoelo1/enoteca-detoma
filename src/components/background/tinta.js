@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { aByte, esaDaHsl, mescola, tonoDiEsa } from "../../utils/colore";
+import {
+  aByte,
+  contrasto,
+  esaDaHsl,
+  mescola,
+  tonoDiEsa,
+} from "../../utils/colore";
 
 // ---- il colore dello sfondo ----
 //
@@ -92,6 +98,33 @@ export const tintaDaAccento = (accento) => {
 // tinto pesa esattamente quanto pesava prima.
 export const lineaDaAccento = (accento) =>
   accento ? esaDaHsl(tonoDiEsa(accento), 0.45, 0.27) : LINEA_BASE;
+
+// Il bottone WhatsApp della scheda di un vino: la stessa tinta di
+// lineaDaAccento, ma il più CHIARA possibile finché la scritta bianca si legge.
+//
+// Perché: con la luminosità fissa al 27% tutte le categorie finivano scure e
+// quasi uguali fra loro — Rosati (#642635) e Rossi (#642631) avevano i toni a
+// 3 gradi di distanza, cioè lo stesso bottone. Qui la luminosità sale a passi
+// di mezzo punto finché il bianco sopra resta a CONTRASTO_CTA; ogni categoria
+// si ferma dove glielo permette la sua tinta. I gialli sono luminosi di loro e
+// si fermano presto (Bianchi 37%), i rosa arrivano molto più su (Rosati 53%).
+// Il contrasto è lo stesso per tutti, quindi tutti si leggono uguale.
+//
+// 4.6 e non 4.5: la soglia AA esatta, con l'arrotondamento a byte dell'esa,
+// può finire un centesimo sotto.
+const CONTRASTO_CTA = 4.6;
+export const ctaDaAccento = (accento) => {
+  if (!accento) return null;
+  const tono = tonoDiEsa(accento);
+  let l = 0.27;
+  while (
+    l < 0.9 &&
+    contrasto(esaDaHsl(tono, 0.45, l + 0.005), "#ffffff") >= CONTRASTO_CTA
+  ) {
+    l += 0.005;
+  }
+  return esaDaHsl(tono, 0.45, l);
+};
 
 // Da usare nelle pagine: finché il componente è montato lo sfondo tiene
 // l'accento, quando si esce torna ai colori di casa. `accento` a null va

@@ -53,6 +53,20 @@ export const prezzoProdotto = (item) => {
   return null;
 };
 
+// Annate e formati appiattiti in un elenco solo: ogni voce è una bottiglia
+// che il cliente può scegliere nella scheda. Serve al selettore del bottom
+// sheet, che tiene UN indice solo invece di una coppia (annata, formato) da
+// mandare avanti allineata.
+export const comboFormati = (annate) =>
+  (annate ?? []).flatMap((a) =>
+    formatiAnnata(a).map((f, iF) => ({
+      chiave: `${a.anno ?? ""}-${iF}-${f.ml ?? ""}`,
+      anno: a.anno,
+      ml: f.ml,
+      prezzo: f.prezzo > 0 ? f.prezzo : null, // lo zero è "prezzo assente"
+    })),
+  );
+
 // Nomi commerciali: il negozio dice "Magnum", non "1500 ml" — nei nomi dei
 // vini in produzione la parola compare 25 volte, il numero mai.
 const NOMI_FORMATO = {
@@ -63,7 +77,20 @@ const NOMI_FORMATO = {
   3000: "Jeroboam",
 };
 
-export const ML_NOTI = Object.keys(NOMI_FORMATO).map(Number);
+// I formati offerti dai menù del PANNELLO, in ml come nel database. Il sito
+// pubblico continua a usare i nomi qui sopra (etichettaFormato): questi
+// elenchi e l'etichetta in litri valgono solo per i dialoghi admin.
+// Vino: bottiglia standard, magnum, jéroboam (doppio magnum)
+export const FORMATI_VINO = [750, 1500, 3000];
+export const FORMATI_DISTILLATI = [350, 500, 700, 1500];
+
+// 750 → "0,75 L", 1500 → "1,5 L", 3000 → "3,0 L": almeno un decimale, come
+// si legge in etichetta
+export const etichettaLitri = (ml) =>
+  `${(Number(ml) / 1000).toLocaleString("it-IT", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 3,
+  })} L`;
 
 // Etichetta di un formato. `ml` vuoto vale come bottiglia standard.
 // `sempre` forza l'etichetta anche sullo standard: serve quando l'annata ha

@@ -30,6 +30,12 @@ export const getDistillatiConsigliati = async () => {
   return parse(res);
 };
 
+// solo gli archiviati: vedi services/wines.js
+export const getDistillatiArchiviati = async () => {
+  const res = await fetch(`${API_URL}/api/distillati?archiviato=true`);
+  return parse(res);
+};
+
 export const createDistillato = async (distillato) => {
   const res = await fetch(`${API_URL}/api/distillati`, {
     method: "POST",

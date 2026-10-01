@@ -32,6 +32,12 @@ export const getAlimentariConsigliati = async () => {
   return parse(res);
 };
 
+// solo gli archiviati: vedi services/wines.js
+export const getAlimentariArchiviati = async () => {
+  const res = await fetch(`${API_URL}/api/alimentari?archiviato=true`);
+  return parse(res);
+};
+
 export const createAlimentare = async (item) => {
   const res = await fetch(`${API_URL}/api/alimentari`, {
     method: "POST",

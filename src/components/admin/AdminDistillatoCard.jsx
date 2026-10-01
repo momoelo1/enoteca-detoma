@@ -5,9 +5,10 @@ import {
   deleteDistillato,
   deleteDistillatoImage,
 } from "../../services/distillati";
-import { ML_NOTI, etichettaFormato, prezzoProdotto } from "../../utils/prezzo";
+import { FORMATI_DISTILLATI, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
 import StellaConsigliato from "./StellaConsigliato";
+import BottoneArchivio from "./BottoneArchivio";
 
 // Il form dei distillati è quello dei vini (AdminWineCard.jsx), e ne ricalca
 // anche la forma nel database (models/Distillato.js): annate → formati →
@@ -15,11 +16,15 @@ import StellaConsigliato from "./StellaConsigliato";
 //
 // - l'ANNO non è obbligatorio. La gran parte dei distillati in etichetta non
 //   ne ha uno; la riga senza anno è semplicemente "il prodotto" col suo prezzo.
-// - il PAESE è testo libero con suggerimenti, non il menù chiuso dei vini: lì
-//   ci sono i paesi del vino, e né la Scozia né la Giamaica ci stanno.
+// - il PAESE è facoltativo e si accende con una spunta, spenta sui prodotti
+//   nuovi. Acceso, è testo libero con suggerimenti, non il menù chiuso dei
+//   vini: lì ci sono i paesi del vino, e né la Scozia né la Giamaica ci stanno.
+// - niente SPUNTA sul formato: il vino ha una bottiglia normale sottintesa
+//   (0,75 L) che non si scrive, un distillato no. Ogni riga sceglie il suo
+//   formato dal menù, e parte da 0,7 L, il più comune.
 //
-// Per spunta, formati e prezzo in bianco valgono le stesse regole dei vini:
-// il commento in testa ad AdminWineCard.jsx le spiega una volta sola.
+// Il prezzo in bianco vale zero come sui vini: il commento in testa ad
+// AdminWineCard.jsx lo spiega una volta sola.
 
 // suggerimenti del campo Paese: si sommano a quelli già usati nella categoria
 // aperta (arrivano dal pannello), e il negozio può scriverne altri
@@ -42,24 +47,25 @@ const PAESI_SUGGERITI = [
 // la Regione si chiede solo per i prodotti italiani, come sui vini
 const isItalia = (paese) => paese.trim().toLowerCase() === "italia";
 
+const ML_STANDARD = 700;
+
+// una riga salvata senza ml si apre sul formato standard (al 2026-09-30 in
+// produzione non ce n'è: i due distillati hanno entrambi 500)
 const toFormato = (ml, prezzo) => ({
-  ml: ml ?? "",
+  ml: ml ?? ML_STANDARD,
   prezzo: prezzo > 0 ? prezzo : "",
-  conMl: ml != null && ml !== "",
 });
 
-const formatoVuoto = () => ({ ml: "", prezzo: "", conMl: false });
+const formatoVuoto = () => ({ ml: ML_STANDARD, prezzo: "" });
 const annataVuota = () => ({ anno: "", formati: [formatoVuoto()] });
-
-const ML_BOTTIGLIA = 750;
 
 // vedi opzioniMl in AdminWineCard.jsx: un valore salvato fuori elenco
 // resta nel menù invece di cambiare di nascosto al primo salvataggio
 const opzioniMl = (ml) => {
   const n = Number(ml);
-  return ml !== "" && Number.isFinite(n) && !ML_NOTI.includes(n)
-    ? [...ML_NOTI, n].sort((a, b) => a - b)
-    : ML_NOTI;
+  return Number.isFinite(n) && !FORMATI_DISTILLATI.includes(n)
+    ? [...FORMATI_DISTILLATI, n].sort((a, b) => a - b)
+    : FORMATI_DISTILLATI;
 };
 
 const toAnnata = (a) => ({
@@ -72,8 +78,11 @@ const toAnnata = (a) => ({
 const toAnnate = (d) =>
   d?.annate?.length ? d.annate.map(toAnnata) : [annataVuota()];
 
+// `conPaese` è la spunta del Paese: non sta nel database, si ricava dal paese
+// che c'è. Spenta, al salvataggio paese e regione si svuotano
 const toForm = (d) => ({
   name: d?.name || "",
+  conPaese: Boolean(d?.paese?.trim()),
   regione: d?.regione || "",
   paese: d?.paese || "",
   img: elencoFoto(d),
@@ -83,6 +92,7 @@ const toForm = (d) => ({
 
 const EMPTY_FORM = {
   name: "",
+  conPaese: false,
   regione: "",
   paese: "",
   img: [],
@@ -100,11 +110,16 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
   const [error, setError] = useState("");
   const [removingIndex, setRemovingIndex] = useState(null);
   const [flagging, setFlagging] = useState(false);
+  const [archiviando, setArchiviando] = useState(false);
 
   const paesiOpzioni = [...new Set([...PAESI_SUGGERITI, ...paesiNoti])];
 
   const handleChange = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  // spegnendo la spunta il testo scritto resta nel form, così riaccenderla
+  // lo ritrova; è il salvataggio che lo ignora
+  const togglePaese = () => setForm((f) => ({ ...f, conPaese: !f.conPaese }));
 
   // la stella salva da sola, mandando SOLO `consigliato` (vedi AdminWineCard.jsx)
   const toggleConsigliato = async () => {
@@ -136,19 +151,6 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
   const updateFormato = (index, fIndex, field, value) =>
     mapFormati(index, (formati) =>
       formati.map((row, j) => (j === fIndex ? { ...row, [field]: value } : row)),
-    );
-
-  const toggleMl = (index, fIndex) =>
-    mapFormati(index, (formati) =>
-      formati.map((row, j) =>
-        j === fIndex
-          ? {
-              ...row,
-              conMl: !row.conMl,
-              ml: row.conMl ? "" : row.ml || ML_BOTTIGLIA,
-            }
-          : row,
-      ),
     );
 
   const addFormato = (index) =>
@@ -232,22 +234,19 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
       return v !== "" && Number.isFinite(n) ? n : null;
     };
 
-    // stesse regole dei vini: la riga mai toccata si scarta, il prezzo in
-    // bianco vale zero, e un'annata resta se ha un anno O un formato
-    const annate = form.annate
-      .map((a) => {
-        const formati = a.formati
-          .filter((f) => f.conMl || f.prezzo !== "")
-          .map((f) => ({
-            ...(f.conMl && { ml: numero(f.ml) ?? ML_BOTTIGLIA }),
-            prezzo: numero(f.prezzo) ?? 0,
-          }));
-        const anno = a.anno.trim();
-        return { ...(anno && { anno }), ...(formati.length > 0 && { formati }) };
-      })
-      .filter((a) => a.anno || a.formati?.length > 0);
+    // A differenza dei vini nessuna riga si scarta: senza spunta ogni riga
+    // dice già qualcosa, il suo formato. Il prezzo in bianco vale zero
+    const annate = form.annate.map((a) => {
+      const formati = a.formati.map((f) => ({
+        ml: numero(f.ml) ?? ML_STANDARD,
+        prezzo: numero(f.prezzo) ?? 0,
+      }));
+      const anno = a.anno.trim();
+      return { ...(anno && { anno }), formati };
+    });
 
-    const paese = form.paese.trim();
+    // spunta spenta = nessun paese, qualunque cosa sia scritta nel campo
+    const paese = form.conPaese ? form.paese.trim() : "";
     const payload = Object.fromEntries(
       Object.entries({
         name: form.name,
@@ -298,6 +297,20 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
     }
   };
 
+  // vedi AdminWineCard: fuori dal sito e dalla griglia, ripristinabile
+  // dalla sezione Archivio
+  const handleArchivia = async () => {
+    setArchiviando(true);
+    setError("");
+    try {
+      await updateDistillato(distillato.id, { archiviato: true });
+      onDeleted(distillato.id);
+    } catch (err) {
+      setError(err.message);
+      setArchiviando(false);
+    }
+  };
+
   // rimuove UNA foto; l'indice da mandare al server si ritrova dall'URL
   // (vedi handleDeleteImage in AdminWineCard.jsx)
   const handleDeleteImage = async (index) => {
@@ -342,22 +355,41 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
           <label>Nome</label>
           <input type="text" value={form.name} onChange={handleChange("name")} required autoFocus />
         </div>
+        {/* la spunta fa da etichetta del campo: spenta, il prodotto si salva
+            senza paese (e senza regione) */}
         <div className="admin-field">
-          <label>Paese</label>
-          <input
-            type="text"
-            list={paesiListId}
-            placeholder="Es. Scozia"
-            value={form.paese}
-            onChange={handleChange("paese")}
-          />
-          <datalist id={paesiListId}>
-            {paesiOpzioni.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
+          <label
+            className={
+              "admin-annata-check" + (form.conPaese ? " admin-annata-check--attiva" : "")
+            }
+            title={form.conPaese ? "Togli la spunta per salvare senza paese" : "Spunta per indicare il paese"}
+          >
+            <input type="checkbox" checked={form.conPaese} onChange={togglePaese} />
+            <span className="admin-annata-check-box" aria-hidden="true">
+              ✓
+            </span>
+            <span className="admin-annata-check-text">Paese</span>
+          </label>
+          {form.conPaese && (
+            <>
+              <input
+                type="text"
+                className="admin-field--enter"
+                list={paesiListId}
+                placeholder="Es. Scozia"
+                aria-label="Paese"
+                value={form.paese}
+                onChange={handleChange("paese")}
+              />
+              <datalist id={paesiListId}>
+                {paesiOpzioni.map((p) => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+            </>
+          )}
         </div>
-        {isItalia(form.paese) && (
+        {form.conPaese && isItalia(form.paese) && (
           <div className="admin-field admin-field--enter">
             <label>Regione</label>
             <input type="text" value={form.regione} onChange={handleChange("regione")} />
@@ -368,10 +400,9 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
           <label>Prezzi</label>
           <p className="admin-hint">
             Un prezzo per riga. L'<strong>anno</strong> è facoltativo: scrivilo
-            solo se in etichetta c'è un'annata. Senza spunta la riga è la{" "}
-            <strong>bottiglia normale</strong>; metti la spunta{" "}
-            <strong>Formato</strong> per gli altri formati e scegli quale. Il
-            prezzo lasciato in bianco vale zero e sul sito non compare.
+            solo se in etichetta c'è un'annata. Per ogni riga scegli il{" "}
+            <strong>formato</strong>, da 0,35 a 1,5 L. Il prezzo lasciato in
+            bianco vale zero e sul sito non compare.
           </p>
 
           <div className="admin-annate-list">
@@ -406,40 +437,16 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
                 <div className="admin-formati-list">
                   {annata.formati.map((f, j) => (
                     <div className="admin-formato-row" key={j}>
-                      <label
-                        className={
-                          "admin-annata-check" +
-                          (f.conMl ? " admin-annata-check--attiva" : "")
-                        }
-                        title={
-                          f.conMl
-                            ? "Formato fuori misura — togli la spunta per la bottiglia normale"
-                            : "Bottiglia normale — spunta per scegliere un altro formato"
-                        }
-                      >
-                        <input
-                          type="checkbox"
-                          checked={f.conMl}
-                          onChange={() => toggleMl(i, j)}
-                        />
-                        <span className="admin-annata-check-box" aria-hidden="true">
-                          ✓
-                        </span>
-                        <span className="admin-annata-check-text">Formato</span>
-                      </label>
                       <div className="admin-field">
                         <select
                           value={f.ml}
-                          disabled={!f.conMl}
-                          title="Formato della bottiglia. Senza spunta vale la bottiglia normale."
+                          title="Formato della bottiglia"
+                          aria-label="Formato"
                           onChange={(e) => updateFormato(i, j, "ml", e.target.value)}
                         >
-                          <option value="" disabled>
-                            Formato
-                          </option>
                           {opzioniMl(f.ml).map((ml) => (
                             <option key={ml} value={ml}>
-                              {etichettaFormato(ml, { sempre: true })}
+                              {etichettaLitri(ml)}
                             </option>
                           ))}
                         </select>
@@ -603,6 +610,7 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
               <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z" />
             </svg>
           </button>
+          <BottoneArchivio inCorso={archiviando} onClick={handleArchivia} />
           <button
             type="button"
             className="admin-icon-btn admin-icon-btn--danger"

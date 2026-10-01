@@ -93,6 +93,8 @@ export const ARMAGNAC_COGNAC = [];
 export const CALVADOS = [];
 
 // ---- sotto-sezioni distillati (sub-card della card "Distillati") ----
+// `remote: true`: i prodotti arrivano dall'API (/api/distillati), come vini e
+// birre — gli array statici qui sopra restano vuoti e non si leggono più
 export const DISTILLATI_CATEGORIES = [
   {
     id: "grappa",
@@ -101,6 +103,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: grappaIll,
     accent: "#a5924f",
     items: GRAPPA,
+    remote: true,
   },
   {
     id: "whisky",
@@ -109,6 +112,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: whiskyIll,
     accent: "#b07a29",
     items: WHISKY,
+    remote: true,
   },
   {
     id: "rhum",
@@ -117,6 +121,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: rhumIll,
     accent: "#7a4a26",
     items: RHUM,
+    remote: true,
   },
   {
     id: "liquori",
@@ -125,6 +130,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: liquoriIll,
     accent: "#5e7d54",
     items: LIQUORI,
+    remote: true,
   },
   {
     id: "armagnac-cognac",
@@ -133,6 +139,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: cognacIll,
     accent: "#8c4a2a",
     items: ARMAGNAC_COGNAC,
+    remote: true,
   },
   {
     id: "calvados",
@@ -141,6 +148,7 @@ export const DISTILLATI_CATEGORIES = [
     illustrazione: calvadosIll,
     accent: "#c26b32",
     items: CALVADOS,
+    remote: true,
   },
 ];
 

@@ -28,6 +28,12 @@ export const getBeersConsigliate = async () => {
   return parse(res);
 };
 
+// solo le archiviate: vedi services/wines.js
+export const getBeersArchiviate = async () => {
+  const res = await fetch(`${API_URL}/api/beers?archiviato=true`);
+  return parse(res);
+};
+
 export const createBeer = async (beer) => {
   const res = await fetch(`${API_URL}/api/beers`, {
     method: "POST",
