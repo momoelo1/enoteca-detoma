@@ -50,6 +50,14 @@ const FORMATO_UNIT = {
   alimentari: "g",
 };
 
+// Nome del formato sulle pastiglie della scheda: la 0,75 L è "Standard".
+// Solo qui — card, tabella "Annate e prezzi" e messaggio WhatsApp continuano
+// a usare etichettaFormato. `ml` vuoto (annata non migrata) vale come 0,75.
+const nomeFormatoScheda = (ml) =>
+  ml == null || ml === "" || ml === 750
+    ? "Standard"
+    : etichettaFormato(ml, { sempre: true });
+
 // normalizza per la ricerca: minuscolo e senza accenti ("Cà"→"ca")
 const normalize = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -704,8 +712,9 @@ export function ProductSheet({
   const formatiScelta = anni.length
     ? combo.filter((c) => c.anno === scelta?.anno)
     : combo;
-  // con una bottiglia sola non c'è niente da scegliere: la scheda resta quella
-  // di sempre, senza pastiglie
+  // con una bottiglia sola non c'è niente da scegliere: la pastiglia del
+  // formato si vede lo stesso (accesa), ma il prezzo e il messaggio WhatsApp
+  // restano quelli di sempre
   const sceglibile = combo.length > 1;
 
   const prezzo = vini
@@ -1174,10 +1183,14 @@ export function ProductSheet({
               <h3 className="sheet-name" ref={nomeRef}>
                 {w.name}
               </h3>
-              {prezzo != null && (
+              {/* La riga resta anche quando la bottiglia scelta non ha prezzo
+                  (un magnum lasciato a zero nel pannello): al posto del
+                  prezzo un trattino, come nella tabella delle annate, e
+                  accanto le annate, che prima sparivano insieme al prezzo. */}
+              {vini && (
                 <p className="sheet-prezzo">
                   <span className="sheet-prezzo-val">
-                    {formatPrezzo(prezzo)}
+                    {prezzo != null ? formatPrezzo(prezzo) : "—"}
                   </span>
                   {/* Le annate, a destra del prezzo — dove fino a ieri c'era
                       la scritta "Annata 2024". Sono pastiglie SEMPRE, anche
@@ -1215,13 +1228,14 @@ export function ProductSheet({
                   )}
                 </p>
               )}
-              {/* I formati dell'annata scelta. Il prezzo è scritto su ognuno:
-                  quanto costa il magnum si legge senza toccare niente, e il
-                  tocco serve solo a decidere. La riga c'è per tutta la durata
-                  della scheda anche quando l'annata scelta ha un formato solo,
-                  altrimenti cambiando annata il pannello si accorcerebbe sotto
-                  le dita. */}
-              {sceglibile && formatiScelta.length > 0 && (
+              {/* I formati dell'annata scelta: solo il nome, il prezzo è
+                  quello grande qui sopra e cambia col tocco. La riga c'è SEMPRE, anche con
+                  una bottiglia sola in tutta la scheda: come la pastiglia
+                  dell'annata unica, resta accesa e dice in che formato si
+                  vende. E c'è per tutta la durata della scheda anche quando
+                  l'annata scelta ha un formato solo, altrimenti cambiando
+                  annata il pannello si accorcerebbe sotto le dita. */}
+              {formatiScelta.length > 0 && (
                 <div className="sheet-formati" role="group" aria-label="Formato">
                   {formatiScelta.map((c) => {
                     const i = combo.indexOf(c);
@@ -1237,10 +1251,7 @@ export function ProductSheet({
                         onClick={() => setIScelta(i)}
                       >
                         <span className="sheet-formato-nome">
-                          {etichettaFormato(c.ml, { sempre: true })}
-                        </span>
-                        <span className="sheet-formato-prezzo">
-                          {c.prezzo != null ? formatPrezzo(c.prezzo) : "—"}
+                          {nomeFormatoScheda(c.ml)}
                         </span>
                       </button>
                     );

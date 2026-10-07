@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { WINE_CATEGORIES, COUNTRY_GROUPS } from "../../data/data";
 import { getWines } from "../../services/wines";
 import { normalize } from "../../utils/normalize";
+import { useRicordato } from "../../utils/memoriaAdmin";
 import CategoryPicker from "./CategoryPicker";
 import AdminFilterBar from "./AdminFilterBar";
 import AdminWineCard from "./AdminWineCard";
@@ -19,7 +20,13 @@ const WINE_CATEGORY_OPTIONS = WINE_CATEGORIES.map((c) => ({
 const isPaeseMondo = (v) => Boolean(COUNTRY_GROUPS[v]);
 
 function WineManager() {
-  const [categoryId, setCategoryId] = useState(WINE_CATEGORY_OPTIONS[0].id);
+  // ricordata: dopo un ricaricamento si torna sulla stessa categoria
+  // (utils/memoriaAdmin.js). Stessa riga negli altri pannelli
+  const [categoryId, setCategoryId] = useRicordato(
+    "categoria-vini",
+    WINE_CATEGORY_OPTIONS[0].id,
+    (id) => WINE_CATEGORY_OPTIONS.some((c) => c.id === id),
+  );
   const [wines, setWines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

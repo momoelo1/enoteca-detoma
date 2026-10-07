@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BEER_CATEGORIES } from "../../data/data";
 import { getBeers } from "../../services/beers";
 import { normalize } from "../../utils/normalize";
+import { useRicordato } from "../../utils/memoriaAdmin";
 import CategoryPicker from "./CategoryPicker";
 import AdminFilterBar from "./AdminFilterBar";
 import AdminBeerCard from "./AdminBeerCard";
@@ -16,7 +17,12 @@ const BEER_CATEGORY_OPTIONS = BEER_CATEGORIES.map((c) => ({
 }));
 
 function BeerManager() {
-  const [producerId, setProducerId] = useState(BEER_CATEGORY_OPTIONS[0].id);
+  // ricordato dopo un ricaricamento, come la categoria in WineManager
+  const [producerId, setProducerId] = useRicordato(
+    "birrificio",
+    BEER_CATEGORY_OPTIONS[0].id,
+    (id) => BEER_CATEGORY_OPTIONS.some((c) => c.id === id),
+  );
   const [beers, setBeers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

@@ -12,6 +12,7 @@ import { getDistillatiArchiviati, updateDistillato } from "../../services/distil
 import { getBeersArchiviate, updateBeer } from "../../services/beers";
 import { getAlimentariArchiviati, updateAlimentare } from "../../services/alimentari";
 import { normalize } from "../../utils/normalize";
+import { useRicordato } from "../../utils/memoriaAdmin";
 import CategoryPicker from "./CategoryPicker";
 import AdminFilterBar from "./AdminFilterBar";
 import "./admin.css";
@@ -140,7 +141,12 @@ function ArchivioManager() {
   const [archivio, setArchivio] = useState(null);
   const [error, setError] = useState("");
   // null = nessuna scelta ancora: si apre sul primo tipo che ha qualcosa
-  const [sceltaTipo, setSceltaTipo] = useState(null);
+  // ricordata dopo un ricaricamento (utils/memoriaAdmin.js)
+  const [sceltaTipo, setSceltaTipo] = useRicordato(
+    "tipo-archivio",
+    null,
+    (id) => TIPI.some((t) => t.id === id),
+  );
   const [searchText, setSearchText] = useState("");
   const [filtro, setFiltro] = useState(null);
 

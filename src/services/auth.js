@@ -24,7 +24,39 @@ export const getToken = () => localStorage.getItem(TOKEN_KEY);
 // esportata perché anche il cambio password riemette un token (il backend
 // revoca le sessioni precedenti): vedi services/users.js
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+const clearToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(UTENTE_KEY);
+};
+
+// L'utente dell'ultimo accesso, con l'ora in cui è entrato. Serve a mostrare
+// il pannello SUBITO quando la pagina si ricarica — su iPhone Safari succede
+// da solo dopo pochi secondi in un'altra app — invece di una pagina bianca
+// finché il backend (magari a freddo su Vercel) non conferma la sessione.
+// La conferma arriva lo stesso, dietro le quinte (Login.jsx): se il token
+// non vale più, si torna al modulo di accesso. Oltre le 8 ore del token non
+// si prova nemmeno: sarebbe un pannello mostrato per un attimo e poi tolto.
+const UTENTE_KEY = "detoma_admin_utente";
+const DURATA_TOKEN = 8 * 60 * 60 * 1000;
+
+const salvaUtente = (user, quando) => {
+  try {
+    localStorage.setItem(UTENTE_KEY, JSON.stringify({ user, quando }));
+  } catch {
+    /* senza memoria si torna solo ad aspettare il backend, come prima */
+  }
+};
+
+export const utenteSalvato = () => {
+  try {
+    if (!getToken()) return null;
+    const salvato = JSON.parse(localStorage.getItem(UTENTE_KEY));
+    if (!salvato?.user || Date.now() - salvato.quando > DURATA_TOKEN) return null;
+    return salvato.user;
+  } catch {
+    return null;
+  }
+};
 
 export const authHeaders = () => {
   const token = getToken();
@@ -70,6 +102,7 @@ export const login = async (username, password) => {
   const data = await parse(res);
   const { token, ...user } = data;
   if (token) setToken(token);
+  salvaUtente(user, Date.now());
   return user;
 };
 
@@ -83,11 +116,24 @@ export const getSession = async () => {
     clearToken();
     return null;
   }
-  return res.json();
+  const user = await res.json();
+  // si rinfresca l'utente (un nome cambiato da Account), non l'ora: il token
+  // è sempre quello dell'accesso e scade da lì
+  try {
+    const quando = JSON.parse(localStorage.getItem(UTENTE_KEY))?.quando;
+    if (quando) salvaUtente(user, quando);
+  } catch {
+    /* niente: resta solo la conferma, come prima */
+  }
+  return user;
 };
 
+// `/api/login/logout`, la rotta del backend (controllers/login.js). Fino al
+// 2026-10-05 qui c'era `/api/logout`, che non esiste: ogni Esci prendeva un
+// 404, e il pannello usciva solo in locale — sul server la sessione restava
+// valida (niente tokenVersion incrementato, cookie mai cancellato)
 export const logout = async () => {
-  await fetch(`${API_URL}/api/logout`, {
+  await fetch(`${API_URL}/api/login/logout`, {
     method: "POST",
     credentials: "include",
     headers: authHeaders(),

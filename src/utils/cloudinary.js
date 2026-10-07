@@ -31,14 +31,30 @@ const withTransform = (url, transform) => {
 //    (differenza di alpha: 0, nessun alone nuovo). Il colore si sposta di 1,69
 //    su 255, sotto il visibile in un riquadro alto 90px.
 //
-// Niente `w_`, di proposito. Un cap toccherebbe 22 foto su 144 (122 stanno già
-// sotto i 600px, mediana 400px) e l'unico modo di ammorbidire una maschera
-// indurita è RICAMPIONARLA: `w_600` portava la fascia semitrasparente della
-// foto più grande da 0,28% a 0,70%, e sulle piccole INGRANDIVA (301x452 →
-// 600x901, 10,1 KB → 20,7 KB, alpha da 1,20% a 2,12%) — più peso per niente.
-// Se un giorno arrivassero foto da fotocamera il cap da aggiungere è
-// `w_1200,c_limit`, con `c_limit` e non `w_` da solo, o si torna a ingrandire.
+// Il tetto alle dimensioni NON sta qui ma nella ricetta delle bottiglie
+// (`ALTEZZA_MAX` più sotto): qui niente `w_`, perché gli alimentari non sono
+// stati misurati.
 const CONSEGNA = "f_auto,q_auto";
+
+// Altezza massima delle foto dei vini consegnate al sito.
+//
+// Le foto in archivio sono cresciute: misurato il 2026-10-05 su rossi e
+// bianchi, 285 foto su 349 superavano i 700px e le più grandi arrivavano a
+// 3555px (foto da fotocamera, 2224x4000). Su iPhone la card le mostra alte
+// 108 punti (324px a DPR 3) e la scheda 208 punti (624px); sul desktop
+// 1440x900 la scheda 268 punti (536px a DPR 2). 700 copre tutte e tre.
+//
+// Il peso che conta qui non è tanto quello scaricato quanto la MEMORIA: per
+// disegnarla il telefono decomprime la foto alla sua misura piena, e una
+// bottiglia alta 3555px occupa ~32 MB anche se il file ne pesa 30 KB. Scorrere
+// tutti i rossi ne decomprimeva fino a ~710 MB (stima), ~240 col tetto — ed è
+// la memoria che spinge Safari a chiudere e ricaricare la scheda.
+// Scaricato: le 20 foto più pesanti da 2814 KB a 429 KB.
+//
+// `c_limit` e non `h_` da solo: non INGRANDISCE mai le foto già più basse (64
+// su 349), che restano identiche a prima. Gli originali su Cloudinary non si
+// toccano: cambia solo la copia consegnata.
+const ALTEZZA_MAX = 700;
 
 // Ritaglia il bordo uniforme intorno al prodotto.
 //
@@ -82,8 +98,15 @@ export const trimBorder = (url) => withTransform(url, `e_trim/${CONSEGNA}`);
 // pulito, in webp. Rimetterlo qui non farebbe niente sulle foto — misurato:
 // su una foto già trasparente è un non-fare-niente al pixel — e brucerebbe
 // un credito dell'add-on per ogni derivata.
+//
+// Il tetto di altezza va DOPO `c_pad`: limita la tela 2:3 finita, quindi la
+// proporzione della cornice resta quella e tutte le bottiglie restano alla
+// stessa altezza dentro il riquadro.
 export const bottleFrame = (url) =>
-  withTransform(url, `e_trim/c_pad,ar_2:3,b_transparent/${CONSEGNA}`);
+  withTransform(
+    url,
+    `e_trim/c_pad,ar_2:3,b_transparent/c_limit,h_${ALTEZZA_MAX}/${CONSEGNA}`,
+  );
 
 // Le foto di un prodotto, come elenco pulito.
 //

@@ -3,6 +3,7 @@ import { createWine, updateWine, deleteWine, deleteWineImage } from "../../servi
 import { COUNTRY_GROUPS } from "../../data/data";
 import { FORMATI_VINO, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
+import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 
@@ -34,7 +35,7 @@ const toFormato = (ml, prezzo) => ({
 // Sono funzioni e non costanti condivise: due righe vuote nello stesso form
 // devono essere due oggetti distinti.
 const formatoVuoto = () => ({ ml: "", prezzo: "", conMl: false });
-const annataVuota = () => ({ anno: "", formati: [formatoVuoto()] });
+const annataVuota = () => ({ anno: "", senzaAnnata: false, formati: [formatoVuoto()] });
 
 // il formato di ripiego: spuntando la casella il menù si posiziona già sulla
 // bottiglia normale, e chi salva senza toccarlo salva quella. Un menù aperto
@@ -57,6 +58,7 @@ const opzioniMl = (ml) => {
 // un vino di oggi mostra il suo prezzo invece di una riga vuota
 const toAnnata = (a) => ({
   anno: a.anno || "",
+  senzaAnnata: Boolean(a.senzaAnnata),
   formati: a.formati?.length
     ? a.formati.map((f) => toFormato(f.ml, f.prezzo))
     : [toFormato("", a.prezzo)],
@@ -106,9 +108,19 @@ const deriveCountrySelection = (wine) => {
 function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const isNew = !wine;
   const isChampagne = categoryId === "champagne";
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(wine));
-  const [countrySelection, setCountrySelection] = useState(() => deriveCountrySelection(wine));
+  // Il modulo aperto si salva come bozza a ogni modifica, e dopo un
+  // ricaricamento (Safari su iPhone ricarica da solo le schede rimaste in
+  // background) si riapre com'era. Vedi utils/memoriaAdmin.js.
+  const chiaveBozza = isNew ? `nuovo:${categoryId}` : wine.id;
+  const [bozza] = useState(() => leggiBozza("vino", chiaveBozza));
+  const [editing, setEditing] = useState(Boolean(bozza));
+  const [form, setForm] = useState(() => bozza?.form ?? toForm(wine));
+  const [countrySelection, setCountrySelection] = useState(
+    () => bozza?.countrySelection ?? deriveCountrySelection(wine),
+  );
+  useEffect(() => {
+    if (editing) salvaBozza("vino", chiaveBozza, { form, countrySelection });
+  }, [editing, chiaveBozza, form, countrySelection]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [removingIndex, setRemovingIndex] = useState(null);
@@ -180,6 +192,19 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
           : row,
       ),
     );
+
+  // "Senza annata": il vino si vende senza anno in etichetta ma ha un prezzo.
+  // Spuntando, l'anno si svuota subito, per lo stesso motivo del ml qui sopra:
+  // un anno lasciato scritto in un campo spento sembrerebbe salvato
+  const toggleSenzaAnnata = (index) =>
+    setForm((f) => ({
+      ...f,
+      annate: f.annate.map((a, i) =>
+        i === index
+          ? { ...a, senzaAnnata: !a.senzaAnnata, anno: a.senzaAnnata ? a.anno : "" }
+          : a,
+      ),
+    }));
 
   const addFormato = (index) =>
     mapFormati(index, (formati) => [...formati, formatoVuoto()]);
@@ -255,6 +280,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   };
 
   const cancelEdit = () => {
+    buttaBozza("vino", chiaveBozza);
     setForm(toForm(wine));
     setCountrySelection(deriveCountrySelection(wine));
     setRemovingIndex(null);
@@ -299,12 +325,19 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
             // prezzo in bianco = zero, che il sito mostra come "—"
             prezzo: numero(f.prezzo) ?? 0,
           }));
-        return { anno: a.anno, ...(formati.length > 0 && { formati }) };
+        return {
+          anno: a.senzaAnnata ? "" : a.anno,
+          // la chiave c'è solo se spuntata: il PUT riscrive tutte le annate
+          // dal corpo, quindi una spunta tolta sparisce da sola
+          ...(a.senzaAnnata && { senzaAnnata: true }),
+          ...(formati.length > 0 && { formati }),
+        };
       })
       // si scarta solo ciò che non dice niente. Il filtro sta DOPO la mappa
       // perché su champagne l'anno è sempre "": un'annata con tutte le righe
-      // ancora da prezzare resterebbe vuota del tutto
-      .filter((a) => a.anno !== "" || a.formati?.length > 0);
+      // ancora da prezzare resterebbe vuota del tutto. "Senza annata" invece
+      // dice qualcosa anche senza prezzo, e riaprendo il vino va ritrovata
+      .filter((a) => a.anno !== "" || a.senzaAnnata || a.formati?.length > 0);
 
     const payload = Object.fromEntries(
       Object.entries({
@@ -331,12 +364,14 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
     try {
       if (isNew) {
         const created = await createWine({ ...payload, category: categoryId });
+        buttaBozza("vino", chiaveBozza);
         onCreated(created);
         setForm(EMPTY_FORM);
         setCountrySelection("");
         setEditing(false);
       } else {
         const updated = await updateWine(wine.id, payload);
+        buttaBozza("vino", chiaveBozza);
         onUpdated(updated);
         setEditing(false);
       }
@@ -476,11 +511,36 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                     <div className="admin-field">
                       <input
                         type="text"
-                        placeholder="Anno"
+                        /* spuntata, la spunta accanto dice già tutto: qui
+                           basta un trattino (la scritta intera si tagliava) */
+                        placeholder={annata.senzaAnnata ? "—" : "Anno"}
                         value={annata.anno}
+                        disabled={annata.senzaAnnata}
                         onChange={(e) => updateAnnata(i, "anno", e.target.value)}
                       />
                     </div>
+                    {/* solo con un'annata sola: una riga senza anno accanto a
+                        righe con l'anno, nella scheda del sito, non si
+                        potrebbe scegliere (i formati si filtrano per anno) */}
+                    {form.annate.length === 1 && (
+                      <label
+                        className={
+                          "admin-annata-check" +
+                          (annata.senzaAnnata ? " admin-annata-check--attiva" : "")
+                        }
+                        title="Per i vini che non hanno l'anno in etichetta: si salva solo il prezzo"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={annata.senzaAnnata}
+                          onChange={() => toggleSenzaAnnata(i)}
+                        />
+                        <span className="admin-annata-check-box" aria-hidden="true">
+                          ✓
+                        </span>
+                        <span className="admin-annata-check-text">Senza annata</span>
+                      </label>
+                    )}
                     <button
                       type="button"
                       className="admin-annata-remove"
@@ -576,7 +636,8 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
               </div>
             ))}
           </div>
-          {!isChampagne && (
+          {/* un vino senza annata non ne ha una seconda da aggiungere */}
+          {!isChampagne && !form.annate[0]?.senzaAnnata && (
             <button type="button" className="admin-annata-add" onClick={addAnnata}>
               + Aggiungi annata
             </button>

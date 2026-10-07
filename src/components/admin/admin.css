@@ -668,9 +668,11 @@
 }
 
 /* menù del formato di una riga senza spunta: spento, non nascosto — così si
-   vede che il posto c'è e basta mettere la spunta */
+   vede che il posto c'è e basta mettere la spunta. Lo stesso per l'anno con
+   la spunta "Senza annata" */
 .admin-formato-row input:disabled,
-.admin-formato-row select:disabled {
+.admin-formato-row select:disabled,
+.admin-annata-testa input:disabled {
   background: #f2f2f2;
   color: #9a9a9a;
   cursor: not-allowed;
@@ -1101,6 +1103,25 @@
 .admin-ripristina-btn:disabled {
   cursor: progress;
   opacity: 0.5;
+}
+
+/* ==========================================================================
+   Consigliati (ConsigliatiManager): la selezione della casa, per categoria
+   ========================================================================== */
+/* le tessere sono quelle dei pannelli di ogni tipo; qui c'è solo il
+   titoletto della categoria sopra ogni griglia, perché tessere di categorie
+   diverse si somigliano tutte e senza non si capirebbe di cosa si parla */
+.admin-consigliati-gruppo + .admin-consigliati-gruppo {
+  margin-top: 26px;
+}
+
+.admin-consigliati-titolo {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #52605a;
 }
 
 /* ---- tessera "aggiungi vino" ---- */

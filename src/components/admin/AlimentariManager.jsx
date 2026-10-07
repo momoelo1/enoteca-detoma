@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ALIMENTARI_CATEGORIES } from "../../data/data";
 import { getAlimentari } from "../../services/alimentari";
 import { normalize } from "../../utils/normalize";
+import { useRicordato } from "../../utils/memoriaAdmin";
 import CategoryPicker from "./CategoryPicker";
 import AdminFilterBar from "./AdminFilterBar";
 import AdminAlimentareCard from "./AdminAlimentareCard";
@@ -15,7 +16,12 @@ const ALIMENTARI_OPTIONS = ALIMENTARI_CATEGORIES.map((c) => ({
 }));
 
 function AlimentariManager() {
-  const [categoryId, setCategoryId] = useState(ALIMENTARI_OPTIONS[0].id);
+  // ricordata dopo un ricaricamento, come in WineManager
+  const [categoryId, setCategoryId] = useRicordato(
+    "categoria-alimentari",
+    ALIMENTARI_OPTIONS[0].id,
+    (id) => ALIMENTARI_OPTIONS.some((c) => c.id === id),
+  );
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

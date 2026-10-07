@@ -101,8 +101,10 @@ void main(){
 `;
 
 
-// Keep renderer/program alive across re-renders so Effect 2 can update
-// uniforms without ever rebuilding the WebGL context.
+// Per contenitore: le uniform e la tinta, che l'Effect 2 aggiorna senza mai
+// toccare il contesto WebGL. Le uniform stanno QUI e non sul programma perché
+// il programma muore e rinasce (vedi `rilascia` nell'Effect 1), mentre i
+// valori delle props devono sopravvivergli.
 const ctxMap = new WeakMap();
 
 // Origine dei tempi condivisa da TUTTE le istanze. Con un `performance.now()`
@@ -141,99 +143,129 @@ const Grainient = ({
 }) => {
   const containerRef = useRef(null);
 
-  // Effect 1: build WebGL context once, pause when offscreen / tab hidden
+  // Effect 1: il contesto WebGL. Si mette in pausa fuori schermo, e quando
+  // la pagina va in background (si cambia app, si cambia scheda) si
+  // RILASCIA del tutto, per rinascere al ritorno.
+  //
+  // Perché rilasciarlo e non solo fermare il loop: su iPhone Safari chiude da
+  // solo le schede in background che tengono troppa memoria, e al ritorno le
+  // ricarica da capo — il "refresh" che il negoziante vedeva dopo 10-20
+  // secondi fuori dal pannello. Un contesto WebGL fermo occupa memoria della
+  // GPU quanto uno che disegna; perso con `loseContext()` la restituisce
+  // subito, senza aspettare che passi il garbage collector.
+  // Rinascere costa un fotogramma: l'origine dei tempi è T0, condivisa, quindi
+  // il disegno riparte esattamente dal punto in cui sarebbe stato.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({
-      webgl: 2,
-      alpha: true,
-      antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
-    });
-
-    const gl = renderer.gl;
-    const canvas = gl.canvas;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
-    container.appendChild(canvas);
-
-    const geometry = new Triangle(gl);
-    const program = new Program(gl, {
-      vertex,
-      fragment,
-      uniforms: {
-        iTime:           { value: 0 },
-        iResolution:     { value: new Float32Array([1, 1]) },
-        uTimeSpeed:      { value: 0.25 },
-        uColorBalance:   { value: 0.0 },
-        uWarpStrength:   { value: 1.0 },
-        uWarpFrequency:  { value: 5.0 },
-        uWarpSpeed:      { value: 2.0 },
-        uWarpAmplitude:  { value: 50.0 },
-        uBlendAngle:     { value: 0.0 },
-        uBlendSoftness:  { value: 0.05 },
-        uRotationAmount: { value: 500.0 },
-        uNoiseScale:     { value: 2.0 },
-        uGrainAmount:    { value: 0.1 },
-        uGrainScale:     { value: 2.0 },
-        uGrainAnimated:  { value: 0.0 },
-        uContrast:       { value: 1.5 },
-        uGamma:          { value: 1.0 },
-        uSaturation:     { value: 1.0 },
-        uCenterOffset:   { value: new Float32Array([0, 0]) },
-        uZoom:           { value: 0.9 },
-        uColor1:         { value: new Float32Array([1, 1, 1]) },
-        uColor2:         { value: new Float32Array([1, 1, 1]) },
-        uColor3:         { value: new Float32Array([1, 1, 1]) }
-      }
-    });
-
-    const mesh = new Mesh(gl, { geometry, program });
+    // le uniform sopravvivono al contesto: OGL tiene per riferimento l'oggetto
+    // che gli si passa, quindi ogni programma nuovo trova già i valori che
+    // l'Effect 2 ci ha scritto
+    const uniforms = {
+      iTime:           { value: 0 },
+      iResolution:     { value: new Float32Array([1, 1]) },
+      uTimeSpeed:      { value: 0.25 },
+      uColorBalance:   { value: 0.0 },
+      uWarpStrength:   { value: 1.0 },
+      uWarpFrequency:  { value: 5.0 },
+      uWarpSpeed:      { value: 2.0 },
+      uWarpAmplitude:  { value: 50.0 },
+      uBlendAngle:     { value: 0.0 },
+      uBlendSoftness:  { value: 0.05 },
+      uRotationAmount: { value: 500.0 },
+      uNoiseScale:     { value: 2.0 },
+      uGrainAmount:    { value: 0.1 },
+      uGrainScale:     { value: 2.0 },
+      uGrainAnimated:  { value: 0.0 },
+      uContrast:       { value: 1.5 },
+      uGamma:          { value: 1.0 },
+      uSaturation:     { value: 1.0 },
+      uCenterOffset:   { value: new Float32Array([0, 0]) },
+      uZoom:           { value: 0.9 },
+      uColor1:         { value: new Float32Array([1, 1, 1]) },
+      uColor2:         { value: new Float32Array([1, 1, 1]) },
+      uColor3:         { value: new Float32Array([1, 1, 1]) }
+    };
     // `tinta` lo aggiorna l'Effect 2 sull'oggetto stesso: il loop qui sotto è
     // creato una volta sola e non vedrebbe mai una prop cambiata
-    const ctx = { renderer, program, mesh, tinta: false };
+    const ctx = { uniforms, tinta: false };
     ctxMap.set(container, ctx);
+
+    // il contesto vivo — renderer, gl, mesh — oppure null quando è rilasciato
+    let vivo = null;
 
     // un solo punto in cui si disegna: la tinta condivisa va applicata anche
     // ai render fuori dal loop (resize, e il primo fotogramma al montaggio),
     // altrimenti lì tornerebbero per un istante i colori delle props
     const disegna = () => {
+      if (!vivo) return;
       if (ctx.tinta) {
         const t = tintaOra();
         if (t) {
-          program.uniforms.uColor1.value = t[0];
-          program.uniforms.uColor2.value = t[1];
-          program.uniforms.uColor3.value = t[2];
+          uniforms.uColor1.value = t[0];
+          uniforms.uColor2.value = t[1];
+          uniforms.uColor3.value = t[2];
         }
       }
-      renderer.render({ scene: mesh });
+      vivo.renderer.render({ scene: vivo.mesh });
     };
 
     const setSize = () => {
+      if (!vivo) return;
       const rect = container.getBoundingClientRect();
       const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(1, Math.floor(rect.height));
-      renderer.setSize(w, h);
-      const res = program.uniforms.iResolution.value;
-      res[0] = gl.drawingBufferWidth;
-      res[1] = gl.drawingBufferHeight;
+      vivo.renderer.setSize(w, h);
+      const res = uniforms.iResolution.value;
+      res[0] = vivo.gl.drawingBufferWidth;
+      res[1] = vivo.gl.drawingBufferHeight;
       disegna();
     };
 
+    const crea = () => {
+      if (vivo) return;
+      const renderer = new Renderer({
+        webgl: 2,
+        alpha: true,
+        antialias: false,
+        dpr: Math.min(window.devicePixelRatio || 1, 2)
+      });
+      const gl = renderer.gl;
+      const canvas = gl.canvas;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.display = 'block';
+      const geometry = new Triangle(gl);
+      const program = new Program(gl, { vertex, fragment, uniforms });
+      const mesh = new Mesh(gl, { geometry, program });
+      vivo = { renderer, gl, mesh, canvas };
+      // il primo fotogramma si disegna QUI, prima di attaccare la tela: così
+      // al ritorno sulla pagina non c'è un istante con la tela vuota
+      uniforms.iTime.value = (performance.now() - T0) * 0.001;
+      setSize();
+      container.appendChild(canvas);
+    };
+
+    const rilascia = () => {
+      if (!vivo) return;
+      const { gl, canvas } = vivo;
+      vivo = null;
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      try { container.removeChild(canvas); } catch { /* ignore */ }
+    };
+
+    crea();
+
     const ro = new ResizeObserver(setSize);
     ro.observe(container);
-    setSize();
 
     let raf = 0;
     let isVisible = true;
     let isPageVisible = !document.hidden;
-    const t0 = T0;
 
     const loop = t => {
-      program.uniforms.iTime.value = (t - t0) * 0.001;
+      uniforms.iTime.value = (t - T0) * 0.001;
       disegna();
       raf = requestAnimationFrame(loop);
     };
@@ -245,6 +277,7 @@ const Grainient = ({
       if (raf !== 0) { cancelAnimationFrame(raf); raf = 0; }
     };
 
+    // fuori schermo basta la pausa: si torna a vederlo scorrendo, in un attimo
     const io = new IntersectionObserver(
       ([entry]) => { isVisible = entry.isIntersecting; isVisible ? tryStart() : tryStop(); },
       { threshold: 0 }
@@ -253,7 +286,13 @@ const Grainient = ({
 
     const onVisibility = () => {
       isPageVisible = !document.hidden;
-      isPageVisible ? tryStart() : tryStop();
+      if (isPageVisible) {
+        crea();
+        tryStart();
+      } else {
+        tryStop();
+        rilascia();
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
 
@@ -265,18 +304,21 @@ const Grainient = ({
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       ctxMap.delete(container);
-      try { container.removeChild(canvas); } catch { /* ignore */ }
+      // anche smontando: la "finestra" della pagina Info rimonta lo shader a
+      // ogni visita, e prima ogni visita lasciava un contesto in più ad
+      // aspettare il garbage collector
+      rilascia();
     };
-  }, []); // renderer created once
+  }, []); // effect montato una volta; il contesto nasce e muore con la visibilità
 
-  // Effect 2: sync props to uniforms — zero GPU cost, no teardown
+  // Effect 2: sync props to uniforms — zero GPU cost, no teardown. Scrive
+  // anche a contesto rilasciato: il prossimo programma trova i valori giusti
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const ctx = ctxMap.get(container);
     if (!ctx) return;
-    const { program } = ctx;
-    const u = program.uniforms;
+    const u = ctx.uniforms;
 
     ctx.tinta = tintaCondivisa;
     u.uTimeSpeed.value      = timeSpeed;

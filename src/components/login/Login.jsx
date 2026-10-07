@@ -4,16 +4,21 @@ import {
   login,
   getSession,
   logout,
+  utenteSalvato,
   SESSION_EXPIRED_EVENT,
 } from "../../services/auth";
 import { dimentica } from "../../services/cache";
+import { useRicordato, dimenticaAdmin } from "../../utils/memoriaAdmin";
 import WineManager from "../admin/WineManager";
 import BeerManager from "../admin/BeerManager";
 import DistillatiManager from "../admin/DistillatiManager";
 import AlimentariManager from "../admin/AlimentariManager";
 import ArchivioManager from "../admin/ArchivioManager";
+import ConsigliatiManager from "../admin/ConsigliatiManager";
 import UserSettings from "../admin/UserSettings";
 import "./login.css";
+
+const VISTE_ADMIN = ["wines", "distillati", "beers", "alimentari", "consigliati", "archivio", "account"];
 
 const restoreLayout = () => {
   window.scrollTo(0, 0);
@@ -32,9 +37,17 @@ function Login({ onBack }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cardReady, setCardReady] = useState(false);
-  const [session, setSession] = useState(null);
-  const [checkingSession, setCheckingSession] = useState(isBackendConfigured);
-  const [adminView, setAdminView] = useState("wines"); // "wines" | "distillati" | "beers" | "alimentari" | "archivio" | "account"
+  // con un accesso recente ricordato il pannello si mostra subito, e la
+  // sessione si conferma dietro le quinte (effect più sotto); senza, si
+  // aspetta il backend come sempre. Vedi `utenteSalvato` in services/auth.js
+  const [session, setSession] = useState(utenteSalvato);
+  const [checkingSession, setCheckingSession] = useState(
+    () => isBackendConfigured && !utenteSalvato(),
+  );
+  // la sezione aperta sopravvive al ricaricamento (utils/memoriaAdmin.js)
+  const [adminView, setAdminView] = useRicordato("vista", "wines", (v) =>
+    VISTE_ADMIN.includes(v),
+  );
 
   useEffect(() => {
     if (session) {
@@ -62,8 +75,14 @@ function Login({ onBack }) {
 
   useEffect(() => {
     if (!isBackendConfigured) return;
+    // la conferma della sessione: col pannello già mostrato da `utenteSalvato`
+    // gira dietro le quinte, e se il token non vale più riporta al modulo di
+    // accesso. Se invece è la RETE a mancare (si rientra con la connessione
+    // ancora assente), il pannello resta: un salvataggio con un token davvero
+    // scaduto lo direbbe comunque, con il suo 401
     getSession()
       .then(setSession)
+      .catch(() => {})
       .finally(() => setCheckingSession(false));
   }, []);
 
@@ -93,6 +112,10 @@ function Login({ onBack }) {
 
   const handleLogout = async () => {
     await logout();
+    // uscendo di proposito si riparte puliti: niente sezione né bozze
+    // ricordate per il prossimo accesso
+    dimenticaAdmin();
+    setAdminView("wines");
     setUsername("");
     setPassword("");
     setSession(null);
@@ -108,8 +131,9 @@ function Login({ onBack }) {
             <span className="admin-topbar-eyebrow">Pannello di gestione</span>
             <span className="admin-topbar-user">{session.username}</span>
           </div>
-          {/* due gruppi: a sinistra i prodotti in negozio, a destra quel che
-              non è catalogo — l'archivio, l'account e l'uscita */}
+          {/* due gruppi: a sinistra i prodotti in negozio, a destra le viste
+              che li attraversano tutti — consigliati, archivio — più
+              l'account e l'uscita */}
           <div className="admin-topbar-actions">
             <div className="admin-topbar-gruppo">
               <button
@@ -153,6 +177,15 @@ function Login({ onBack }) {
               <button
                 type="button"
                 className={
+                  "admin-topbar-link" + (adminView === "consigliati" ? " admin-topbar-link--active" : "")
+                }
+                onClick={() => setAdminView("consigliati")}
+              >
+                Consigliati
+              </button>
+              <button
+                type="button"
+                className={
                   "admin-topbar-link" + (adminView === "archivio" ? " admin-topbar-link--active" : "")
                 }
                 onClick={() => setAdminView("archivio")}
@@ -179,6 +212,8 @@ function Login({ onBack }) {
         </header>
         {adminView === "account" ? (
           <UserSettings session={session} onUpdated={setSession} />
+        ) : adminView === "consigliati" ? (
+          <ConsigliatiManager />
         ) : adminView === "archivio" ? (
           <ArchivioManager />
         ) : adminView === "alimentari" ? (

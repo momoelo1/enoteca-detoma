@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createBeer, updateBeer, deleteBeer, deleteBeerImage } from "../../services/beers";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
+import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
@@ -25,8 +26,15 @@ const EMPTY_FORM = {
 
 function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const isNew = !beer;
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(beer));
+  // bozza del modulo aperto, riaperta dopo un ricaricamento: vedi
+  // AdminWineCard e utils/memoriaAdmin.js
+  const chiaveBozza = isNew ? `nuovo:${producerId}` : beer.id;
+  const [bozza] = useState(() => leggiBozza("birra", chiaveBozza));
+  const [editing, setEditing] = useState(Boolean(bozza));
+  const [form, setForm] = useState(() => bozza?.form ?? toForm(beer));
+  useEffect(() => {
+    if (editing) salvaBozza("birra", chiaveBozza, { form });
+  }, [editing, chiaveBozza, form]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [flagging, setFlagging] = useState(false);
@@ -65,6 +73,7 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   };
 
   const cancelEdit = () => {
+    buttaBozza("birra", chiaveBozza);
     setForm(toForm(beer));
     setError("");
     setEditing(false);
@@ -101,11 +110,13 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     try {
       if (isNew) {
         const created = await createBeer({ ...payload, producer: producerId });
+        buttaBozza("birra", chiaveBozza);
         onCreated(created);
         setForm(EMPTY_FORM);
         setEditing(false);
       } else {
         const updated = await updateBeer(beer.id, payload);
+        buttaBozza("birra", chiaveBozza);
         onUpdated(updated);
         setEditing(false);
       }

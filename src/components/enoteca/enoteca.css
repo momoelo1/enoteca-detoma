@@ -2661,13 +2661,6 @@ body.sheet-open .page-scroll {
   color: #2e3d34;
 }
 
-.sheet-formato-prezzo {
-  font-weight: 700;
-  white-space: nowrap;
-  color: var(--accent, #2e5e46);
-  font-variant-numeric: tabular-nums;
-}
-
 /* i pezzi che l'intestazione nuova ha reso doppi o inutili */
 .product-sheet--vini .sheet-desc-label,
 .product-sheet--vini .sheet-divider,

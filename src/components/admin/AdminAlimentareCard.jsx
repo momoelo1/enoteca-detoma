@@ -7,6 +7,7 @@ import {
 } from "../../services/alimentari";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
+import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
 
 // niente annate qui: il cibo ha un prezzo unico, come le birre.
 // `formato` è un numero di grammi come per le birre lo è di centilitri
@@ -40,8 +41,15 @@ function AdminAlimentareCard({
   onDeleted,
 }) {
   const isNew = !item;
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(item));
+  // bozza del modulo aperto, riaperta dopo un ricaricamento: vedi
+  // AdminWineCard e utils/memoriaAdmin.js
+  const chiaveBozza = isNew ? `nuovo:${categoryId}` : item.id;
+  const [bozza] = useState(() => leggiBozza("alimentare", chiaveBozza));
+  const [editing, setEditing] = useState(Boolean(bozza));
+  const [form, setForm] = useState(() => bozza?.form ?? toForm(item));
+  useEffect(() => {
+    if (editing) salvaBozza("alimentare", chiaveBozza, { form });
+  }, [editing, chiaveBozza, form]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [flagging, setFlagging] = useState(false);
@@ -82,6 +90,7 @@ function AdminAlimentareCard({
   };
 
   const cancelEdit = () => {
+    buttaBozza("alimentare", chiaveBozza);
     setForm(toForm(item));
     setError("");
     setEditing(false);
@@ -122,11 +131,13 @@ function AdminAlimentareCard({
           ...payload,
           category: categoryId,
         });
+        buttaBozza("alimentare", chiaveBozza);
         onCreated(created);
         setForm(EMPTY_FORM);
         setEditing(false);
       } else {
         const updated = await updateAlimentare(item.id, payload);
+        buttaBozza("alimentare", chiaveBozza);
         onUpdated(updated);
         setEditing(false);
       }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DISTILLATI_CATEGORIES } from "../../data/data";
 import { getDistillati } from "../../services/distillati";
 import { normalize } from "../../utils/normalize";
+import { useRicordato } from "../../utils/memoriaAdmin";
 import CategoryPicker from "./CategoryPicker";
 import AdminFilterBar from "./AdminFilterBar";
 import AdminDistillatoCard from "./AdminDistillatoCard";
@@ -22,7 +23,12 @@ const DISTILLATI_CATEGORY_OPTIONS = DISTILLATI_CATEGORIES.map((c) => ({
 const paeseDi = (d) => d.paese?.trim();
 
 function DistillatiManager() {
-  const [categoryId, setCategoryId] = useState(DISTILLATI_CATEGORY_OPTIONS[0].id);
+  // ricordata dopo un ricaricamento, come in WineManager
+  const [categoryId, setCategoryId] = useRicordato(
+    "categoria-distillati",
+    DISTILLATI_CATEGORY_OPTIONS[0].id,
+    (id) => DISTILLATI_CATEGORY_OPTIONS.some((c) => c.id === id),
+  );
   const [distillati, setDistillati] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

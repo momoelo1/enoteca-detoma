@@ -7,6 +7,7 @@ import {
 } from "../../services/distillati";
 import { FORMATI_DISTILLATI, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
+import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 
@@ -104,8 +105,15 @@ const EMPTY_FORM = {
 function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated, onUpdated, onDeleted }) {
   const isNew = !distillato;
   const paesiListId = useId();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(() => toForm(distillato));
+  // bozza del modulo aperto, riaperta dopo un ricaricamento: vedi
+  // AdminWineCard e utils/memoriaAdmin.js
+  const chiaveBozza = isNew ? `nuovo:${categoryId}` : distillato.id;
+  const [bozza] = useState(() => leggiBozza("distillato", chiaveBozza));
+  const [editing, setEditing] = useState(Boolean(bozza));
+  const [form, setForm] = useState(() => bozza?.form ?? toForm(distillato));
+  useEffect(() => {
+    if (editing) salvaBozza("distillato", chiaveBozza, { form });
+  }, [editing, chiaveBozza, form]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [removingIndex, setRemovingIndex] = useState(null);
@@ -207,6 +215,7 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
   };
 
   const cancelEdit = () => {
+    buttaBozza("distillato", chiaveBozza);
     setForm(toForm(distillato));
     setRemovingIndex(null);
     setError("");
@@ -271,11 +280,13 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
     try {
       if (isNew) {
         const created = await createDistillato({ ...payload, category: categoryId });
+        buttaBozza("distillato", chiaveBozza);
         onCreated(created);
         setForm(EMPTY_FORM);
         setEditing(false);
       } else {
         const updated = await updateDistillato(distillato.id, payload);
+        buttaBozza("distillato", chiaveBozza);
         onUpdated(updated);
         setEditing(false);
       }
