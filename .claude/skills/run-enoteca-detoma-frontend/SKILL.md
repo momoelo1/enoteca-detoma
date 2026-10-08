@@ -687,6 +687,35 @@ adesso. Il font va caricato **solo quando si sceglie quella voce**, iniettando
 il `<link>` da JS; e quando si apre l'elenco si caricano tutti tranne quello
 sensibile, che altrimenti falsa il confronto appena si guarda.
 
+**Varianti di IMPAGINAZIONE (card e scheda delle birre, 2026-10-09).** Tre giri
+di interruttore in una sessione; quello che è servito oltre alla ricetta sopra:
+
+- **Un attributo su `<html>`, non una classe sul componente**: `data-birra-card="grande"`
+  e le regole come `html[data-birra-card="grande"] .product-card-btn--birre …`. Il
+  markup resta uno solo, le varianti sono tutte CSS, e lo smontaggio è "cancella un
+  blocco in fondo a `enoteca.css`".
+- **Il React Compiler non lascia scrivere su `document` dentro un componente**
+  ("This value cannot be modified"): la scrittura va in una funzione a livello di
+  modulo che il componente chiama.
+- **Se le varianti cambiano lo spazio di un elemento che si misura una volta sola**
+  (marquee del nome e dello stile in `ProductCard`), la scelta deve **ricaricare la
+  pagina**: altrimenti le misure restano quelle della variante prima e il confronto
+  è falso.
+- **Interruttore dentro la scheda prodotto → `createPortal(…, document.body)`.** Dentro
+  `.product-sheet` un `position: fixed` si aggancia al pannello, non allo schermo. E il
+  clic va fermato (`onClick={e => e.stopPropagation()}`), o risale allo sfondo e chiude
+  la scheda.
+- **Testo d'esempio marcato TEMP per i prodotti senza dati**, così le varianti si
+  giudicano su qualunque scheda — e va via con il resto.
+- **Tieni una copia del blocco TEMP nello scratchpad mentre smonti.** Il 2026-10-09
+  l'utente ha fermato la pulizia a metà ("go back to TEMP, need to check something"):
+  il JSX era già tolto e si è rimesso in un colpo solo perché la copia c'era. Per
+  smontare/rimontare blocchi lunghi conviene uno script `node` che taglia fra due
+  commenti-àncora (e conserva i CRLF), più sicuro di dieci `Edit`.
+- **Prima di smontare, rileggi la scelta.** "Fifth option" e "con riquadro" sono
+  arrivati in due messaggi diversi e indicavano varianti diverse: nel dubbio una
+  riga di conferma costa meno di una pulizia rifiutata.
+
 ### Provare un modulo del progetto nel browser vero (senza test runner)
 
 Non c'è un test runner, ma il dev server di Vite serve i moduli **già
@@ -944,6 +973,25 @@ real touch layout.
   ```
   Usato il 2026-08-15 per fotografare le schede fantasma e misurare che il telaio vuoto e
   quello pieno hanno la **stessa** altezza (138×190 e riga 223 px, telefono).
+- **Un campo nuovo nel pannello admin non esiste finché il BACKEND non è deployato.** Il
+  pannello locale scrive sulla produzione (fallback di `VITE_API_URL`), e il backend in
+  linea butta in silenzio i campi che il suo schema non conosce. Il 2026-10-09 l'utente ha
+  compilato colore/profumo/gusto di una birra prima del deploy: salvataggio "riuscito",
+  testo perso. Ordine giusto: modello nel backend → deploy → pannello. Dopo un
+  salvataggio, la prova è rileggere l'API in linea (`curl …/api/beers?producer=…`).
+- **Cormorant Garamond è caricato SOLO in tondo, pesi 500 e 600** (`index.html`). Un
+  `font-style: italic` lo fa inclinare finto al browser, come il grassetto finto di
+  Marcellus: per dare enfasi si usa il maiuscoletto spaziato dell'occhiello.
+- **L'ordine nel CSS costruito si controlla con `indexOf`, non a occhio.** Per una regola
+  che deve battere una base a pari specificità:
+  ```bash
+  node -e 'const fs=require("fs");const f=fs.readdirSync("dist/assets").filter(x=>x.endsWith(".css")).map(x=>fs.readFileSync("dist/assets/"+x,"utf8")).join("");console.log(f.indexOf("height:108px"), f.indexOf(".product-thumb--birre{"))'
+  ```
+  Il secondo numero più grande = la regola delle birre viene dopo e vince.
+- **Una funzione pura di un componente si prova senza browser**: si taglia dal sorgente
+  fra due àncore e la si `eval`a in `node` sui dati veri dell'API. Fatto il 2026-10-08
+  per il rimescolamento dei consigliati in `Home.jsx`: 10 000 giri sui 20 vini in linea,
+  zero coppie della stessa categoria vicine.
 
 ## Troubleshooting
 
