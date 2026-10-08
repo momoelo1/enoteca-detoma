@@ -1270,7 +1270,8 @@ svg.product-food-svg {
     height: 120px;
   }
 
-  .product-thumb-img--vini {
+  .product-thumb-img--vini,
+  .product-thumb-img--birre {
     max-width: 100px;
   }
 }
@@ -1346,14 +1347,76 @@ svg.product-food-svg {
    solo a schiacciare il riquadro. Niente `scale`: la foto arriva già senza
    vuoto intorno, lo zoom che serviva a compensarlo ora taglierebbe la
    bottiglia (il riquadro ha overflow: hidden).
-   DEVE stare dopo la media query dei 640px, come sopra. */
-.product-thumb-img--vini {
+   DEVE stare dopo la media query dei 640px, come sopra.
+   Le birre hanno la stessa cornice dal 2026-10-09: card gemella del vino.
+   Più in basso, dopo questa regola, il colore e la bottiglia delle birre. */
+.product-thumb-img--vini,
+.product-thumb-img--birre {
   height: 100%;
   width: auto;
   aspect-ratio: 2 / 3;
   max-width: 100%;
   object-fit: contain;
   transform: none;
+}
+
+/* ---- birre: il loro colore e la loro bottiglia ----
+   `--birra` è il colore letto dallo stile (coloreBirra in Enoteca.jsx): tinge
+   il filo in cima alla card e la bottiglia da birra disegnata (BirraIcon).
+   Il filo DEVE stare dopo .product-card-btn::before, a specificità pari. */
+.product-card-btn--birre::before {
+  background: var(--birra, var(--accent, #2e5e46));
+}
+
+/* La bottiglia grande (scelta il 2026-10-09 fra cinque impaginazioni). I
+   nomi delle birre sono corti — il più lungo è "Cento Volte Forte" — e con
+   le misure del vino restavano una riga di nome vuota e una bottiglia
+   piccola in una card grande. Qui la miniatura non ha più un'altezza fissa:
+   si prende tutto quel che nome, stile e prezzo lasciano libero (~140px
+   invece di 92 sul telefono), e il nome non prenota due righe che non usa.
+   Tutte DOPO le regole base e le media query di .product-card-btn,
+   .product-thumb e .product-thumb-svg qui sopra, a specificità pari. */
+.product-card-btn--birre {
+  justify-content: flex-start;
+  gap: 6px;
+  padding-top: 14px;
+}
+
+.product-thumb--birre {
+  flex: 1 1 0;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+.product-thumb-svg--birre {
+  height: 100%;
+  opacity: 1;
+}
+
+.product-card-btn--birre .product-name-wrap {
+  height: auto;
+  max-height: 47px; /* due righe a 19.5px / 1.2 */
+}
+
+.product-card-btn--birre .product-name {
+  font-size: 19.5px;
+  line-height: 1.2;
+}
+
+.product-card-btn--birre .product-price {
+  padding-top: 2px;
+  font-size: 17px;
+}
+
+.birra-vetro {
+  fill: var(--birra, var(--accent, #2e5e46));
+  opacity: 0.6;
+}
+
+.birra-tappo {
+  fill: var(--birra, var(--accent, #2e5e46));
+  opacity: 0.75;
 }
 
 /* spazio fisso di due righe per il nome: se il testo ci sta, resta
@@ -1946,7 +2009,8 @@ body.sheet-open .page-scroll {
 /* vini nel pannello: la cornice 2:3 di .product-thumb-img--vini, alta quanto
    il riquadro della scheda. Stessi motivi per cui `max-width` e `scale`
    spariscono — la foto arriva già impaginata da `bottleFrame`. */
-.sheet-img--vini {
+.sheet-img--vini,
+.sheet-img--birre {
   width: auto;
   aspect-ratio: 2 / 3;
   max-width: 100%;
@@ -2343,7 +2407,7 @@ body.sheet-open .page-scroll {
   }
 
   
-  .product-sheet--vini {
+  .product-sheet--bottiglia {
     max-height: 94dvh;
   }
 
@@ -2503,10 +2567,12 @@ body.sheet-open .page-scroll {
 }
 
 /* =========================================================================
-   SCHEDA PRODOTTO — VINI
+   SCHEDA PRODOTTO — VINI E BIRRE (.product-sheet--bottiglia)
    =========================================================================
    Il pannello dei vini ha un'impaginazione sua, che cambia forma con lo
    schermo: incolonnata sul telefono, a copertina nella finestra desktop.
+   Dal 2026-10-09 la prendono anche le birre: niente annate, e al loro posto
+   accanto al prezzo le stesse pastiglie con gradazione e stile.
    Sta in fondo al file di proposito — tocca .sheet-thumb, .sheet-desc e
    .sheet-name, che più in alto hanno regole a specificità pari dentro le
    media query dei 640px: qui la specificità è di due classi e vincerebbe
@@ -2535,14 +2601,14 @@ body.sheet-open .page-scroll {
      `regione`, nessuno ha denominazione, uvaggio, stile, tipo, colore o
      gradazione), quindi lassù non costa una riga in più. */
 
-.product-sheet--vini .sheet-hero,
-.product-sheet--vini .sheet-ident {
+.product-sheet--bottiglia .sheet-hero,
+.product-sheet--bottiglia .sheet-ident {
   display: flex;
   align-self: stretch;
   min-width: 0;
 }
 
-.product-sheet--vini .sheet-eyebrow {
+.product-sheet--bottiglia .sheet-eyebrow {
   display: block;
   font-size: 11px;
   font-weight: 700;
@@ -2551,13 +2617,13 @@ body.sheet-open .page-scroll {
   color: var(--accent, #2e5e46);
 }
 
-.product-sheet--vini .sheet-prezzo {
+.product-sheet--bottiglia .sheet-prezzo {
   display: flex;
   margin: 0;
   gap: 2px;
 }
 
-.product-sheet--vini .sheet-prezzo-val {
+.product-sheet--bottiglia .sheet-prezzo-val {
   font-family: "Cormorant Garamond", Georgia, serif;
   font-weight: 700;
   line-height: 1;
@@ -2597,6 +2663,11 @@ body.sheet-open .page-scroll {
   background: color-mix(in srgb, var(--accent, #2e5e46) 10%, #fff);
 }
 
+/* birre: stessa pastiglia, ma con gradazione e stile da leggere — non si
+   tocca, quindi niente mano */
+.sheet-anno-chip--info {
+  cursor: default;
+}
 .sheet-formati {
   display: flex;
   flex-wrap: wrap;
@@ -2643,14 +2714,14 @@ body.sheet-open .page-scroll {
 }
 
 /* i pezzi che l'intestazione nuova ha reso doppi o inutili */
-.product-sheet--vini .sheet-desc-label,
-.product-sheet--vini .sheet-divider,
-.product-sheet--vini .sheet-meta-chip--luogo,
-.product-sheet--vini .sheet-annate--ridondante {
+.product-sheet--bottiglia .sheet-desc-label,
+.product-sheet--bottiglia .sheet-divider,
+.product-sheet--bottiglia .sheet-meta-chip--luogo,
+.product-sheet--bottiglia .sheet-annate--ridondante {
   display: none;
 }
 
-.product-sheet--vini .sheet-thumb {
+.product-sheet--bottiglia .sheet-thumb {
   flex: none;
   align-self: center;
   height: auto;
@@ -2662,17 +2733,17 @@ body.sheet-open .page-scroll {
    (Edda Bianco): con 12px di distacco il contenuto sforava di 1px e la scheda
    diventava scorrevole per quell'unico pixel. Due punti in meno fra i blocchi
    non si vedono e riportano il margine a 5px. */
-.product-sheet--vini .sheet-scroll {
+.product-sheet--bottiglia .sheet-scroll {
   gap: 10px;
 }
 
 /* il segnaposto (4 vini su 5 non hanno ancora la foto) cresce col riquadro
    invece di restare i 130px fissi di prima */
-.product-sheet--vini .sheet-svg {
+.product-sheet--bottiglia .sheet-svg {
   height: 74%;
 }
 
-.product-sheet--vini .sheet-desc-block {
+.product-sheet--bottiglia .sheet-desc-block {
   align-items: stretch;
   margin-top: 2px;
   padding-top: 12px;
@@ -2684,7 +2755,7 @@ body.sheet-open .page-scroll {
    e al nome. Il tetto in ch non serve più — a decidere la misura è una
    percentuale, 100% qui e 80% nella finestra desktop — e il margine a zero
    appoggia il paragrafo a sinistra come tutto il resto. */
-.product-sheet--vini .sheet-desc {
+.product-sheet--bottiglia .sheet-desc {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -2707,36 +2778,36 @@ body.sheet-open .page-scroll {
    B = min − A × 360: a 360px vale esattamente il minimo, a 560px il massimo.
    Serve perché fra quei due estremi ci stanno davvero tutti i telefoni in
    giro, dal piccolo al Pro Max. */
-.product-sheet--vini .sheet-hero {
+.product-sheet--bottiglia .sheet-hero {
   flex-direction: column;
   align-items: center;
   gap: 10px;
 }
 
-.product-sheet--vini .sheet-thumb {
+.product-sheet--bottiglia .sheet-thumb {
   width: 40%;
 }
 
-.product-sheet--vini .sheet-ident {
+.product-sheet--bottiglia .sheet-ident {
   flex-direction: column;
   align-items: center;
   gap: 6px;
 }
 
-.product-sheet--vini .sheet-name {
+.product-sheet--bottiglia .sheet-name {
   font-size: clamp(19.5px, 1.25vw + 15px, 22px);
   line-height: 1.2;
 }
 
 /* prezzo e annata sulla stessa riga: incolonnati sarebbero due righe centrate
    sotto un nome già centrato, e la scheda diventerebbe una pila di titoli */
-.product-sheet--vini .sheet-prezzo {
+.product-sheet--bottiglia .sheet-prezzo {
   flex-direction: row;
   align-items: baseline;
   gap: 9px;
 }
 
-.product-sheet--vini .sheet-prezzo-val {
+.product-sheet--bottiglia .sheet-prezzo-val {
   font-size: clamp(26.5px, 1.25vw + 22px, 29px);
 }
 
@@ -2749,13 +2820,13 @@ body.sheet-open .page-scroll {
    (641 − 48 di backdrop = 593 > 560), quindi da questa soglia in poi non
    cresce più niente e i valori fissi sono esatti, non approssimati. */
 @media (min-width: 641px) {
-  .product-sheet--vini .sheet-hero {
+  .product-sheet--bottiglia .sheet-hero {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
 
-  .product-sheet--vini .sheet-thumb {
+  .product-sheet--bottiglia .sheet-thumb {
     width: 100%;
     aspect-ratio: auto;
     height: 300px;
@@ -2767,7 +2838,7 @@ body.sheet-open .page-scroll {
      bottiglia (alta quanto il suo strato) poggia esattamente sui bordi
      arrotondati e sembra incastrata. Sul telefono non serve — lì il riquadro
      è trasparente e non ha bordi da toccare. */
-  .product-sheet--vini .sheet-foto {
+  .product-sheet--bottiglia .sheet-foto {
     inset: 16px 0;
   }
 
@@ -2780,7 +2851,7 @@ body.sheet-open .page-scroll {
      stessa bottiglia. Il nome si prende tutta la larghezza: gliene serve,
      e con 516px invece di 414 sta su una riga sola molto più spesso (vedi
      CORPO_NOME_MIN in Enoteca.jsx). */
-  .product-sheet--vini .sheet-ident {
+  .product-sheet--bottiglia .sheet-ident {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
@@ -2789,12 +2860,12 @@ body.sheet-open .page-scroll {
     text-align: left;
   }
 
-  .product-sheet--vini .sheet-eyebrow {
+  .product-sheet--bottiglia .sheet-eyebrow {
     flex-basis: 100%;
     font-size: 12px;
   }
 
-  .product-sheet--vini .sheet-name {
+  .product-sheet--bottiglia .sheet-name {
     flex-basis: 100%;
     min-width: 0;
     font-size: 23px;
@@ -2804,33 +2875,33 @@ body.sheet-open .page-scroll {
 
   /* in riga, non più incolonnato a destra: le annate tornano di fianco al
      numero come sul telefono */
-  .product-sheet--vini .sheet-prezzo {
+  .product-sheet--bottiglia .sheet-prezzo {
     flex: none;
     flex-direction: row;
     align-items: baseline;
     gap: 9px;
   }
 
-  .product-sheet--vini .sheet-prezzo-val {
+  .product-sheet--bottiglia .sheet-prezzo-val {
     font-size: 30px;
   }
 
   /* 80% invece di tutta la larghezza: sui 516px di contenuto del pannello
      grande una riga piena è troppo lunga da rileggere. E righe lunghe vogliono
      più aria fra loro di quanta ne serva sul telefono. */
-  .product-sheet--vini .sheet-desc {
+  .product-sheet--bottiglia .sheet-desc {
     width: 80%;
     line-height: 1.34;
   }
 
   /* la copertina passa SOTTO il ✕: il tondo si fa più solido per restare
      leggibile sopra l'alone */
-  .product-sheet--vini .sheet-close {
+  .product-sheet--bottiglia .sheet-close {
     background: rgba(255, 255, 255, 0.82);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   }
 
-  .product-sheet--vini .sheet-meta-chips {
+  .product-sheet--bottiglia .sheet-meta-chips {
     justify-content: flex-start;
   }
 
@@ -2838,7 +2909,7 @@ body.sheet-open .page-scroll {
      regola del telefono) e si accodano al prezzo. `flex: 1` con
      `min-width: 0` li lascia stringere: quando non ci stanno vanno a capo
      da soli invece di allargare il pannello. */
-  .product-sheet--vini .sheet-formati {
+  .product-sheet--bottiglia .sheet-formati {
     flex: 1;
     flex-basis: auto;
     width: auto;
@@ -2852,7 +2923,7 @@ body.sheet-open .page-scroll {
      mentre sono due scelte diverse. Sta qui e non nel JSX perché esiste solo
      in questa impaginazione — sul telefono le due file sono già separate dal
      fatto di essere su righe diverse. */
-  .product-sheet--vini .sheet-formati::before {
+  .product-sheet--bottiglia .sheet-formati::before {
     content: "";
     flex: none;
     align-self: center;
@@ -2861,4 +2932,68 @@ body.sheet-open .page-scroll {
     margin-right: 3px;
     background: rgba(46, 94, 70, 0.28);
   }
+}
+
+/* ---- degustazione delle birre: colore, profumo, gusto ----
+   BloccoDegustazione in Enoteca.jsx. Sotto lo stesso filo che nella scheda
+   del vino separa la descrizione dal resto, una tabellina da foglio di
+   calcolo dentro un riquadro: le voci in una riga d'intestazione tinta, i
+   testi sotto, una colonna per voce. `grid-auto-flow: column` su due righe
+   mette ogni voce in cima alla sua colonna e il suo testo subito sotto,
+   senza un markup a righe e colonne; `--n` è il numero di voci. */
+.sheet-degu {
+  align-self: stretch;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(46, 94, 70, 0.14);
+}
+
+.sheet-degu-tab {
+  --linea: rgba(46, 94, 70, 0.18);
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  margin: 0;
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* le celle stanno direttamente nella griglia: la riga è solo un raggruppamento */
+.sheet-degu-riga {
+  display: contents;
+}
+
+.sheet-degu-riga:not(:last-child) > * {
+  border-right: 1px solid var(--linea);
+}
+
+.sheet-degu-tab dt,
+.sheet-degu-tab dd {
+  margin: 0;
+  padding: 5px 9px;
+}
+
+/* la voce: lo stesso maiuscoletto spaziato dell'occhiello della scheda, su
+   una riga d'intestazione tinta col colore della categoria */
+.sheet-degu-tab dt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--accent, #2e5e46);
+  background: color-mix(in srgb, var(--accent, #2e5e46) 10%, transparent);
+  border-bottom: 1px solid var(--linea);
+}
+
+.sheet-degu-tab dd {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #2e3d34;
 }

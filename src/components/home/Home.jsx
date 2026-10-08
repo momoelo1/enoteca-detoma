@@ -143,6 +143,103 @@ function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
   );
 }
 
+// I vini consigliati in ordine casuale, ma MESCOLATI: due vini della stessa
+// categoria (rossi, bianchi, bollicine…) non stanno mai uno accanto all'altro,
+// finché i numeri lo permettono. Un rimescolamento puro lascerebbe spesso
+// tre rossi in fila, e la fascia sembrerebbe una categoria sola.
+//
+// A ogni passo si pesca una categoria diversa dall'ultima, con probabilità
+// proporzionale a quanti vini le restano. Se però una categoria ne ha ancora
+// almeno metà del totale rimasto, tocca a lei per forza: rimandarla vorrebbe
+// dire ritrovarsela in fila in fondo alla riga.
+const rimescola = (lista) => {
+  for (let i = lista.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [lista[i], lista[j]] = [lista[j], lista[i]];
+  }
+  return lista;
+};
+
+function mescolaVini(vini) {
+  const gruppi = new Map();
+  for (const vino of vini) {
+    const k = vino.category || "";
+    if (!gruppi.has(k)) gruppi.set(k, []);
+    gruppi.get(k).push(vino);
+  }
+  for (const g of gruppi.values()) rimescola(g);
+
+  const fuori = [];
+  let ultima = null;
+  while (fuori.length < vini.length) {
+    const restano = vini.length - fuori.length;
+    const piene = [...gruppi].filter(([, g]) => g.length);
+    const altre = piene.filter(([k]) => k !== ultima);
+    // solo l'ultima categoria ha ancora vini: la fila è inevitabile
+    const scelte = altre.length ? altre : piene;
+    const piuGrande = scelte.reduce((a, b) => (b[1].length > a[1].length ? b : a));
+    let scelta = piuGrande;
+    if (piuGrande[1].length * 2 < restano) {
+      let r = Math.random() * scelte.reduce((s, [, g]) => s + g.length, 0);
+      scelta = scelte.find(([, g]) => (r -= g.length) < 0) ?? piuGrande;
+    }
+    fuori.push(scelta[1].pop());
+    ultima = scelta[0];
+  }
+  return fuori;
+}
+
+// Quanti vini mostra la fascia: dieci, pescati ogni giorno fra tutti i
+// consigliati. Gli altri restano a un tocco, in "Tutta l'enoteca".
+const VINI_DEL_GIORNO = 10;
+
+// La data di oggi a Lodi ("2026-10-08"), non quella del telefono: il giorno
+// cambia a mezzanotte italiana per tutti (vedi utils/orari.js).
+const oggiARoma = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(
+    new Date(),
+  );
+
+// FNV-1a a 32 bit: un numero fisso per ogni stringa, sempre lo stesso.
+const impronta = (testo) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < testo.length; i++) {
+    h ^= testo.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+};
+
+// I dieci vini di oggi. La scelta è casuale ma uguale per tutta la giornata
+// e per tutti i clienti: ogni vino riceve un numero da data + id, si tengono
+// i dieci col numero più basso. Non dipende dall'ordine in cui il server
+// manda l'elenco, e domani i numeri sono altri, quindi altri dieci vini.
+// Se il negozio marca o smarca un vino, cambia solo quel posto.
+function sceltiDiOggi(vini) {
+  if (vini.length <= VINI_DEL_GIORNO) return vini;
+  const giorno = oggiARoma();
+  const numero = (vino) =>
+    impronta(giorno + "|" + (vino.id ?? vino._id ?? vino.name));
+  return vini
+    .map((vino) => [numero(vino), vino])
+    .sort((a, b) => a[0] - b[0])
+    .slice(0, VINI_DEL_GIORNO)
+    .map(([, vino]) => vino);
+}
+
+// Un ordine per visita: l'elenco scaricato resta in memoria (services/cache.js)
+// e lo si rimescola una volta sola. Altrimenti tornando in home la fascia
+// cambierebbe ordine sotto gli occhi — prima con il dato in memoria, un
+// istante dopo con la stessa risposta rimescolata di nuovo. Ricaricando la
+// pagina, ordine nuovo (i dieci vini restano quelli del giorno).
+const giaMescolati = new WeakMap();
+function viniMescolati(vini) {
+  if (!vini) return vini;
+  if (!giaMescolati.has(vini))
+    giaMescolati.set(vini, mescolaVini(sceltiDiOggi(vini)));
+  return giaMescolati.get(vini);
+}
+
 // Le due fasce sotto il racconto. Hanno preso il posto delle foto di
 // famiglia, che sono passate alla pagina Info (Info.jsx, HERO_IMAGES).
 //
@@ -153,15 +250,18 @@ function FasciaVetrina({ titolo, items, type, tutti, etichettaTutti, onOpen }) {
 // algoritmo. Adesso sceglie il negozio, e finché non sceglie non c'è fascia:
 // meglio una home più corta che un consiglio che non è di nessuno.
 //
-// Le due chiamate non hanno limite: i consigliati sono pochi per definizione,
-// e quanti mostrarne lo decide il negozio marcandoli.
+// Le due chiamate non hanno limite: i consigliati sono pochi per definizione.
+// Dei vini però la fascia ne mostra solo dieci al giorno (sceltiDiOggi); gli
+// alimentari li mostra tutti.
 function Vetrina() {
   const navigate = useNavigate();
   // Tornando in home nella stessa visita le due fasce sono già piene: quel
   // che era stato scaricato è rimasto in memoria (services/cache.js) e si
   // legge SUBITO, al primo render, senza ripassare dalle schede vuote.
   // `undefined` = mai chiesto → si resta su `null`, che è "in arrivo".
-  const [vini, setVini] = useState(() => gia(CHIAVI.viniConsigliati) ?? null);
+  const [vini, setVini] = useState(
+    () => viniMescolati(gia(CHIAVI.viniConsigliati)) ?? null,
+  );
   const [alimentari, setAlimentari] = useState(
     () => gia(CHIAVI.alimentariConsigliati) ?? null,
   );
@@ -179,7 +279,7 @@ function Vetrina() {
     // richiesta è ancora in volo (l'Enoteca vuole gli stessi vini
     // consigliati) ci si attacca invece di farne una seconda
     ricorda(CHIAVI.viniConsigliati, getWinesConsigliati)
-      .then(metti(setVini))
+      .then(metti((dati) => setVini(viniMescolati(dati))))
       .catch(vuoto(setVini));
     ricorda(CHIAVI.alimentariConsigliati, getAlimentariConsigliati)
       .then(metti(setAlimentari))

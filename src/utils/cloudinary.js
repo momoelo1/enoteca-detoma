@@ -125,10 +125,13 @@ export const elencoFoto = (item) =>
 
 // L'unico posto che sceglie la ricetta in base al tipo di prodotto: le due
 // qui sopra dicono COME si trasforma una foto, questa dice QUALE serve.
-// Birre e distillati restano intatti — le loro foto non sono state misurate.
+// Le birre prendono la ricetta dei vini dal 2026-10-09: sono bottiglie,
+// scontornate al caricamento come loro (backend, controllers/beers.js), e la
+// card e la scheda le impaginano nella stessa cornice 2:3. I distillati
+// restano intatti — le loro foto non sono state misurate.
 const ricetta = (url, type) => {
   if (type === "alimentari") return trimBorder(url);
-  if (type === "vini") return bottleFrame(url);
+  if (type === "vini" || type === "birre") return bottleFrame(url);
   return url;
 };
 

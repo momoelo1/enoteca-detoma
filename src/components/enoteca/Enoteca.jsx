@@ -66,6 +66,60 @@ function BottleIcon({ className }) {
   );
 }
 
+// Il colore di una birra si legge dallo stile, come quello di un vino dalla
+// sua categoria: tinge il filo in cima alla card e la bottiglia disegnata
+// (`--birra` su .product-card-btn). Vince la prima regola che
+// corrisponde: "Ambrata Double Ipa" è ambrata, "Dorata Weizen" è dorata.
+// Nessuna parola nota → il colore del birrificio.
+const COLORI_BIRRA = [
+  [/ner|scur|porter|stout/, "#4a2c1a"],
+  [/ross/, "#a0431f"],
+  [/ambrat/, "#b9671d"],
+  [/dorat|chiar|biond|golden|helles|pils/, "#d6a326"],
+  [/bianc|blanche|weizen|weiss/, "#d8c27e"],
+  [/ipa|pale|grape|ale/, "#d6a326"],
+];
+const coloreBirra = (w) => {
+  const stile = normalize(w.stile || "");
+  const regola = COLORI_BIRRA.find(([re]) => re.test(stile));
+  return regola ? regola[1] : null;
+};
+
+// Segnaposto delle birre sulla card: la sagoma della bottiglia da birra —
+// tappo a corona, collo corto, spalle tonde — al posto di quella da vino.
+// Stessa viewBox della BottleIcon, così occupa lo stesso ingombro.
+function BirraIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 64" aria-hidden="true">
+      <path
+        className="birra-vetro"
+        d="M10 6h4v8c0 3.5 6 5.5 6 12v32a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V26c0-6.5 6-8.5 6-12V6z"
+      />
+      <rect className="birra-tappo" x="9.2" y="2.5" width="5.6" height="3.5" rx="0.8" />
+    </svg>
+  );
+}
+
+// La degustazione delle birre (colore, profumo, gusto), sotto il filo che
+// nella scheda del vino separa la descrizione dal resto: una tabellina da
+// foglio di calcolo, le voci in una riga d'intestazione e i testi sotto,
+// una colonna per voce. `--n` è il numero di voci compilate: una birra con
+// il solo profumo ha una colonna sola, larga quanto la scheda.
+function BloccoDegustazione({ righe }) {
+  return (
+    <div className="sheet-degu">
+      <dl className="sheet-degu-tab" style={{ "--n": righe.length }}>
+        {righe.map(([campo, etichetta, testo]) => (
+          <div className="sheet-degu-riga" key={campo}>
+            <dt>{etichetta}</dt>
+            <dd>{testo.trim()}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 // Segnaposto per gli alimentari: una bottiglia di vino non rappresenta un
 // vasetto di miele o un pacco di taralli. L'icona si sceglie dalle PAROLE
 // di sottocategoria e tipo, non da un elenco fisso di gruppi: così regge
@@ -517,7 +571,12 @@ export function ProductCard({
         className={
           "product-card-btn" + (type ? ` product-card-btn--${type}` : "")
         }
-        style={{ "--accent": accent }}
+        style={{
+          "--accent": accent,
+          // il colore della birra: filo in cima e bottiglia disegnata
+          "--birra":
+            type === "birre" ? (coloreBirra(w) ?? accent) : undefined,
+        }}
         onClick={() => onOpen(w)}
         ref={cardRef}
       >
@@ -550,6 +609,8 @@ export function ProductCard({
               }
               loading="lazy"
             />
+          ) : type === "birre" ? (
+            <BirraIcon className="product-thumb-svg product-thumb-svg--birre" />
           ) : (
             <ProductPlaceholder
               item={w}
@@ -630,6 +691,12 @@ export function ProductSheet({
   // lo stesso per tutti i tipi — a impaginarlo è il CSS, blocco "SCHEDA
   // PRODOTTO — VINI" in fondo a enoteca.css. Qui si decide solo COSA esiste.
   const vini = type === "vini";
+  // Le BIRRE prendono la stessa impaginazione (classe product-sheet--bottiglia):
+  // bottiglia grande, prezzo accanto al nome, pastiglia del formato sotto.
+  // Al posto delle annate, accanto al prezzo, le stesse pastiglie con la
+  // gradazione e lo stile — che quindi non si ripetono nella riga di chip.
+  const birre = type === "birre";
+  const bottiglia = vini || birre;
   // "Rosso" dentro "Vini Rossi" è ovvio: stessa radice (ross-) → non ripeterlo
   const coloreRidondante =
     w.colore &&
@@ -656,6 +723,27 @@ export function ProductSheet({
   // modificatore, così una variante che mostra l'occhiello può spegnere il
   // doppione senza che il JSX debba sapere quale variante è attiva
   const chipLuogo = (m) => luogo && (m === w.regione || m === w.provenienza);
+  // le pastiglie della birra accanto al prezzo: le chip tranne la gradazione,
+  // che sta più giù, a destra del formato
+  // (trim: nel database alcuni stili hanno uno spazio finale, es. "Bionda ")
+  const chipBirra = birre
+    ? metaItems
+        .filter((m) => m !== w.gradazione && m !== w.colore)
+        .map((m) => String(m).trim())
+    : [];
+  // la degustazione della birra (pannello: AdminBeerCard), nell'ordine in
+  // cui si assaggia. `colore` qui è la descrizione nel bicchiere, quindi non
+  // finisce fra le chip qui sopra ma in questo blocco.
+  const degustazione = birre
+    ? [
+        ["colore", "Colore", w.colore],
+        ["profumo", "Profumo", w.profumo],
+        ["gusto", "Gusto", w.gusto],
+      ].filter(([, , t]) => t?.trim())
+    : [];
+  const gradazioneBirra = birre ? w.gradazione?.trim() || null : null;
+  // il formato della birra è in centilitri (models/Beer.js)
+  const formatoBirra = birre && w.formato ? `${w.formato} cl` : null;
   // ---- la bottiglia scelta ----
   // Annate e formati appiattiti in un elenco solo (utils/prezzo.js): il
   // cliente ne sceglie uno, e il prezzo grande accanto al nome è il suo. Prima
@@ -692,7 +780,9 @@ export function ProductSheet({
     ? sceglibile
       ? scelta?.prezzo
       : prezzoProdotto(w)
-    : null;
+    : birre
+      ? prezzoProdotto(w)
+      : null;
   // la tabella "Annate e prezzi" in fondo non dice altro che quel prezzo una
   // seconda volta quando c'è una riga sola con un formato solo — e quando
   // invece ce n'è più d'una lo dice adesso il selettore, sopra la piega.
@@ -739,7 +829,7 @@ export function ProductSheet({
   // a sproposito.
   const nomeRef = useRef(null);
   useLayoutEffect(() => {
-    if (!vini) return;
+    if (!bottiglia) return;
     let vivo = true;
     const adatta = () => {
       const n = nomeRef.current;
@@ -761,7 +851,7 @@ export function ProductSheet({
     return () => {
       vivo = false;
     };
-  }, [vini, w.id, w.name]);
+  }, [bottiglia, w.id, w.name]);
 
   // ---- le foto del prodotto ----
   // Sulla card se ne vede una sola, la prima. Qui si vedono tutte, a turno.
@@ -1038,6 +1128,7 @@ export function ProductSheet({
         className={
           "product-sheet" +
           (type ? ` product-sheet--${type}` : "") +
+          (bottiglia ? " product-sheet--bottiglia" : "") +
           // "entra" è il pannello messo di là da fermo: niente transizione,
           // come mentre lo tiene il dito
           (dragging || passo?.fase === "entra"
@@ -1146,11 +1237,19 @@ export function ProductSheet({
               <h3 className="sheet-name" ref={nomeRef}>
                 {w.name}
               </h3>
-              {vini && (
+              {bottiglia && (
                 <p className="sheet-prezzo">
                   <span className="sheet-prezzo-val">
                     {prezzo != null ? formatPrezzo(prezzo) : "—"}
                   </span>
+                  {/* birre: accanto al prezzo, da solo, il formato — la
+                      pastiglia di un vino con una bottiglia sola, accesa e
+                      senza niente da scegliere */}
+                  {formatoBirra && (
+                    <span className="sheet-formato sheet-formato--on">
+                      <span className="sheet-formato-nome">{formatoBirra}</span>
+                    </span>
+                  )}
                   {anni.length > 0 && (
                     <span
                       className="sheet-anni"
@@ -1200,9 +1299,34 @@ export function ProductSheet({
                   })}
                 </div>
               )}
+              {/* birre, sotto: lo stile nella pastiglia delle annate (da
+                  leggere, non da scegliere, quindi niente bottoni) e alla sua
+                  destra la gradazione, nella pastiglia del formato */}
+              {(chipBirra.length > 0 || gradazioneBirra) && (
+                <div className="sheet-formati">
+                  {chipBirra.map((m) => (
+                    <span
+                      key={m}
+                      className="sheet-anno-chip sheet-anno-chip--on sheet-anno-chip--info"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                  {gradazioneBirra && (
+                    <span className="sheet-formato sheet-formato--on">
+                      <span className="sheet-formato-nome">
+                        {gradazioneBirra}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-          {metaItems.length > 0 && (
+          {degustazione.length > 0 && (
+            <BloccoDegustazione righe={degustazione} />
+          )}
+          {metaItems.length > 0 && !birre && (
             <ul className="sheet-meta-chips">
               {metaItems.map((m, i) => (
                 <li

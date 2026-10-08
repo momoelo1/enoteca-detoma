@@ -12,6 +12,9 @@ const toForm = (beer) => ({
   gradazione: beer?.gradazione || "",
   formato: beer?.formato ?? "",
   prezzo: beer?.prezzo ?? "",
+  colore: beer?.colore || "",
+  profumo: beer?.profumo || "",
+  gusto: beer?.gusto || "",
   img: beer?.img || "",
 });
 
@@ -21,8 +24,19 @@ const EMPTY_FORM = {
   gradazione: "",
   formato: "",
   prezzo: "",
+  colore: "",
+  profumo: "",
+  gusto: "",
   img: "",
 };
+
+// i campi della degustazione: testo libero, nell'ordine in cui si assaggia
+// (si guarda, si annusa, si beve)
+const DEGUSTAZIONE = [
+  ["colore", "Colore", "Ambrato carico, schiuma fine e persistente"],
+  ["profumo", "Profumo", "Caramello, frutta secca, una punta di agrumi"],
+  ["gusto", "Gusto", "Morbido, maltato, finale leggermente amaro"],
+];
 
 function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const isNew = !beer;
@@ -31,7 +45,13 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
   const chiaveBozza = isNew ? `nuovo:${producerId}` : beer.id;
   const [bozza] = useState(() => leggiBozza("birra", chiaveBozza));
   const [editing, setEditing] = useState(Boolean(bozza));
-  const [form, setForm] = useState(() => bozza?.form ?? toForm(beer));
+  // la bozza si stende sopra il modulo completo: una salvata prima che
+  // esistessero i campi della degustazione non li ha, e i campi resterebbero
+  // senza valore
+  const [form, setForm] = useState(() => ({
+    ...toForm(beer),
+    ...bozza?.form,
+  }));
   useEffect(() => {
     if (editing) salvaBozza("birra", chiaveBozza, { form });
   }, [editing, chiaveBozza, form]);
@@ -104,6 +124,10 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
     );
     if (form.formato !== "") payload.formato = Number(form.formato);
     if (form.prezzo !== "") payload.prezzo = Number(form.prezzo);
+    // la degustazione parte SEMPRE, anche vuota: è testo che il negozio
+    // può voler cancellare, e scartando i vuoti come sopra un campo svuotato
+    // nel modulo resterebbe com'era sul sito
+    for (const [campo] of DEGUSTAZIONE) payload[campo] = form[campo].trim();
     // `consigliato` non passa di qui: vedi AdminWineCard, lo governa solo
     // la stella in griglia
 
@@ -219,6 +243,17 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
             onChange={handleChange("prezzo")}
           />
         </div>
+        {DEGUSTAZIONE.map(([campo, etichetta, esempio]) => (
+          <div className="admin-field" key={campo}>
+            <label>{etichetta}</label>
+            <textarea
+              rows={2}
+              placeholder={esempio}
+              value={form[campo]}
+              onChange={handleChange(campo)}
+            />
+          </div>
+        ))}
         <div className="admin-field">
           <label>Immagine</label>
           <input type="file" accept="image/*" onChange={handleImageFile} />
