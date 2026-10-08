@@ -1356,25 +1356,6 @@ svg.product-food-svg {
   transform: none;
 }
 
-/* riga di badge per specifiche numeriche (gradazione/formato) sotto
-   la riga di testo descrittiva (stile/regione/colore) */
-.product-spec-row {
-  flex-shrink: 0; /* mai schiacciata dal flexbox in una card più bassa del contenuto */
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.product-spec-badge {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: rgba(46, 94, 70, 0.1);
-  color: #2e5e46;
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
 /* spazio fisso di due righe per il nome: se il testo ci sta, resta
    fermo; se ne servono di più deriva in verticale (vedi
    .product-name--scroll) invece di troncarsi con "…" */

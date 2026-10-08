@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createWine, updateWine, deleteWine, deleteWineImage } from "../../services/wines";
 import { COUNTRY_GROUPS } from "../../data/data";
-import { FORMATI_VINO, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
+import { FORMATI_VINO, FORMATI_DOLCI, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
 import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
 import StellaConsigliato from "./StellaConsigliato";
@@ -42,15 +42,16 @@ const annataVuota = () => ({ anno: "", senzaAnnata: false, formati: [formatoVuot
 // sul niente costringeva a una scelta in più per il caso più comune.
 const ML_BOTTIGLIA = 750;
 
-// le voci del menù dei formati: quelle del vino (FORMATI_VINO in
-// utils/prezzo.js) più — se c'è — il valore già salvato sul vino ma fuori
-// elenco. Il campo prima era libero: un menù che non contiene il valore
-// corrente lo cambierebbe di nascosto al primo salvataggio.
-const opzioniMl = (ml) => {
+// le voci del menù dei formati: quelle della categoria (FORMATI_VINO o, per
+// Dolci e Passiti, FORMATI_DOLCI in utils/prezzo.js) più — se c'è — il valore
+// già salvato sul vino ma fuori elenco. Il campo prima era libero: un menù
+// che non contiene il valore corrente lo cambierebbe di nascosto al primo
+// salvataggio.
+const opzioniMl = (ml, elenco) => {
   const n = Number(ml);
-  return ml !== "" && Number.isFinite(n) && !FORMATI_VINO.includes(n)
-    ? [...FORMATI_VINO, n].sort((a, b) => a - b)
-    : FORMATI_VINO;
+  return ml !== "" && Number.isFinite(n) && !elenco.includes(n)
+    ? [...elenco, n].sort((a, b) => a - b)
+    : elenco;
 };
 
 // un'annata non ancora migrata non ha `formati` ma il vecchio `prezzo`
@@ -108,6 +109,7 @@ const deriveCountrySelection = (wine) => {
 function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const isNew = !wine;
   const isChampagne = categoryId === "champagne";
+  const formatiMenu = categoryId === "liquorosi" ? FORMATI_DOLCI : FORMATI_VINO;
   // Il modulo aperto si salva come bozza a ogni modifica, e dopo un
   // ricaricamento (Safari su iPhone ricarica da solo le schede rimaste in
   // background) si riapre com'era. Vedi utils/memoriaAdmin.js.
@@ -595,7 +597,7 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
                           <option value="" disabled>
                             Formato
                           </option>
-                          {opzioniMl(f.ml).map((ml) => (
+                          {opzioniMl(f.ml, formatiMenu).map((ml) => (
                             <option key={ml} value={ml}>
                               {etichettaLitri(ml)}
                             </option>

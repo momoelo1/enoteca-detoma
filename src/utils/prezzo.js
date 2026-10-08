@@ -82,6 +82,9 @@ const NOMI_FORMATO = {
 // elenchi e l'etichetta in litri valgono solo per i dialoghi admin.
 // Vino: bottiglia standard, magnum, jéroboam (doppio magnum)
 export const FORMATI_VINO = [750, 1500, 3000];
+// Dolci e Passiti (categoria "liquorosi"): mezza bottiglia, mezzo litro,
+// bottiglia — magnum e jéroboam per questi vini non esistono
+export const FORMATI_DOLCI = [375, 500, 750];
 export const FORMATI_DISTILLATI = [350, 500, 700, 1500];
 
 // 750 → "0,75 L", 1500 → "1,5 L", 3000 → "3,0 L": almeno un decimale, come

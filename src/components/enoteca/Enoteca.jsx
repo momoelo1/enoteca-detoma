@@ -42,21 +42,16 @@ import "./enoteca.css";
 
 // id nell'URL: vedi utils/productSlug.js (condiviso con la pagina Alimentari)
 
-// `formato` è un numero puro nel database: l'unità è implicita e dipende
-// dal tipo di prodotto (le birre si misurano in centilitri, gli alimentari
-// in grammi). Un tipo non elencato mostra il numero senza unità.
-const FORMATO_UNIT = {
-  birre: "cl",
-  alimentari: "g",
-};
-
-// Nome del formato sulle pastiglie della scheda: la 0,75 L è "Standard".
-// Solo qui — card, tabella "Annate e prezzi" e messaggio WhatsApp continuano
+// Nome del formato sulle pastiglie della scheda: la 0,75 L è "Standard", la
+// 0,5 L dei passiti è "Jennie" (la 0,375 L resta "Mezza bottiglia").
+// Solo qui — tabella "Annate e prezzi" e messaggio WhatsApp continuano
 // a usare etichettaFormato. `ml` vuoto (annata non migrata) vale come 0,75.
 const nomeFormatoScheda = (ml) =>
   ml == null || ml === "" || ml === 750
     ? "Standard"
-    : etichettaFormato(ml, { sempre: true });
+    : ml === 500
+      ? "Jennie"
+      : etichettaFormato(ml, { sempre: true });
 
 // normalizza per la ricerca: minuscolo e senza accenti ("Cà"→"ca")
 const normalize = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -424,25 +419,11 @@ export function ProductCard({
   scrollSelector = ".product-list",
   i,
 }) {
-  const annate = w.annate;
   const prezzo = prezzoProdotto(w); // vini: primo formato prezzato
   // regione già selezionata nel filtro: non ripeterla su ogni card
   // (trim: nel database alcune regioni hanno uno spazio finale spurio)
   const regione = w.regione?.trim() !== regionFilter ? w.regione : null;
   const sub = regione || w.stile || w.colore || w.tipo;
-
-  // Badge del formato. Birre e alimentari ce l'hanno sul prodotto (`formato`,
-  // numero puro); i vini dentro l'annata, dove ce ne può essere più d'uno.
-  // Per i vini si mostra SOLO quando il formato è unico e fuori misura — le
-  // mezze bottiglie dei passiti, che oggi il negozio scrive nel nome. Con
-  // due formati un badge solo mentirebbe: quella storia la racconta la scheda.
-  const formatiVino = formatiAnnata(annate?.[0]);
-  const formatoLabel =
-    w.formato != null
-      ? `${w.formato}${FORMATO_UNIT[type] || ""}`
-      : formatiVino.length === 1
-        ? etichettaFormato(formatiVino[0].ml)
-        : null;
 
   // il sottotitolo può essere lungo quanto vuole (stile birra, regione...):
   // stessa dimensione testo su ogni card, mai a capo, mai tagliato — se non
@@ -606,16 +587,6 @@ export function ProductCard({
             >
               {sub}
             </span>
-          </span>
-        )}
-        {(w.gradazione || formatoLabel) && (
-          <span className="product-spec-row">
-            {w.gradazione && (
-              <span className="product-spec-badge">{w.gradazione}</span>
-            )}
-            {formatoLabel && (
-              <span className="product-spec-badge">{formatoLabel}</span>
-            )}
           </span>
         )}
         {prezzo != null && (
@@ -1115,17 +1086,10 @@ export function ProductSheet({
             in giro il resto del pannello — il bottone WhatsApp sotto
             sta sempre fermo nello stesso punto */}
         <div className="sheet-scroll" ref={scrollRef}>
-          {/* .sheet-hero e .sheet-ident sono `display: contents` per tutti i
-              tipi tranne i vini: senza di loro riquadro e nome tornano a
-              essere figli diretti della colonna, impilati come sempre */}
           <div className="sheet-hero">
             <div
               className={"sheet-thumb" + (type ? ` sheet-thumb--${type}` : "")}
             >
-              {/* le foto stanno tutte nel DOM, sovrapposte, e a turno una sola
-                  è opaca: così il cambio è una dissolvenza fra le due e non uno
-                  scatto su un riquadro vuoto mentre la prossima si scarica.
-                  Con una foto sola il ciclo gira a vuoto e si vede quella. */}
               {foto.length > 0 ? (
                 foto.map((src, i) => (
                   <span
@@ -1152,7 +1116,6 @@ export function ProductSheet({
                 />
               )}
             </div>
-            {/* i puntini compaiono solo se c'è davvero qualcosa da sfogliare */}
             {foto.length > 1 && (
               <div
                 className="sheet-punti"
@@ -1183,25 +1146,11 @@ export function ProductSheet({
               <h3 className="sheet-name" ref={nomeRef}>
                 {w.name}
               </h3>
-              {/* La riga resta anche quando la bottiglia scelta non ha prezzo
-                  (un magnum lasciato a zero nel pannello): al posto del
-                  prezzo un trattino, come nella tabella delle annate, e
-                  accanto le annate, che prima sparivano insieme al prezzo. */}
               {vini && (
                 <p className="sheet-prezzo">
                   <span className="sheet-prezzo-val">
                     {prezzo != null ? formatPrezzo(prezzo) : "—"}
                   </span>
-                  {/* Le annate, a destra del prezzo — dove fino a ieri c'era
-                      la scritta "Annata 2024". Sono pastiglie SEMPRE, anche
-                      quando l'annata è una sola (oggi tutti e 547 i vini in
-                      catalogo): quella resta accesa e non si spegne, ed è il
-                      modo di dire "questa è l'annata che vendiamo" con la
-                      stessa forma che avrà quando ce ne sarà più d'una. Gli
-                      spumanti senza anno non hanno niente: `anni` è vuoto.
-                      Il gruppo si annuncia comunque come scelta dell'annata,
-                      così chi legge con lo screen reader sente "Annata, 2024
-                      selezionato" invece di un anno sospeso. */}
                   {anni.length > 0 && (
                     <span
                       className="sheet-anni"
@@ -1228,13 +1177,6 @@ export function ProductSheet({
                   )}
                 </p>
               )}
-              {/* I formati dell'annata scelta: solo il nome, il prezzo è
-                  quello grande qui sopra e cambia col tocco. La riga c'è SEMPRE, anche con
-                  una bottiglia sola in tutta la scheda: come la pastiglia
-                  dell'annata unica, resta accesa e dice in che formato si
-                  vende. E c'è per tutta la durata della scheda anche quando
-                  l'annata scelta ha un formato solo, altrimenti cambiando
-                  annata il pannello si accorcerebbe sotto le dita. */}
               {formatiScelta.length > 0 && (
                 <div className="sheet-formati" role="group" aria-label="Formato">
                   {formatiScelta.map((c) => {
