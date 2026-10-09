@@ -164,8 +164,8 @@ export const BEER_CATEGORIES = [
     remote: true,
   },
   {
-    id: "ribaldi",
-    label: "Ribaldi",
+    id: "ribadi",
+    label: "Ribadi",
     description: "Birrificio artigianale piacentino",
     img: ribadi,
     accent: "#a8712c",
