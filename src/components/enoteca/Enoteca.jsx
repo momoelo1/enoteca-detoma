@@ -67,8 +67,9 @@ function BottleIcon({ className }) {
 }
 
 // Il colore di una birra si legge dallo stile, come quello di un vino dalla
-// sua categoria: tinge il filo in cima alla card e la bottiglia disegnata
-// (`--birra` su .product-card-btn). Vince la prima regola che
+// sua categoria: tinge la bottiglia disegnata sulla card (`--birra` su
+// .product-card-btn; il filo in cima invece è del birrificio, `--filo`).
+// Vince la prima regola che
 // corrisponde: "Ambrata Double Ipa" è ambrata, "Dorata Weizen" è dorata.
 // Nessuna parola nota → il colore del birrificio.
 const COLORI_BIRRA = [
@@ -214,7 +215,9 @@ export function MiniCard({ c, onClick, filigrana = false, i, famiglia }) {
           (filigrana ? " mini-card--filigrana" : "") +
           (famiglia ? ` mini-card--${famiglia}` : "")
         }
-        style={{ "--accent": c.accent }}
+        // `--filo`: il colore del filo in cima, dove la categoria ne ha uno
+        // suo (i birrifici: il colore del logo, vedi data.js)
+        style={{ "--accent": c.accent, "--filo": c.filo }}
         onClick={(e) => effettoTocco(e, onClick, famiglia)}
       >
         {filigrana ? (
@@ -390,33 +393,82 @@ export function GrigliaFantasma() {
   );
 }
 
-// una fetch per gruppo (vini → getWines, birre → getBeers, distillati →
+// UNA fetch per gruppo (vini → getWines, birre → getBeers, distillati →
 // getDistillati): ogni gruppo "remote" ha il suo endpoint, non tutti i
-// prodotti sono vini
+// prodotti sono vini.
+//
+// Fino al 2026-10-13 la fetch era una per CATEGORIA: diciannove richieste a
+// ogni primo ingresso in Enoteca (6 vini, 7 birrifici, 6 distillati), tutte
+// dentro un solo `Promise.all` — bastava che ne fallisse una perché si
+// buttassero anche le altre diciotto. Adesso si chiede il gruppo intero, senza
+// filtro, e lo si divide qui: tre richieste, e ognuna riesce o fallisce per
+// conto suo. L'elenco arriva già in ordine di nome (lo ordina il backend), e
+// dividerlo per categoria non lo rimescola: ogni lista esce uguale a prima.
 const REMOTE_FETCHERS = {
   vini: getWines,
   birre: getBeers,
   distillati: getDistillati,
 };
 
-// categorie "remote: true" (es. rossi, tutte le birre): calcolate una
-// volta sola, non cambiano mai a runtime (dipendono solo da SHOP_GROUPS,
-// statico). Ogni voce porta con sé il fetcher del proprio gruppo.
-const REMOTE_CATEGORIES = SHOP_GROUPS.flatMap((g) =>
-  (g.categories || [])
-    .filter((c) => c.remote)
-    .map((c) => ({ ...c, fetcher: REMOTE_FETCHERS[g.id] })),
+// il campo del prodotto che dice a quale categoria appartiene: le birre si
+// dividono per birrificio (models/Beer.js nel backend)
+const CAMPO_CATEGORIA = {
+  vini: "category",
+  birre: "producer",
+  distillati: "category",
+};
+
+// i gruppi con categorie "remote: true": calcolati una volta sola, non
+// cambiano mai a runtime (dipendono solo da SHOP_GROUPS, statico)
+const GRUPPI_REMOTI = SHOP_GROUPS.filter(
+  (g) => REMOTE_FETCHERS[g.id] && (g.categories || []).some((c) => c.remote),
 );
 
-// Quel che di queste categorie è già stato scaricato in questa visita
+// l'elenco di un gruppo diviso fra le sue categorie. Una categoria senza
+// prodotti esce come elenco vuoto, non manca: `undefined` e "elenco vuoto"
+// devono restare due cose diverse.
+const perCategoria = (g, items) =>
+  Object.fromEntries(
+    g.categories
+      .filter((c) => c.remote)
+      .map((c) => [
+        c.id,
+        items.filter((p) => p[CAMPO_CATEGORIA[g.id]] === c.id),
+      ]),
+  );
+
+// Quel che di questi gruppi è già stato scaricato in questa visita
 // (services/cache.js). Serve come stato INIZIALE della pagina: rientrando in
 // Enoteca la lista è già lì, invece di ricomparire dopo un giro di schede
-// vuote. Le categorie mai chieste non entrano nell'oggetto — `undefined` e
-// "elenco vuoto" devono restare due cose diverse.
+// vuote. I gruppi mai arrivati non entrano nell'oggetto.
+const gruppiInMemoria = () =>
+  GRUPPI_REMOTI.filter((g) => gia(CHIAVI.gruppo(g.id)) !== undefined);
+
 const categorieInMemoria = () =>
-  Object.fromEntries(
-    REMOTE_CATEGORIES.map((c) => [c.id, gia(CHIAVI.categoria(c.id))]).filter(
-      ([, items]) => items !== undefined,
+  Object.assign(
+    {},
+    ...gruppiInMemoria().map((g) => perCategoria(g, gia(CHIAVI.gruppo(g.id)))),
+  );
+
+// lo stato di ogni gruppo: "ok" = arrivato, "errore" = richiesta fallita,
+// assente = ancora in viaggio
+const statoGruppiInMemoria = () =>
+  Object.fromEntries(gruppiInMemoria().map((g) => [g.id, "ok"]));
+
+// Scarica i gruppi dati, ognuno per conto suo. Sta fuori dal componente
+// perché la chiamano sia l'effect d'ingresso sia il bottone "Riprova": prende
+// i due `set` e non altro, così non dipende da niente che cambi fra un render
+// e l'altro. Una richiesta fallita non resta in memoria (services/cache.js),
+// quindi richiamarla riprova davvero.
+const scaricaGruppi = (gruppi, setProdotti, setStato) =>
+  gruppi.forEach((g) =>
+    ricorda(CHIAVI.gruppo(g.id), () => REMOTE_FETCHERS[g.id]()).then(
+      (items) => {
+        // si aggiunge a quel che c'era: i gruppi già arrivati non devono sparire
+        setProdotti((prima) => ({ ...prima, ...perCategoria(g, items) }));
+        setStato((prima) => ({ ...prima, [g.id]: "ok" }));
+      },
+      () => setStato((prima) => ({ ...prima, [g.id]: "errore" })),
     ),
   );
 
@@ -573,9 +625,16 @@ export function ProductCard({
         }
         style={{
           "--accent": accent,
-          // il colore della birra: filo in cima e bottiglia disegnata
+          // il colore della birra, per la bottiglia disegnata
           "--birra":
             type === "birre" ? (coloreBirra(w) ?? accent) : undefined,
+          // il filo in cima: il colore del logo del suo birrificio, lo stesso
+          // della mini-card. Cercato dal `producer` della birra e non dalla
+          // categoria aperta, così vale anche nella tab Consigliati
+          "--filo":
+            type === "birre"
+              ? BIRRE_GROUP?.categories.find((c) => c.id === w.producer)?.filo
+              : undefined,
         }}
         onClick={() => onOpen(w)}
         ref={cardRef}
@@ -1497,35 +1556,22 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
   // sia per la lista. Quel che è già in memoria è lì dal primo render: chi
   // torna in Enoteca dalla Home ritrova la sua categoria piena.
   const [remoteByCategory, setRemoteByCategory] = useState(categorieInMemoria);
-  const [remoteLoading, setRemoteLoading] = useState(() =>
-    REMOTE_CATEGORIES.some((c) => gia(CHIAVI.categoria(c.id)) === undefined),
-  );
+  const [statoGruppi, setStatoGruppi] = useState(statoGruppiInMemoria);
   useEffect(() => {
-    // si chiedono solo quelle che mancano: al secondo ingresso non ne manca
-    // nessuna e non parte niente, nemmeno un render in più
-    const mancanti = REMOTE_CATEGORIES.filter(
-      (c) => gia(CHIAVI.categoria(c.id)) === undefined,
+    // si chiedono solo i gruppi che mancano: al secondo ingresso non ne manca
+    // nessuno e non parte niente, nemmeno un render in più
+    scaricaGruppi(
+      GRUPPI_REMOTI.filter((g) => gia(CHIAVI.gruppo(g.id)) === undefined),
+      setRemoteByCategory,
+      setStatoGruppi,
     );
-    if (mancanti.length === 0) return;
-    Promise.all(
-      mancanti.map((c) =>
-        ricorda(CHIAVI.categoria(c.id), () => c.fetcher(c.id)).then((items) => [
-          c.id,
-          items,
-        ]),
-      ),
-    )
-      // si aggiunge a quel che c'era: le categorie già in memoria stanno
-      // nello stato iniziale e non devono sparire
-      .then((entries) =>
-        setRemoteByCategory((prima) => ({
-          ...prima,
-          ...Object.fromEntries(entries),
-        })),
-      )
-      .catch(() => {})
-      .finally(() => setRemoteLoading(false));
   }, []);
+  // "Riprova" su un gruppo fallito: torna "in viaggio" (schede vuote) e la
+  // richiesta riparte
+  const riprova = (g) => {
+    setStatoGruppi((prima) => ({ ...prima, [g.id]: undefined }));
+    scaricaGruppi([g], setRemoteByCategory, setStatoGruppi);
+  };
 
   // selezione della casa: si scarica solo entrando nella tab, e una volta
   // sola. `null` = mai chiesta, ed è da lì che si deriva "sto caricando"
@@ -1729,7 +1775,12 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
       setBarView("regioni");
       return;
     }
-    if (barOpen && phoneBar) setClosing(true);
+    // Con "riduci movimento" la barra non ha animazioni (enoteca.css le
+    // spegne), quindi animationend non arriva mai: aspettarlo lasciava la
+    // freccia muta e la categoria aperta per sempre. Lì si esce subito, come
+    // fa già `closeSearch` per la ricerca.
+    const ridotto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (barOpen && phoneBar && !ridotto) setClosing(true);
     else closeCategory();
   };
   const onBarAnimEnd = (e) => {
@@ -1750,7 +1801,10 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
 
   const closeBar = () => {
     const phoneBar = window.matchMedia("(max-width: 640px)").matches;
-    if (phoneBar) {
+    // stessa ragione di `handleBack`: senza animazione non c'è un
+    // animationend da aspettare, la barra si smonta e basta
+    const ridotto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (phoneBar && !ridotto) {
       if (!hiding) setHiding(true);
     } else setBarMode(null);
   };
@@ -1952,8 +2006,22 @@ function Enoteca({ consigliati: consigliatiRoute = false }) {
             )}
           </nav>
         )}
-        {activeCategory.remote && remoteLoading ? (
+        {activeCategory.remote && !statoGruppi[activeGroup.id] ? (
           <ListaFantasma type={activeGroup.id} />
+        ) : activeCategory.remote && statoGruppi[activeGroup.id] === "errore" ? (
+          /* la richiesta è fallita: lo si dice, invece di far passare un
+             guasto di rete per "il catalogo è in arrivo", e si dà il modo
+             di riprovare senza ricaricare la pagina */
+          <div className="product-empty product-errore">
+            <p>Non siamo riusciti a caricare il catalogo.</p>
+            <button
+              type="button"
+              className="riprova-btn"
+              onClick={() => riprova(activeGroup)}
+            >
+              Riprova
+            </button>
+          </div>
         ) : sourceItems.length === 0 ? (
           <p className="product-empty">
             Il catalogo è in arrivo — torna a trovarci presto.

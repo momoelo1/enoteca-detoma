@@ -3,6 +3,7 @@ import { createBeer, updateBeer, deleteBeer, deleteBeerImage } from "../../servi
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
+import { leggiFoto } from "../../utils/riduciFoto";
 
 // niente annate/vintage qui: le birre hanno un prezzo unico, non un
 // array anno×prezzo come i vini (schema Beer non ha `annate`)
@@ -78,12 +79,12 @@ function AdminBeerCard({ beer, producerId, onCreated, onUpdated, onDeleted }) {
 
   // stesso pattern del form vini: FileReader -> data URL, il backend
   // si occupa di caricarla su Cloudinary al salvataggio
-  const handleImageFile = (e) => {
+  // La foto viene rimpicciolita prima di partire: vedi utils/riduciFoto.js
+  const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, img: reader.result }));
-    reader.readAsDataURL(file);
+    const foto = await leggiFoto(file);
+    setForm((f) => ({ ...f, img: foto }));
   };
 
   const startEdit = () => {

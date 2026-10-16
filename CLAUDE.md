@@ -125,6 +125,13 @@ repo name changes, that constant changes too.
 
 The admin panel has no nav entry: **triple-tap the logo** within 600ms to reach `/admin`.
 
+Since 2026-10-13 the panel is **a separate chunk**: `App.jsx` loads `Login.jsx` with
+`React.lazy`, so the admin code and `admin.css`/`login.css` are downloaded only when
+`/admin` is opened (or at page start when a login is remembered). The whole change lives
+in `App.jsx`, with the way back written in the comment there. Don't import `Login` or an
+admin component statically from a public page: one static import pulls the panel back into
+the main bundle.
+
 ### React Compiler
 
 Enabled via `@rolldown/plugin-babel` + `reactCompilerPreset()`. Two rules that have bitten
@@ -141,7 +148,12 @@ determine cascade order, **a modifier class can silently lose to a base rule dep
 which component imported first** — this has caused real bugs twice. When a rule doesn't
 apply and looks like it should, check the *built* CSS in `dist/assets/`, not the source.
 
-Three webfonts, loaded in `index.html`, each with one job: **Marcellus** for *product
+Three webfonts, **self-hosted since 2026-10-13** (`src/fonts/*.woff2`, rules in
+`src/fonts/fonts.css`, imported by `main.jsx` — no Google stylesheet in `index.html` any
+more). The rules are copied from Google's, `unicode-range` included. One thing still comes
+from `fonts.gstatic.com`, by the owner's choice: the *latin-ext* files, which the browser
+only requests on a page that actually draws such a letter — today the "ć" of the three
+Marina Cvetić wines. Each font has one job: **Marcellus** for *product
 names* only (`.product-name`, `.sheet-name`, `.consiglio-name`, `.admin-product-name` —
 they change together or they stop matching), **Cormorant Garamond** for every other serif
 text, **Great Vibes** for the signature on the home page. Marcellus ships **only at weight

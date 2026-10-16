@@ -174,7 +174,6 @@ function Info() {
   const { indirizzo, orari, telefono, email, piva, social, mappaLabel } = SHOP_INFO;
   const stato = statoApertura(orari, new Date(adesso));
   const oggi = giornoDiRoma(new Date(adesso));
-  const socialAttivi = social.filter((s) => s.url);
   const mappa = mappaLabel ? mapsHref(indirizzo) : null;
   const waHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     "Buongiorno, vorrei un'informazione."
@@ -381,15 +380,17 @@ function Info() {
           )}
 
           <footer className="info-footer">
-            {socialAttivi.length > 0 && (
+            {social.length > 0 && (
               <div className="info-socials">
-                {socialAttivi.map((s) => {
+                {social.map((s) => {
                   const Logo = SOCIAL_ICONS[s.id];
                   return (
                     <a
                       key={s.id}
                       className="info-social"
-                      href={s.url}
+                      // senza indirizzo (data.js) l'icona si vede lo stesso,
+                      // ma senza `href` non è un link e non porta via
+                      href={s.url || undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={s.label}

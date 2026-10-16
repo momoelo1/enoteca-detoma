@@ -33,7 +33,7 @@ export const CHIAVI = {
   viniConsigliati: "vini:consigliati",
   birreConsigliate: "birre:consigliate",
   alimentariConsigliati: "alimentari:consigliati",
-  categoria: (id) => `categoria:${id}`, // una categoria dell'Enoteca (rossi, birre…)
+  gruppo: (id) => `gruppo:${id}`, // un gruppo intero dell'Enoteca (vini, birre, distillati)
   reparto: (id) => `reparto:${id}`, // un reparto degli Alimentari (gastronomia, dolceria)
 };
 

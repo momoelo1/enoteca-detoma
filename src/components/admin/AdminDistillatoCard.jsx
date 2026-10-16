@@ -8,6 +8,7 @@ import {
 import { FORMATI_DISTILLATI, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
 import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
+import { leggiFoto } from "../../utils/riduciFoto";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 
@@ -187,16 +188,8 @@ function AdminDistillatoCard({ distillato, categoryId, paesiNoti = [], onCreated
   const handleImageFile = async (e) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
-    const letti = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise((risolvi) => {
-            const reader = new FileReader();
-            reader.onload = () => risolvi(reader.result);
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+    // rimpicciolite prima di partire: vedi utils/riduciFoto.js
+    const letti = await Promise.all(files.map(leggiFoto));
     setForm((f) => ({ ...f, img: [...f.img, ...letti] }));
     e.target.value = "";
   };

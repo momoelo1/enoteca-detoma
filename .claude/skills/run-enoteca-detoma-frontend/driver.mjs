@@ -2,7 +2,7 @@
 // Driver headless per il sito Enoteca de Toma.
 // Legge comandi da stdin (uno per riga) e li esegue su Chromium via Playwright.
 //
-//   node .claude/skills/run-enoteca-detoma-frontend/driver.mjs [--desktop] [--headed] [--base URL]
+//   node .claude/skills/run-enoteca-detoma-frontend/driver.mjs [--desktop] [--headed] [--reduced-motion] [--base URL]
 //
 // Default: viewport iPhone-like (390x844, touch, DPR 3) — il sito e mobile-first
 // e la tab bar / il bottom sheet esistono solo sotto i breakpoint mobile.
@@ -32,6 +32,10 @@ let shotN = 0;
 const ctxOpts = flag('--desktop')
   ? { viewport: { width: 1440, height: 900 } }
   : { ...devices['iPhone 13'] };
+// "Riduci movimento" del sistema: il sito spegne le animazioni, e qualunque
+// cosa aspetti un animationend non riceve niente (il bug della barra regioni,
+// chiuso il 2026-10-12, era esattamente questo)
+if (flag('--reduced-motion')) ctxOpts.reducedMotion = 'reduce';
 
 const browser = await chromium.launch({ headless: !flag('--headed') });
 const context = await browser.newContext(ctxOpts);

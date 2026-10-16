@@ -491,7 +491,8 @@ body.page-pinned .page-scroll {
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--accent, #2e5e46);
+  /* `--filo`: il colore del logo, sui birrifici (data.js); altrove l'accento */
+  background: var(--filo, var(--accent, #2e5e46));
 }
 
 /* solo col puntatore vero: su touch l'hover resta acceso dopo il tocco e la
@@ -1052,6 +1053,31 @@ body.home-no-scroll .consigliati-scroll .product-list {
   color: #52605a;
 }
 
+/* la categoria non si è scaricata (rete giù, server che non risponde): lo
+   stesso riquadro di .product-empty, con sotto il bottone per riprovare.
+   Il bottone è quello di "← Enoteca" in cima alla pagina (.back-btn), meno
+   l'allineamento, che lì serve alla colonna della testata. */
+.product-errore p {
+  margin: 0 0 14px;
+}
+
+.riprova-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tinta-linea);
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--tinta-linea);
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.riprova-btn:hover {
+  background: var(--tinta-linea);
+  color: #fff;
+}
+
 /* dentro una lista prodotti (body.category-open) il messaggio "nessun
    risultato" PRENDE IL POSTO della lista: senza questa regola in quello
    stato non esiste più nessun contenitore che scorre, il gesto arriva al
@@ -1138,7 +1164,9 @@ body.category-open .product-empty {
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--accent, #2e5e46);
+  /* sulle birre `--filo` è il colore del logo del birrificio, lo stesso
+     della sua mini-card (ProductCard in Enoteca.jsx) */
+  background: var(--filo, var(--accent, #2e5e46));
   transform-origin: left center;
 }
 
@@ -1266,7 +1294,8 @@ svg.product-food-svg {
    stare dopo le regole base .product-thumb/.product-thumb-img qui sopra,
    altrimenti quelle vincono la cascata anche dentro la media query */
 @media (min-width: 900px) {
-  .product-thumb--vini {
+  .product-thumb--vini,
+  .product-thumb--birre {
     height: 120px;
   }
 
@@ -1360,53 +1389,15 @@ svg.product-food-svg {
   transform: none;
 }
 
-/* ---- birre: il loro colore e la loro bottiglia ----
+/* ---- birre: la loro bottiglia ----
    `--birra` è il colore letto dallo stile (coloreBirra in Enoteca.jsx): tinge
-   il filo in cima alla card e la bottiglia da birra disegnata (BirraIcon).
-   Il filo DEVE stare dopo .product-card-btn::before, a specificità pari. */
-.product-card-btn--birre::before {
-  background: var(--birra, var(--accent, #2e5e46));
-}
+   la bottiglia da birra disegnata (BirraIcon). Il filo in cima alla card
+   invece è del birrificio (`--filo`, vedi .product-card-btn::before). */
 
-/* La bottiglia grande (scelta il 2026-10-09 fra cinque impaginazioni). I
-   nomi delle birre sono corti — il più lungo è "Cento Volte Forte" — e con
-   le misure del vino restavano una riga di nome vuota e una bottiglia
-   piccola in una card grande. Qui la miniatura non ha più un'altezza fissa:
-   si prende tutto quel che nome, stile e prezzo lasciano libero (~140px
-   invece di 92 sul telefono), e il nome non prenota due righe che non usa.
-   Tutte DOPO le regole base e le media query di .product-card-btn,
-   .product-thumb e .product-thumb-svg qui sopra, a specificità pari. */
-.product-card-btn--birre {
-  justify-content: flex-start;
-  gap: 6px;
-  padding-top: 14px;
-}
-
-.product-thumb--birre {
-  flex: 1 1 0;
-  width: 100%;
-  height: auto;
-  min-height: 0;
-}
-
+/* la card delle birre ha le misure di quella del vino: qui solo la
+   bottiglia, piena (l'opacità la fanno vetro e tappo qui sotto) */
 .product-thumb-svg--birre {
-  height: 100%;
   opacity: 1;
-}
-
-.product-card-btn--birre .product-name-wrap {
-  height: auto;
-  max-height: 47px; /* due righe a 19.5px / 1.2 */
-}
-
-.product-card-btn--birre .product-name {
-  font-size: 19.5px;
-  line-height: 1.2;
-}
-
-.product-card-btn--birre .product-price {
-  padding-top: 2px;
-  font-size: 17px;
 }
 
 .birra-vetro {

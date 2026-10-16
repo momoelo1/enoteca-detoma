@@ -4,6 +4,7 @@ import { COUNTRY_GROUPS } from "../../data/data";
 import { FORMATI_VINO, FORMATI_DOLCI, etichettaLitri, prezzoProdotto } from "../../utils/prezzo";
 import { elencoFoto } from "../../utils/cloudinary";
 import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
+import { leggiFoto } from "../../utils/riduciFoto";
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 
@@ -247,16 +248,8 @@ function AdminWineCard({ wine, categoryId, onCreated, onUpdated, onDeleted }) {
   const handleImageFile = async (e) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
-    const letti = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise((risolvi) => {
-            const reader = new FileReader();
-            reader.onload = () => risolvi(reader.result);
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+    // rimpicciolite prima di partire: vedi utils/riduciFoto.js
+    const letti = await Promise.all(files.map(leggiFoto));
     setForm((f) => ({ ...f, img: [...f.img, ...letti] }));
     // così riscegliere lo stesso file subito dopo riparte davvero: senza,
     // l'input non emette `change` perché il valore non è cambiato

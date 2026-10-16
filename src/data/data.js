@@ -52,7 +52,9 @@ export const SHOP_INFO = {
   telefono: "0371-420786",
   email: "detoma@enotecadetoma.it",
   piva: "01682650153",
-  // `id` sceglie l'icona (vedi SOCIAL_ICONS in Info.jsx); url vuoto = nascosto
+  // `id` sceglie l'icona (vedi SOCIAL_ICONS in Info.jsx). Con l'url vuoto
+  // l'icona si vede lo stesso, ma non è un link: non porta da nessuna parte
+  // finché qui non c'è l'indirizzo della pagina
   social: [
     { id: "instagram", label: "Instagram", url: "" },
     { id: "facebook", label: "Facebook", url: "" },
@@ -153,6 +155,11 @@ export const DISTILLATI_CATEGORIES = [
 ];
 
 // ---- sotto-sezioni birre (sub-card della card "Birre") ----
+// `filo`: il colore del logo del birrificio (misurato sul file, 2026-10-09).
+// Colora SOLO il filo in cima alla sua mini-card e alle card delle sue
+// birre (vedi .mini-card::before e .product-card-btn::before); `accent`
+// resta il colore della scheda e della pagina, dove un verde lime o un oro
+// pallido renderebbero illeggibili prezzo e pastiglie.
 export const BEER_CATEGORIES = [
   {
     id: "32-via-dei-birrai",
@@ -160,24 +167,27 @@ export const BEER_CATEGORIES = [
     description: "Birre artigianali venete",
     img: birrai32Img,
     accent: "#c78a2b",
+    filo: "#73c92b",
     items: [],
     remote: true,
   },
   {
     id: "ribadi",
     label: "Ribadi",
-    description: "Birrificio artigianale piacentino",
+    description: "Birrificio artigianale siciliano",
     img: ribadi,
     accent: "#a8712c",
+    filo: "#020202",
     items: [],
     remote: true,
   },
   {
     id: "gjulia",
     label: "Gjulia",
-    description: "Birre artigianali piemontesi",
+    description: "Birre artigianali friulane",
     img: gjulia,
     accent: "#8f5a1e",
+    filo: "#ebce84",
     items: [],
     remote: true,
   },
@@ -188,6 +198,7 @@ export const BEER_CATEGORIES = [
     description: "Birre alpine francesi",
     img: brasserie,
     accent: "#5b7fa4",
+    filo: "#e4020a",
     items: [],
     remote: true,
   },
@@ -197,6 +208,7 @@ export const BEER_CATEGORIES = [
     description: "Birre artigianali italiane",
     img: forte,
     accent: "#d19a3d",
+    filo: "#181818",
     items: [],
     remote: true,
   },
@@ -206,6 +218,7 @@ export const BEER_CATEGORIES = [
     description: "Birrificio artigianale italiano",
     img: calabrau,
     accent: "#6e4419",
+    filo: "#5a3526",
     items: [],
     remote: true,
   },
@@ -215,6 +228,7 @@ export const BEER_CATEGORIES = [
     description: "Birrificio artigianale italiano",
     img: salento,
     accent: "#6e4419",
+    filo: "#252425",
     items: [],
     remote: true,
   },
@@ -279,7 +293,7 @@ export const WINE_CATEGORIES = [
     id: "liquorosi",
     label: "Dolci e Passiti",
     short: "Dolci e Passiti",
-    description: "Dolci e assiti",
+    description: "Dolci e Passiti",
     illustrazione: liquorosiIll,
     accent: "#8a5a2b",
     filterBy: "regione",

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -17,10 +17,53 @@ import FiltroMacchia from "./components/effetti/FiltroMacchia";
 import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
-import Login from "./components/login/Login";
 import Info from "./components/info/Info";
 import NavIcon from "./components/icons/NavIcons";
 import { SECTIONS } from "./data/data";
+import { utenteSalvato } from "./services/auth";
+
+// ---- il pannello admin sta in un file a parte (2026-10-13) ----
+//
+// Login.jsx e tutto ciò che si porta dietro — i sette gestori, i quattro
+// moduli, admin.css e login.css — non viaggiano più nel file che scaricano
+// tutti i clienti: il browser li chiede la prima volta che si apre /admin.
+// Misurato: circa 18 KB compressi in meno a ogni prima visita, il 10% del sito.
+//
+// PER TORNARE COM'ERA: questo blocco e le righe marcate "pannello a parte"
+// più sotto sono TUTTA la modifica, ed è tutta in questo file. Basta rimettere
+// `import Login from "./components/login/Login";` qui sopra, togliere il
+// blocco, e alla rotta /admin lasciare solo <Login …/> senza <Suspense>.
+const caricaPannello = () => import("./components/login/Login");
+
+// Se il file non arriva (rete assente, oppure una scheda rimasta aperta
+// mentre usciva una versione nuova: il file vecchio sul server non c'è più)
+// si mostra un messaggio invece di far cadere tutta la pagina.
+function PannelloNonCaricato() {
+  return (
+    <section className="shop-section">
+      <div className="product-empty product-errore">
+        <p>Non riesco ad aprire il pannello. Controlla la connessione.</p>
+        <button
+          type="button"
+          className="riprova-btn"
+          onClick={() => window.location.reload()}
+        >
+          Ricarica la pagina
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const Login = lazy(() =>
+  caricaPannello().catch(() => ({ default: PannelloNonCaricato })),
+);
+
+// Sul telefono del negoziante — dove c'è un accesso ricordato — il file parte
+// SUBITO, insieme alla pagina, senza aspettare che si apra /admin: così il
+// pannello resta immediato anche quando Safari ricarica la scheda da solo
+// (vedi `utenteSalvato` in services/auth.js). Ai clienti non succede mai.
+if (utenteSalvato()) caricaPannello().catch(() => {});
 
 const SECTION_PATHS = {
   home: "/",
@@ -144,7 +187,16 @@ function AppShell() {
             path="/alimentari/:reparto/:groupId/:productId"
             element={<Gastronomia />}
           />
-          <Route path="/admin" element={<Login onBack={() => navigate("/")} />} />
+          {/* pannello a parte: mentre il file arriva non si mostra niente,
+              come già succede per un attimo mentre si controlla la sessione */}
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={null}>
+                <Login onBack={() => navigate("/")} />
+              </Suspense>
+            }
+          />
           <Route path="/info" element={<Info />} />
           <Route path="/dove-siamo" element={<Navigate to="/info" replace />} />
           <Route path="/confezioni" element={null} />

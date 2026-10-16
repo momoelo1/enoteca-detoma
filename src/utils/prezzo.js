@@ -23,8 +23,8 @@ export const formatPrezzo = (n) =>
 // I formati di un'annata: la bottiglia in cui quell'anno si vende, ognuna
 // col suo prezzo (models/Wine.js). Un'annata vecchia, non ancora migrata,
 // non ha `formati` ma il vecchio `prezzo` piatto: la si legge come un unico
-// formato standard, così il sito continua a mostrare i prezzi già salvati
-// anche prima che giri scripts/migraPrezziInFormati.js.
+// formato standard, così il sito continua a mostrare i prezzi già salvati.
+// (La migrazione dei dati è fatta dal 2026-10-09: oggi è solo un ripiego.)
 export const formatiAnnata = (annata) => {
   if (!annata) return [];
   if (annata.formati?.length) return annata.formati;

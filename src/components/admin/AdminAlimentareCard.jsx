@@ -8,6 +8,7 @@ import {
 import StellaConsigliato from "./StellaConsigliato";
 import BottoneArchivio from "./BottoneArchivio";
 import { leggiBozza, salvaBozza, buttaBozza } from "../../utils/memoriaAdmin";
+import { leggiFoto } from "../../utils/riduciFoto";
 
 // niente annate qui: il cibo ha un prezzo unico, come le birre.
 // `formato` è un numero di grammi come per le birre lo è di centilitri
@@ -75,12 +76,12 @@ function AdminAlimentareCard({
 
   // stesso pattern dei form vini/birre: FileReader -> data URL, il
   // backend la carica su Cloudinary al salvataggio
-  const handleImageFile = (e) => {
+  // La foto viene rimpicciolita prima di partire: vedi utils/riduciFoto.js
+  const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, img: reader.result }));
-    reader.readAsDataURL(file);
+    const foto = await leggiFoto(file);
+    setForm((f) => ({ ...f, img: foto }));
   };
 
   const startEdit = () => {

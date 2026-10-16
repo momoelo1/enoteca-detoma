@@ -211,6 +211,7 @@ Get-Process node | Select-Object Id, StartTime, @{n='cmd';e={
 | *(none)* | iPhone 13 viewport (390×844, touch, DPR 3) — **the default**, the site is mobile-first |
 | `--desktop` | 1440×900, no touch — the nav becomes a pill row and the bottom tab bar disappears |
 | `--headed` | opens a real window (useless for an agent, handy when a human is watching) |
+| `--reduced-motion` | emulates the OS "reduce motion" setting (`prefers-reduced-motion: reduce`) — see below |
 | `--base <url>` | target something other than `http://localhost:5173` |
 | `--shots <dir>` | screenshot output directory |
 
@@ -831,6 +832,53 @@ altri byte: il testo non combacia più. **Nei selettori solo ASCII**: `text=Fran
 (Playwright prende l'elemento più piccolo che contiene il testo e il click risale al
 bottone). Il secondo sintomo inganna: il `click .mini-cell` subito dopo va in timeout
 "da solo", ma è il pannello rimasto aperto sopra le card, non un secondo problema.
+
+### "Riduci movimento": `--reduced-motion` (2026-10-12)
+
+Il sito spegne le animazioni sotto `prefers-reduced-motion: reduce`, e tutto ciò che
+aspetta un `animationend` per chiudersi resta appeso: era il bug della barra regioni
+(barra che non si chiudeva, "← Enoteca" muto). Per riprodurlo o provarne la cura serve il
+flag, non un `eval`: `matchMedia` non si cambia dalla pagina.
+
+```powershell
+@'
+nav /enoteca/vini/rossi
+wait-for .product-card:not(.product-card--fantasma)
+eval matchMedia("(prefers-reduced-motion: reduce)").matches
+click text=Regioni
+wait-for .filter-bar
+click text=Regioni
+sleep 600
+count .filter-bar
+click text=Regioni
+wait-for .filter-bar
+click .back-btn
+sleep 600
+url
+'@ | node .claude/skills/run-enoteca-detoma-frontend/driver.mjs --reduced-motion
+```
+
+Atteso: `EVAL true`, `COUNT .filter-bar = 0`, `URL …/enoteca`. **Senza il flag lo stesso
+script dà un falso fallimento**: lì la chiusura passa davvero dall'animazione (0,5 s), e
+headless con lo shader dello sfondo le animazioni girano lente. Con `sleep 1500` dopo
+l'apertura e `sleep 4000` dopo il click è passato. Prima di dire "rotto" in modalità
+normale, allunga le attese. Prova del valore del test: rimesso per un giro il codice
+vecchio, la modalità ridotta falliva tutt'e due i controlli.
+
+### Contare le card vere: `.product-thumb-img` non basta più
+
+`count .product-list > *` conta anche le **6 schede fantasma** del caricamento: un "6"
+su grappa e whisky (che in archivio sono 53 e 34) era la lista non ancora arrivata. E
+`wait-for .product-thumb-img` va in timeout sui **distillati**, che oggi non hanno
+nessuna foto (si vede la bottiglia disegnata). Il selettore che vale per tutte le
+categorie è `.product-card:not(.product-card--fantasma)`, sia per `wait-for` sia per
+`count`. Verificato il 2026-10-12: grappa 53, whisky 34, rhum 24, uguali al database.
+
+**Il primo giro contro la produzione può impiantarsi.** Quel giorno la prima apertura di
+Grappa è rimasta sui fantasmi oltre 20 s, e nello stesso giro `GET /api/beers?producer=…`
+ha risposto **500**. Cinque minuti dopo, tutti gli endpoint rispondevano 200 in ~0,5 s e la
+stessa pagina caricava 53 card: era Vercel che si svegliava. Rilancia una volta prima di
+indagare.
 
 ## Lint
 
