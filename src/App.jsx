@@ -18,6 +18,7 @@ import Home from "./components/home/Home";
 import Enoteca from "./components/enoteca/Enoteca";
 import Gastronomia from "./components/gastronomia/Gastronomia";
 import Info from "./components/info/Info";
+import Regali from "./components/regali/Regali";
 import NavIcon from "./components/icons/NavIcons";
 import { SECTIONS } from "./data/data";
 import { utenteSalvato } from "./services/auth";
@@ -199,7 +200,7 @@ function AppShell() {
           />
           <Route path="/info" element={<Info />} />
           <Route path="/dove-siamo" element={<Navigate to="/info" replace />} />
-          <Route path="/confezioni" element={null} />
+          <Route path="/confezioni" element={<Regali />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

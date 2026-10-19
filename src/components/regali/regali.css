@@ -1,0 +1,631 @@
+/* ---- pagina Regali (TEMP: tre varianti in prova, vedi Regali.jsx) ----
+   Titolo e sezione arrivano da enoteca/enoteca.css (.shop-section,
+   .section-title); la finestra sullo sfondo da info/info.css
+   (.pagina-finestra). Qui solo gli stili propri della pagina. */
+
+/* come Info: la distanza dalla tab bar la governa il padding-bottom del
+   body, calcolato sulla barra vera. Doppia classe per non dipendere
+   dall'ordine di import dei CSS. */
+.shop-section.shop-section--regali {
+  padding-bottom: 0;
+}
+
+.regali-pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 620px;
+  min-width: 0;
+}
+
+.regali-intro {
+  margin: -8px 0 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(18px, 4.4vw, 20px);
+  line-height: 1.35;
+  text-align: center;
+  color: #3d4a43;
+}
+
+/* ---- il disegno della confezione ---- */
+
+.regali-disegno {
+  display: block;
+  width: 100%;
+  /* l'aspect-ratio prenota lo spazio: con il solo `height: auto` qualche
+     Safari meno recente dà all'svg in linea un'altezza sua */
+  aspect-ratio: 260 / 170;
+  height: auto;
+  overflow: visible;
+}
+
+.regali-posto {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* il pezzo cade nella confezione e rimbalza appena sul fondo */
+.regali-pezzo {
+  animation: regali-cade 0.6s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+
+@keyframes regali-cade {
+  0% {
+    transform: translateY(-70px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* il nastro si stende, prima in verticale poi in orizzontale, e alla fine
+   spunta il fiocco: il pacco si chiude davanti al cliente */
+.regali-nastro--anima {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: regali-nastro 0.7s ease-out 0.5s forwards;
+}
+
+.regali-nastro--2.regali-nastro--anima {
+  animation-delay: 1.1s;
+}
+
+@keyframes regali-nastro {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.regali-fiocco--anima {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: regali-fiocco 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) 1.7s both;
+}
+
+@keyframes regali-fiocco {
+  from {
+    transform: scale(0) rotate(-25deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .regali-posto {
+    transition: none;
+  }
+
+  .regali-pezzo,
+  .regali-nastro--anima,
+  .regali-fiocco--anima {
+    animation: none;
+  }
+
+  .regali-nastro--anima {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---- blocchi di vetro (stesso materiale di .info-block) ---- */
+
+.regali-blocco,
+.regali-scena,
+.regali-cartellino,
+.regali-box,
+.regali-hero,
+.regali-occasione {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.regali-blocco {
+  min-width: 0;
+  padding: 18px 20px 20px;
+}
+
+.regali-blocco-titolo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #2e5e46;
+}
+
+.regali-blocco-numero {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 94, 70, 0.4);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.regali-blocco-testo {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #3d4a43;
+}
+
+/* ---- variante 1: componi ---- */
+
+.regali-scena {
+  margin: 0;
+  padding: 16px 18px 12px;
+}
+
+.regali-scena-didascalia {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(46, 94, 70, 0.8);
+}
+
+.regali-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* bersagli da 40px: chi tocca è spesso un cliente non giovanissimo */
+.regali-chip {
+  min-height: 40px;
+  padding: 8px 15px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(46, 94, 70, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.regali-chip[aria-pressed="true"] {
+  color: #fff;
+  background: #2e5e46;
+  border-color: #2e5e46;
+}
+
+.regali-chip:active {
+  transform: scale(0.96);
+}
+
+.regali-chip:focus-visible,
+.regali-cta:focus-visible,
+.regali-occasione:focus-visible {
+  outline: 2px solid #2e5e46;
+  outline-offset: 2px;
+}
+
+/* 16px: sotto, Safari su iPhone ingrandisce la pagina al tocco */
+.regali-biglietto {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #3d4a43;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(46, 94, 70, 0.3);
+  border-radius: 14px;
+  resize: vertical;
+}
+
+.regali-biglietto:focus {
+  outline: 2px solid rgba(46, 94, 70, 0.5);
+  outline-offset: 1px;
+}
+
+/* il cartellino del pacco: forellino in alto a sinistra e cornice
+   tratteggiata dentro il bordo */
+.regali-cartellino {
+  position: relative;
+  padding: 22px 22px 20px 30px;
+  background: rgba(253, 250, 242, 0.75);
+}
+
+.regali-cartellino::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px dashed rgba(46, 94, 70, 0.3);
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.regali-cartellino::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #c9a24a;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.regali-cartellino-titolo {
+  margin: 0 0 10px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  font-style: italic;
+  color: #2e5e46;
+}
+
+.regali-cartellino-righe {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  color: #3d4a43;
+}
+
+.regali-cartellino-righe dt {
+  font-weight: 600;
+  color: rgba(46, 94, 70, 0.75);
+}
+
+.regali-cartellino-righe dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---- il bottone d'azione (stesso aspetto di .sheet-cta) ---- */
+
+.regali-cta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  background: #2e5e46;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(46, 94, 70, 0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.regali-cta--piccola {
+  padding: 10px 16px;
+  font-size: 14.5px;
+}
+
+.regali-cta--vuota {
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid #2e5e46;
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .regali-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(46, 94, 70, 0.4);
+  }
+}
+
+.regali-cta:active {
+  transform: scale(0.98);
+}
+
+/* ---- variante 2: vetrina ---- */
+
+.regali-vetrina {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+@media (min-width: 641px) {
+  .regali-vetrina {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.regali-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* il fondo del disegno prende il colore del contenitore, appena accennato */
+.regali-box-scena {
+  padding: 14px 22px 4px;
+  background: radial-gradient(120% 90% at 50% 100%, rgba(179, 123, 71, 0.22), transparent 70%);
+}
+
+.regali-box-scena--cesto {
+  background: radial-gradient(120% 90% at 50% 100%, rgba(184, 137, 78, 0.24), transparent 70%);
+}
+
+.regali-box-scena--scatola {
+  background: radial-gradient(120% 90% at 50% 100%, rgba(46, 94, 70, 0.2), transparent 70%);
+}
+
+.regali-box-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  padding: 14px 18px 18px;
+}
+
+.regali-box-testa {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.regali-box-nome {
+  margin: 0;
+  min-width: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #2e5e46;
+}
+
+.regali-box-prezzo {
+  flex: none;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #2e5e46;
+  white-space: nowrap;
+}
+
+.regali-box-prezzo span {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(46, 94, 70, 0.7);
+}
+
+.regali-box-righe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1; /* i bottoni restano allineati in fondo anche con liste diverse */
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: #3d4a43;
+}
+
+.regali-box-righe li {
+  position: relative;
+  padding-left: 16px;
+}
+
+.regali-box-righe li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c9a24a;
+}
+
+.regali-box--su-misura {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 26px 22px 22px;
+  text-align: center;
+  color: #2e5e46;
+  background: rgba(255, 255, 255, 0.3);
+  border: 1.5px dashed rgba(46, 94, 70, 0.4);
+}
+
+.regali-box-testo {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: #3d4a43;
+}
+
+/* ---- variante 3: racconto ---- */
+
+.regali-hero {
+  margin: 0;
+  overflow: hidden;
+}
+
+.regali-hero-scena {
+  padding: 22px 40px 4px;
+  background: radial-gradient(110% 100% at 50% 100%, rgba(201, 162, 74, 0.25), transparent 70%);
+}
+
+.regali-hero-testo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 20px 20px;
+  text-align: center;
+}
+
+.regali-hero-titolo {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(26px, 6vw, 32px);
+  font-weight: 600;
+  line-height: 1.1;
+  color: #2e5e46;
+}
+
+.regali-hero-sotto {
+  font-size: 15px;
+  color: #3d4a43;
+}
+
+.regali-passi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.regali-passo {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.regali-passo-numero {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 0.9;
+  color: rgba(46, 94, 70, 0.45);
+  text-align: center;
+}
+
+.regali-passo-testo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: #3d4a43;
+}
+
+.regali-passo-testo strong {
+  font-size: 16px;
+  color: #2e5e46;
+}
+
+.regali-occasioni {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 641px) {
+  .regali-occasioni {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.regali-occasione {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 10px 16px;
+  border-radius: 18px;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: #2e5e46;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+@media (hover: hover) {
+  .regali-occasione:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
+  }
+}
+
+.regali-occasione:active {
+  transform: scale(0.97);
+}
+
+/* ---- TEMP / RIMUOVERE: selettore delle varianti ---- */
+
+.regali-temp {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top));
+  right: 8px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 2px dashed #c0392b;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 11.5px;
+}
+
+.regali-temp-etichetta {
+  padding: 0 4px;
+  font-weight: 700;
+  color: #c0392b;
+}
+
+.regali-temp-btn {
+  padding: 5px 7px;
+  font: inherit;
+  font-weight: 600;
+  color: #2e5e46;
+  background: transparent;
+  border: 1px solid rgba(46, 94, 70, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.regali-temp-btn[aria-pressed="true"] {
+  color: #fff;
+  background: #2e5e46;
+}
+
+/* su telefono il selettore va in colonna: in riga coprirebbe il logo */
+@media (max-width: 640px) {
+  .regali-temp {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
